@@ -1,0 +1,80 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go
+/vendor/
+/bin/
+*.log
+
+# Environment files
+.env
+configs/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
+
+# Database
+*.db
+*.sqlite
+
+# WireGuard
+*.conf
+privatekey
+publickey
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+logs/
+*.log
+
+# Coverage reports
+coverage.out
+coverage.html
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Air (hot-reload tool)
+.air.toml
+tmp/
+
+# Backup files
+*.backup
+*.bak
+backups/
+
+# CI/CD artifacts
+.github/workflows/*.log
+
+# Prometheus & Grafana data
+prometheus_data/
+grafana_data/
+
+# Docker volumes data
+postgres_data/
+redis_data/

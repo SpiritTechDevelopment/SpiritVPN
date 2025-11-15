@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: spiritvpn-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spiritdb
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-your_secure_password}
+      POSTGRES_DB: spiritdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - spiritvpn
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: spiritvpn-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - spiritvpn
+
+  # API Server
+  api:
+    build:
+      context: .
+      dockerfile: deployments/api.Dockerfile
+    container_name: spiritvpn-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file:
+      - configs/.env
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - spiritvpn
+
+  # Telegram Bot
+  bot:
+    build:
+      context: .
+      dockerfile: deployments/bot.Dockerfile
+    container_name: spiritvpn-bot
+    restart: unless-stopped
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - API_ADDRESS=http://api:8080
+    env_file:
+      - configs/.env
+    depends_on:
+      - postgres
+      - api
+    networks:
+      - spiritvpn
+
+  # VPN Server
+  vpn:
+    build:
+      context: .
+      dockerfile: deployments/vpn.Dockerfile
+    container_name: spiritvpn-vpn
+    restart: unless-stopped
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    ports:
+      - "51820:51820/udp"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+    env_file:
+      - configs/.env
+    depends_on:
+      - postgres
+    volumes:
+      - /lib/modules:/lib/modules:ro
+    networks:
+      - spiritvpn
+
+  # Prometheus (Monitoring)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: spiritvpn-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - spiritvpn
+
+  # Grafana (Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: spiritvpn-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - spiritvpn
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  spiritvpn:
+    driver: bridge
