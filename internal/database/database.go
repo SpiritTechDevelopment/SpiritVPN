@@ -9,12 +9,21 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// DB представляет подключение к базе данных
+// DB представляет подключение к базе данных PostgreSQL.
+// Инкапсулирует *sql.DB и предоставляет методы для работы с базой.
 type DB struct {
 	conn *sql.DB
 }
 
-// Connect подключается к базе данных
+// Connect устанавливает подключение к базе данных PostgreSQL.
+// Проверяет доступность базы через ping и возвращает готовое к использованию подключение.
+//
+// Параметры:
+//   - cfg: конфигурация с параметрами подключения к БД
+//
+// Возвращает:
+//   - *DB: инициализированное подключение к базе данных
+//   - error: ошибка подключения или nil при успехе
 func Connect(cfg *config.Config) (*DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
@@ -39,7 +48,11 @@ func Connect(cfg *config.Config) (*DB, error) {
 	return &DB{conn: conn}, nil
 }
 
-// Close закрывает подключение к базе данных
+// Close корректно закрывает подключение к базе данных.
+// Должен вызываться при завершении работы приложения.
+//
+// Возвращает:
+//   - error: ошибка закрытия или nil при успехе
 func (db *DB) Close() error {
 	if db.conn != nil {
 		return db.conn.Close()
@@ -47,7 +60,17 @@ func (db *DB) Close() error {
 	return nil
 }
 
-// Migrate выполняет миграции базы данных
+// Migrate выполняет миграции схемы базы данных.
+// Создает необходимые таблицы, индексы и связи если они еще не существуют.
+// Безопасно для повторного вызова (использует IF NOT EXISTS).
+//
+// Параметры:
+//   - db: подключение к базе данных
+//
+// Возвращает:
+//   - error: ошибка миграции или nil при успехе
+//
+// TODO: Использовать migrate библиотеку или GORM AutoMigrate для версионирования миграций
 func Migrate(db *DB) error {
 	// TODO: Использовать migrate библиотеку или GORM AutoMigrate
 	log.Println("Running database migrations...")
