@@ -7,63 +7,77 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config содержит всю конфигурацию приложения
+// Config содержит всю конфигурацию приложения SpiritVPN.
+// Загружается из переменных окружения или .env файла.
 type Config struct {
-	API      APIConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	VPN      VPNConfig
-	Telegram TelegramConfig
-	Payment  PaymentConfig
+	API      APIConfig      // Настройки REST API сервера
+	Database DatabaseConfig // Настройки PostgreSQL
+	Redis    RedisConfig    // Настройки Redis кеша
+	VPN      VPNConfig      // Настройки VPN сервера
+	Telegram TelegramConfig // Настройки Telegram бота
+	Payment  PaymentConfig  // Настройки платежных систем
 }
 
-// APIConfig конфигурация API сервера
+// APIConfig содержит конфигурацию REST API сервера.
 type APIConfig struct {
-	Address   string
-	Mode      string // "debug" or "production"
-	JWTSecret string
+	Address   string // Адрес для прослушивания (например, ":8080")
+	Mode      string // Режим работы: "debug" или "production"
+	JWTSecret string // Секретный ключ для подписи JWT токенов
 }
 
-// DatabaseConfig конфигурация базы данных
+// DatabaseConfig содержит параметры подключения к PostgreSQL.
 type DatabaseConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Name     string
+	Host     string // Хост БД (например, "localhost")
+	Port     int    // Порт БД (обычно 5432)
+	User     string // Имя пользователя БД
+	Password string // Пароль пользователя БД
+	Name     string // Имя базы данных
 }
 
-// RedisConfig конфигурация Redis
+// RedisConfig содержит параметры подключения к Redis.
+// Используется для кеширования и хранения сессий.
 type RedisConfig struct {
-	Host     string
-	Port     int
-	Password string
-	DB       int
+	Host     string // Хост Redis (например, "localhost")
+	Port     int    // Порт Redis (обычно 6379)
+	Password string // Пароль Redis (пустой если не установлен)
+	DB       int    // Номер базы данных Redis (0-15)
 }
 
-// VPNConfig конфигурация VPN сервера
+// VPNConfig содержит конфигурацию WireGuard VPN сервера.
 type VPNConfig struct {
-	Port       int
-	Subnet     string
-	Interface  string
-	PrivateKey string
+	Port       int    // UDP порт WireGuard (обычно 51820)
+	Subnet     string // Подсеть для VPN клиентов (CIDR, например "10.8.0.0/24")
+	Interface  string // Имя сетевого интерфейса (например, "wg0")
+	PrivateKey string // Приватный ключ сервера WireGuard (base64)
 }
 
-// TelegramConfig конфигурация Telegram бота
+// TelegramConfig содержит конфигурацию Telegram бота.
 type TelegramConfig struct {
-	BotToken string
-	Debug    bool
+	BotToken string // Токен бота от @BotFather
+	Debug    bool   // Включить отладочные логи
 }
 
-// PaymentConfig конфигурация платежных систем
+// PaymentConfig содержит конфигурацию интеграции с платежными системами.
 type PaymentConfig struct {
-	YooKassaShopID    string
-	YooKassaSecretKey string
+	YooKassaShopID    string // Shop ID от ЮКасса
+	YooKassaSecretKey string // Секретный ключ от ЮКасса
 }
 
-// Load загружает конфигурацию из переменных окружения
+// Load загружает конфигурацию приложения из переменных окружения.
+// Сначала пытается загрузить configs/.env файл, затем читает системные переменные.
+// Устанавливает значения по умолчанию для необязательных параметров.
+//
+// Возвращает:
+//   - *Config: загруженная конфигурация
+//   - error: ошибка валидации (например, отсутствует TELEGRAM_BOT_TOKEN)
+//
+// Пример:
+//
+//	cfg, err := config.Load()
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 func Load() (*Config, error) {
-	// Попытка загрузить .env файл (игнорируем ошибку если файл не найден)
 	_ = godotenv.Load("configs/.env")
 
 	cfg := &Config{
@@ -113,7 +127,15 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-// getEnv получает значение переменной окружения или возвращает default
+// getEnv получает значение переменной окружения или возвращает значение по умолчанию.
+// Вспомогательная функция для загрузки конфигурации.
+//
+// Параметры:
+//   - key: имя переменной окружения
+//   - defaultValue: значение по умолчанию, если переменная не установлена
+//
+// Возвращает:
+//   - string: значение переменной или defaultValue
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -121,7 +143,15 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// getEnvAsInt получает значение как int или возвращает default
+// getEnvAsInt получает значение переменной окружения как целое число.
+// Вспомогательная функция для загрузки числовых конфигураций (порты, таймауты).
+//
+// Параметры:
+//   - key: имя переменной окружения
+//   - defaultValue: значение по умолчанию, если переменная не установлена или не является числом
+//
+// Возвращает:
+//   - int: целочисленное значение переменной или defaultValue
 func getEnvAsInt(key string, defaultValue int) int {
 	valueStr := os.Getenv(key)
 	if valueStr == "" {

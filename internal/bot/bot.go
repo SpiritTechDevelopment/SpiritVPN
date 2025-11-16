@@ -9,14 +9,23 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-// Bot представляет Telegram бота
+// Bot представляет Telegram бота для управления VPN подписками.
+// Обрабатывает команды пользователей, управляет подписками и выдает конфигурации VPN.
 type Bot struct {
 	config *config.Config
 	db     *database.DB
 	api    *tgbotapi.BotAPI
 }
 
-// NewBot создает нового бота
+// NewBot создает новый экземпляр Telegram бота с заданной конфигурацией.
+//
+// Параметры:
+//   - cfg: конфигурация приложения
+//   - db: подключение к базе данных
+//   - api: инстанс Telegram Bot API
+//
+// Возвращает:
+//   - *Bot: инициализированный бот
 func NewBot(cfg *config.Config, db *database.DB, api *tgbotapi.BotAPI) *Bot {
 	return &Bot{
 		config: cfg,
@@ -25,7 +34,14 @@ func NewBot(cfg *config.Config, db *database.DB, api *tgbotapi.BotAPI) *Bot {
 	}
 }
 
-// Start запускает бота
+// Start запускает бота и начинает обработку входящих обновлений.
+// Блокирующая функция, которая работает до отмены контекста или ошибки.
+//
+// Параметры:
+//   - ctx: контекст для graceful shutdown
+//
+// Возвращает:
+//   - error: ошибка при работе бота или nil при нормальной остановке
 func (b *Bot) Start(ctx context.Context) error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -44,12 +60,17 @@ func (b *Bot) Start(ctx context.Context) error {
 	}
 }
 
-// Stop останавливает бота
+// Stop останавливает бота и прекращает получение обновлений.
+// Должен вызываться для корректного завершения работы.
 func (b *Bot) Stop() {
 	b.api.StopReceivingUpdates()
 }
 
-// handleUpdate обрабатывает обновление
+// handleUpdate обрабатывает входящее обновление от Telegram.
+// Маршрутизирует обновление в соответствующий обработчик (сообщение или callback).
+//
+// Параметры:
+//   - update: обновление от Telegram API
 func (b *Bot) handleUpdate(update tgbotapi.Update) {
 	if update.Message != nil {
 		b.handleMessage(update.Message)
@@ -58,7 +79,11 @@ func (b *Bot) handleUpdate(update tgbotapi.Update) {
 	}
 }
 
-// handleMessage обрабатывает текстовое сообщение
+// handleMessage обрабатывает текстовое сообщение от пользователя.
+// Проверяет, является ли сообщение командой, и вызывает соответствующий обработчик.
+//
+// Параметры:
+//   - message: сообщение от пользователя
 func (b *Bot) handleMessage(message *tgbotapi.Message) {
 	if !message.IsCommand() {
 		return
@@ -81,13 +106,24 @@ func (b *Bot) handleMessage(message *tgbotapi.Message) {
 	}
 }
 
-// handleCallbackQuery обрабатывает callback от inline кнопок
+// handleCallbackQuery обрабатывает callback запрос от inline кнопок.
+// Вызывается когда пользователь нажимает на inline кнопку в сообщении.
+//
+// Параметры:
+//   - query: callback запрос с данными нажатой кнопки
+//
+// TODO: Реализовать полную обработку callback'ов (выбор тарифа, подтверждение оплаты и т.д.)
 func (b *Bot) handleCallbackQuery(query *tgbotapi.CallbackQuery) {
 	// TODO: Обработка callback'ов от inline кнопок
 	log.Printf("Callback: %s from user %d", query.Data, query.From.ID)
 }
 
-// handleStart обрабатывает команду /start
+// handleStart обрабатывает команду /start.
+// Отправляет приветственное сообщение с описанием сервиса и основное меню навигации.
+// Точка входа для новых пользователей.
+//
+// Параметры:
+//   - message: сообщение с командой /start
 func (b *Bot) handleStart(message *tgbotapi.Message) {
 	text := `👋 Добро пожаловать в SpiritVPN!
 
@@ -116,7 +152,12 @@ func (b *Bot) handleStart(message *tgbotapi.Message) {
 	b.api.Send(msg)
 }
 
-// handleBuy обрабатывает команду /buy
+// handleBuy обрабатывает команду /buy.
+// Показывает список доступных тарифных планов с описанием и ценами.
+// Пользователь может выбрать план через inline кнопки.
+//
+// Параметры:
+//   - message: сообщение с командой /buy
 func (b *Bot) handleBuy(message *tgbotapi.Message) {
 	text := `💳 Выберите тарифный план:
 
@@ -152,7 +193,14 @@ func (b *Bot) handleBuy(message *tgbotapi.Message) {
 	b.api.Send(msg)
 }
 
-// handleMyConfig обрабатывает команду /myconfig
+// handleMyConfig обрабатывает команду /myconfig.
+// Отправляет пользователю его VPN конфигурацию в виде файла и QR-кода.
+// Требует активную подписку.
+//
+// Параметры:
+//   - message: сообщение с командой /myconfig
+//
+// TODO: Реализовать получение конфига из БД, генерацию QR-кода
 func (b *Bot) handleMyConfig(message *tgbotapi.Message) {
 	// TODO: Получение конфига из БД
 	text := "⚙️ Для получения конфигурации сначала оформите подписку /buy"
@@ -160,7 +208,14 @@ func (b *Bot) handleMyConfig(message *tgbotapi.Message) {
 	b.api.Send(msg)
 }
 
-// handleStats обрабатывает команду /stats
+// handleStats обрабатывает команду /stats.
+// Показывает пользователю статистику использования VPN:
+// израсходованный трафик, время подключения, оставшиеся дни подписки.
+//
+// Параметры:
+//   - message: сообщение с командой /stats
+//
+// TODO: Реализовать получение статистики из БД
 func (b *Bot) handleStats(message *tgbotapi.Message) {
 	// TODO: Получение статистики из БД
 	text := "📊 Статистика доступна только для активных пользователей"
@@ -168,7 +223,11 @@ func (b *Bot) handleStats(message *tgbotapi.Message) {
 	b.api.Send(msg)
 }
 
-// handleSupport обрабатывает команду /support
+// handleSupport обрабатывает команду /support.
+// Отправляет информацию о способах связи с технической поддержкой.
+//
+// Параметры:
+//   - message: сообщение с командой /support
 func (b *Bot) handleSupport(message *tgbotapi.Message) {
 	text := `💬 Поддержка
 
