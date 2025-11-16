@@ -78,7 +78,6 @@ type PaymentConfig struct {
 //	    log.Fatal(err)
 //	}
 func Load() (*Config, error) {
-	// Попытка загрузить .env файл (игнорируем ошибку если файл не найден)
 	_ = godotenv.Load("configs/.env")
 
 	cfg := &Config{

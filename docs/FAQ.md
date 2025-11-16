@@ -311,8 +311,8 @@ sudo kill -9 <PID>
 
 ### Где получить помощь?
 
-- 📧 Email: support@spiritvpn.com
-- 💬 Telegram: @spiritvpn_support
+- Email: support@spiritvpn.com
+- Telegram: @spiritvpn_support
 - 🐛 GitHub Issues: [Issues](https://github.com/RomanRyabinkin/SpiritVPN/issues)
 - 💡 Discussions: [Discussions](https://github.com/RomanRyabinkin/SpiritVPN/discussions)
 
