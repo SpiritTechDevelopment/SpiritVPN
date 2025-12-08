@@ -1,11 +1,11 @@
-# 🚀 SpiritVPN
+# SpiritVPN
 
 **SpiritVPN** - VPN сервис с продажей подписок через Telegram бота, написанный на Go.
 
 ## Описание
 
 SpiritVPN представляет собой комплексное решение для создания и управления VPN-сервисом:
-- Высокопроизводительный VPN-сервер на базе WireGuard
+- VPN-сервер на базе Xray (VLESS+Reality)
 - Telegram бот для продажи подписок и управления аккаунтом
 - Интеграция с платежными системами
 - API для управления пользователями и серверами
@@ -21,7 +21,7 @@ SpiritVPN представляет собой комплексное решен�
 
 Подробнее в [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-## 🚀 Быстрый старт
+## Быстрый старт
 
 ### Требования
 
@@ -134,11 +134,13 @@ YOOKASSA_SHOP_ID=your_shop_id
 YOOKASSA_SECRET_KEY=your_secret_key
 
 # VPN
-VPN_SERVER_PORT=51820
-VPN_SUBNET=10.8.0.0/24
+VPN_SERVER_PORT=443
+VPN_SERVER_NAME=google.com
+VPN_SHORT_IDS=
+VPN_PRIVATE_KEY=your_x25519_private_key
 ```
 
-## 🛠️ Разработка
+## Разработка
 
 ### Запуск тестов
 
@@ -165,7 +167,7 @@ golangci-lint run
 ## Roadmap
 
 - [x] Инициализация проекта
-- [ ] Реализация VPN сервера (WireGuard)
+- [ ] Реализация VPN сервера (VLESS)
 - [ ] REST API для управления
 - [ ] Telegram бот
 - [ ] Интеграция платежей

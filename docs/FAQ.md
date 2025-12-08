@@ -8,11 +8,11 @@ SpiritVPN - это VPN-сервис с интеграцией в Telegram. По�
 
 ### Какие протоколы VPN используются?
 
-Мы используем WireGuard - современный VPN протокол, который обеспечивает:
-- Высокую скорость (быстрее OpenVPN и IPSec)
+Мы используем VLESS (Xray) с технологией Reality, который обеспечивает:
+- Высокую скорость и стабильность
+- Обход блокировок (маскировка под обычный HTTPS трафик)
 - Отличную безопасность
-- Простоту настройки
-- Низкое энергопотребление
+- Простоту настройки через QR-коды
 
 ### Какие платежные системы поддерживаются?
 
@@ -154,20 +154,19 @@ psql -U spiritdb spiritdb < backup.sql
 2. Установите VPN компонент
 3. Добавьте сервер в БД:
 ```sql
-INSERT INTO vpn_servers (name, host, port, public_key, location, is_active)
-VALUES ('Germany-2', '45.123.45.68', 51820, 'public_key', 'Frankfurt', true);
+INSERT INTO vpn_servers (name, host, port, location, is_active)
+VALUES ('Germany-2', '45.123.45.68', 443, 'Frankfurt', true);
 ```
 
-### WireGuard не запускается. Что делать?
+### Xray не запускается. Что делать?
 
-1. Проверьте, загружен ли модуль ядра:
+1. Проверьте логи контейнера:
 ```bash
-lsmod | grep wireguard
+docker logs spiritvpn-vpn-1
 ```
 
-2. Загрузите модуль:
-```bash
-sudo modprobe wireguard
+2. Проверьте конфигурацию config.json (если используется)
+3. Убедитесь, что порт 443 свободен
 ```
 
 3. Проверьте права доступа к `/dev/net/tun`

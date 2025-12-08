@@ -24,9 +24,6 @@ sudo sh get-docker.sh
 # Установка Docker Compose
 sudo apt install docker-compose -y
 
-# Установка WireGuard (для VPN сервера)
-sudo apt install wireguard -y
-
 # Разрешение IP forwarding
 echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
@@ -54,11 +51,12 @@ nano configs/.env
 - `JWT_SECRET` - секретный ключ для JWT
 - `YOOKASSA_*` - данные от платежной системы
 
-### 3. Генерация WireGuard ключей
+### 3. Генерация ключей Xray (VLESS)
 
 ```bash
-wg genkey | tee privatekey | wg pubkey > publickey
-cat privatekey  # Скопировать в VPN_PRIVATE_KEY
+# Используя Docker образ Xray
+docker run --rm ghcr.io/xtls/xray-core:latest xray x25519
+# Скопируйте Private Key в VPN_PRIVATE_KEY
 ```
 
 ### 4. Запуск сервисов

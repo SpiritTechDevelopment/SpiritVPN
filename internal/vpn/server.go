@@ -2,181 +2,128 @@ package vpn
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/config"
+	"github.com/google/uuid"
 )
 
-// Server представляет VPN сервер на базе WireGuard.
-// Управляет VPN соединениями, пирами и маршрутизацией трафика.
-// Собирает статистику использования для биллинга.
+// Server представляет VPN сервер на базе Xray (VLESS).
+// Управляет пользователями и статистикой через Xray API.
 type Server struct {
 	config *config.Config
-	// TODO: добавить WireGuard интерфейс
-	// wg *wireguard.Device
+	// TODO: добавить gRPC клиент к Xray
+}
+
+// GenerateUUID генерирует новый UUID для VLESS клиента.
+func GenerateUUID() (string, error) {
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return "", err
+	}
+	return id.String(), nil
 }
 
 // NewServer создает и инициализирует новый VPN сервер.
-// Настраивает WireGuard интерфейс и готовит сервер к запуску.
 //
 // Параметры:
-//   - cfg: конфигурация VPN сервера (порт, подсеть, ключи)
+//   - cfg: конфигурация VPN сервера
 //
 // Возвращает:
 //   - *Server: инициализированный VPN сервер
 //   - error: ошибка инициализации или nil при успехе
-//
-// TODO: Добавить инициализацию WireGuard интерфейса
 func NewServer(cfg *config.Config) (*Server, error) {
 	server := &Server{
 		config: cfg,
 	}
 
-	// TODO: Инициализация WireGuard
+	// TODO: Инициализация подключения к Xray API
 
 	return server, nil
 }
 
-// Start запускает VPN сервер и начинает обработку соединений.
-// Настраивает WireGuard интерфейс, iptables правила и запускает мониторинг.
-// Блокирующая функция, работает до отмены контекста.
+// Start запускает VPN сервер (или подключается к нему).
 //
 // Параметры:
 //   - ctx: контекст для graceful shutdown
 //
 // Возвращает:
 //   - error: ошибка запуска или nil при нормальной остановке
-//
-// TODO: Реализовать настройку WireGuard интерфейса
-// TODO: Реализовать настройку маршрутизации (iptables)
-// TODO: Реализовать запуск мониторинга соединений
 func (s *Server) Start(ctx context.Context) error {
-	log.Printf("Starting VPN server on port %d", s.config.VPN.Port)
+	log.Printf("Starting VPN server integration on port %d", s.config.VPN.Port)
 
-	// TODO: Настройка WireGuard интерфейса
-	// TODO: Настройка маршрутизации (iptables)
-	// TODO: Запуск мониторинга
+	// TODO: Проверка подключения к Xray
 
 	go s.monitorConnections(ctx)
 
 	return nil
 }
 
-// Stop корректно останавливает VPN сервер.
-// Отключает всех клиентов, очищает iptables правила и останавливает WireGuard.
+// Stop корректно останавливает работу с сервером.
 //
 // Параметры:
 //   - ctx: контекст с таймаутом для graceful shutdown
 //
 // Возвращает:
 //   - error: ошибка остановки или nil при успехе
-//
-// TODO: Реализовать остановку WireGuard интерфейса
-// TODO: Реализовать очистку iptables правил
-// TODO: Реализовать корректное отключение всех клиентов
 func (s *Server) Stop(ctx context.Context) error {
-	log.Println("Stopping VPN server...")
-
-	// TODO: Остановка WireGuard
-	// TODO: Очистка iptables правил
-	// TODO: Отключение всех клиентов
-
+	log.Println("Stopping VPN server integration...")
 	return nil
 }
 
-// AddPeer добавляет нового пира (клиента) в WireGuard.
-// Регистрирует публичный ключ клиента и разрешенные IP адреса.
+// AddUser добавляет пользователя в конфигурацию Xray/VLESS.
 //
 // Параметры:
-//   - publicKey: публичный ключ WireGuard клиента
-//   - allowedIPs: разрешенные IP адреса для клиента (например, "10.8.0.5/32")
+//   - uuid: UUID пользователя
 //
 // Возвращает:
 //   - error: ошибка добавления или nil при успехе
-//
-// TODO: Реализовать добавление пира через WireGuard API
-func (s *Server) AddPeer(publicKey, allowedIPs string) error {
-	// TODO: Добавление пира в WireGuard
-	log.Printf("Adding peer: %s with IPs: %s", publicKey, allowedIPs)
+func (s *Server) AddUser(uuid string) error {
+	// TODO: Реализовать вызов Xray API (UserService.AddUser)
+	log.Printf("Adding VLESS user: %s", uuid)
 	return nil
 }
 
-// RemovePeer удаляет пира (клиента) из WireGuard.
-// Используется при истечении подписки или удалении пользователя.
+// RemoveUser удаляет пользователя из Xray/VLESS.
 //
 // Параметры:
-//   - publicKey: публичный ключ WireGuard клиента для удаления
+//   - uuid: UUID пользователя для удаления
 //
 // Возвращает:
 //   - error: ошибка удаления или nil при успехе
-//
-// TODO: Реализовать удаление пира через WireGuard API
-func (s *Server) RemovePeer(publicKey string) error {
-	// TODO: Удаление пира из WireGuard
-	log.Printf("Removing peer: %s", publicKey)
+func (s *Server) RemoveUser(uuid string) error {
+	// TODO: Реализовать удаление пользователя через Xray API
+	log.Printf("Removing VLESS user: %s", uuid)
 	return nil
 }
 
-// GetPeerStats возвращает статистику использования для конкретного пира.
-// Включает переданные/полученные байты и время последнего handshake.
+// GetUserStats возвращает статистику использования для конкретного пользователя.
 //
 // Параметры:
-//   - publicKey: публичный ключ клиента
+//   - uuid: UUID пользователя
 //
 // Возвращает:
-//   - *PeerStats: статистика пира
+//   - *UserStats: статистика пользователя
 //   - error: ошибка получения или nil при успехе
-//
-// TODO: Реализовать получение реальной статистики из WireGuard
-func (s *Server) GetPeerStats(publicKey string) (*PeerStats, error) {
-	// TODO: Получение статистики из WireGuard
-	return &PeerStats{
-		PublicKey:     publicKey,
+func (s *Server) GetUserStats(uuid string) (*UserStats, error) {
+	// TODO: Получение статистики из Xray API (StatsService)
+	return &UserStats{
+		UUID:          uuid,
 		BytesReceived: 0,
 		BytesSent:     0,
-		LastHandshake: nil,
 	}, nil
 }
 
-// monitorConnections периодически проверяет статус активных соединений.
-// Собирает метрики для Prometheus и логирует важные события.
-// Запускается в отдельной горутине.
-//
-// Параметры:
-//   - ctx: контекст для остановки мониторинга
-//
-// TODO: Реализовать периодическую проверку статуса соединений
-// TODO: Реализовать сбор метрик (Prometheus)
-// TODO: Реализовать логирование событий (подключения, отключения)
+// monitorConnections периодически проверяет статус и собирает метрики.
 func (s *Server) monitorConnections(ctx context.Context) {
-	// TODO: Периодическая проверка статуса соединений
-	// TODO: Сбор метрик
-	// TODO: Логирование событий
-
+	// TODO: Периодический сбор статистики через Xray API
 	<-ctx.Done()
 	log.Println("Connection monitoring stopped")
 }
 
-// PeerStats содержит статистику использования VPN для конкретного пира.
-// Используется для биллинга и мониторинга.
-type PeerStats struct {
-	PublicKey     string // Публичный ключ клиента
-	BytesReceived uint64 // Байт получено от клиента
-	BytesSent     uint64 // Байт отправлено клиенту
-	LastHandshake *int64 // Unix timestamp последнего handshake или nil
-}
-
-// GenerateKeys генерирует пару приватный/публичный ключей для WireGuard.
-// Используется при создании новой конфигурации для клиента.
-//
-// Возвращает:
-//   - privateKey: приватный ключ (base64)
-//   - publicKey: публичный ключ (base64)
-//   - err: ошибка генерации или nil при успехе
-//
-// TODO: Реализовать генерацию ключей через WireGuard криптографию
-func GenerateKeys() (privateKey, publicKey string, err error) {
-	// TODO: Генерация WireGuard ключей
-	return "", "", fmt.Errorf("not implemented")
+// UserStats содержит статистику использования VPN для конкретного пользователя.
+type UserStats struct {
+	UUID          string // UUID пользователя
+	BytesReceived uint64 // Байт получено (downlink)
+	BytesSent     uint64 // Байт отправлено (uplink)
 }

@@ -97,16 +97,15 @@ func (s *Subscription) DaysLeft() int {
 }
 
 // VPNConfig представляет конфигурацию VPN для пользователя.
-// Содержит WireGuard ключи и назначенный IP адрес для подключения к VPN серверу.
+// Содержит VLESS UUID и настройки для подключения к VPN серверу.
 //
 // Поля:
 //   - ID: уникальный идентификатор конфигурации
 //   - UserID: идентификатор пользователя-владельца конфигурации
 //   - SubscriptionID: идентификатор подписки, к которой привязана конфигурация
 //   - ServerID: идентификатор VPN сервера, для которого создана конфигурация
-//   - PublicKey: публичный WireGuard ключ клиента (уникальный, используется для идентификации)
-//   - PrivateKey: приватный WireGuard ключ клиента (не отдается в JSON для безопасности)
-//   - IPAddress: назначенный IP адрес клиента в VPN сети (уникальный, формат: 10.8.0.0/24)
+//   - UUID: уникальный идентификатор пользователя VLESS (используется для аутентификации)
+//   - Flow: настройки потока XTLS (например, "xtls-rprx-vision")
 //   - CreatedAt: дата и время создания конфигурации
 //   - UpdatedAt: дата и время последнего обновления
 //
@@ -117,18 +116,21 @@ func (s *Subscription) DaysLeft() int {
 //   - TrafficStats: статистика использования трафика для данной конфигурации
 //
 // Безопасность:
-//   - PrivateKey исключен из JSON сериализации (тег `json:"-"`)
-//   - PublicKey и IPAddress имеют уникальные индексы для предотвращения дублирования
+//   - UUID имеет уникальный индекс для предотвращения дублирования
 type VPNConfig struct {
-	ID             uint      `gorm:"primaryKey" json:"id"`
-	UserID         uint      `gorm:"not null;index" json:"user_id"`
-	SubscriptionID uint      `gorm:"not null;index" json:"subscription_id"`
-	ServerID       uint      `gorm:"not null;index" json:"server_id"`
-	PublicKey      string    `gorm:"type:text;not null;uniqueIndex" json:"public_key"`
-	PrivateKey     string    `gorm:"type:text;not null" json:"-"` // Не включаем в JSON
-	IPAddress      string    `gorm:"type:inet;not null;uniqueIndex" json:"ip_address"`
-	CreatedAt      time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt      time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	ID             uint `gorm:"primaryKey" json:"id"`
+	UserID         uint `gorm:"not null;index" json:"user_id"`
+	SubscriptionID uint `gorm:"not null;index" json:"subscription_id"`
+	ServerID       uint `gorm:"not null;index" json:"server_id"`
+
+	// VLESS использует UUID для идентификации пользователя
+	UUID string `gorm:"type:uuid;not null;uniqueIndex" json:"uuid"`
+
+	// Flow специфичен для VLESS с XTLS (например, "xtls-rprx-vision")
+	Flow string `gorm:"default:'xtls-rprx-vision'" json:"flow"`
+
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 
 	// Связи
 	User         User          `gorm:"foreignKey:UserID" json:"user,omitempty"`

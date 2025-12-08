@@ -43,12 +43,12 @@ type RedisConfig struct {
 	DB       int    // Номер базы данных Redis (0-15)
 }
 
-// VPNConfig содержит конфигурацию WireGuard VPN сервера.
+// VPNConfig содержит конфигурацию VLESS сервера.
 type VPNConfig struct {
-	Port       int    // UDP порт WireGuard (обычно 51820)
-	Subnet     string // Подсеть для VPN клиентов (CIDR, например "10.8.0.0/24")
-	Interface  string // Имя сетевого интерфейса (например, "wg0")
-	PrivateKey string // Приватный ключ сервера WireGuard (base64)
+	Port       int    // Порт (обычно 443 для VLESS+Reality)
+	ServerName string // SNI домен (например, google.com для Reality)
+	PrivateKey string // Приватный ключ сервера (X25519)
+	ShortIds   string // ShortIds для Reality (через запятую)
 }
 
 // TelegramConfig содержит конфигурацию Telegram бота.
@@ -100,10 +100,10 @@ func Load() (*Config, error) {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		VPN: VPNConfig{
-			Port:       getEnvAsInt("VPN_PORT", 51820),
-			Subnet:     getEnv("VPN_SUBNET", "10.8.0.0/24"),
-			Interface:  getEnv("VPN_INTERFACE", "wg0"),
+			Port:       getEnvAsInt("VPN_PORT", 443),
+			ServerName: getEnv("VPN_SERVER_NAME", "google.com"),
 			PrivateKey: getEnv("VPN_PRIVATE_KEY", ""),
+			ShortIds:   getEnv("VPN_SHORT_IDS", ""),
 		},
 		Telegram: TelegramConfig{
 			BotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
