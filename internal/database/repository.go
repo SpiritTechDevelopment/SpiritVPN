@@ -173,10 +173,10 @@ func (r *VPNConfigRepository) GetByUserID(userID uint) ([]VPNConfig, error) {
 	return configs, err
 }
 
-// GetByPublicKey находит конфигурацию по публичному ключу
-func (r *VPNConfigRepository) GetByPublicKey(publicKey string) (*VPNConfig, error) {
+// GetByUUID находит конфигурацию по UUID
+func (r *VPNConfigRepository) GetByUUID(uuid string) (*VPNConfig, error) {
 	var config VPNConfig
-	err := r.db.Where("public_key = ?", publicKey).First(&config).Error
+	err := r.db.Where("uuid = ?", uuid).First(&config).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

@@ -309,7 +309,7 @@ DELETE /subscriptions/:id
 
 ---
 
-## 🔑 VPN Конфигурации
+## VPN Конфигурации
 
 ### Получить конфиг
 
@@ -328,11 +328,11 @@ GET /configs/user/:user_id
       "name": "Germany-1",
       "location": "Frankfurt",
       "ip": "45.123.45.67",
-      "port": 51820
+      "port": 443
     },
-    "client_ip": "10.8.0.5",
-    "public_key": "client_public_key_here",
-    "config_file": "[Interface]\nPrivateKey = ...\n[Peer]\n...",
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "flow": "xtls-rprx-vision",
+    "vless_link": "vless://550e8400-e29b-41d4-a716-446655440000@45.123.45.67:443?security=reality&sni=google.com&fp=chrome&pbk=...&sid=...&type=tcp&flow=xtls-rprx-vision#SpiritVPN-Germany",
     "qr_code": "data:image/png;base64,iVBORw0KGgo...",
     "created_at": "2025-11-15T10:00:00Z"
   }

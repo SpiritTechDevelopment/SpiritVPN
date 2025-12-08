@@ -19,15 +19,15 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o vpn-server ./cmd/vpn-server
 # Final stage
 FROM alpine:latest
 
-RUN apk --no-cache add \
-    ca-certificates \
-    iptables \
-    wireguard-tools
+# Устанавливаем Xray вместо WireGuard
+COPY --from=ghcr.io/xtls/xray-core:latest /usr/bin/xray /usr/bin/xray
+COPY --from=ghcr.io/xtls/xray-core:latest /usr/share/xray /usr/share/xray
 
 WORKDIR /root/
 
 COPY --from=builder /app/vpn-server .
 
-EXPOSE 51820/udp
+# VLESS обычно использует 443 порт
+EXPOSE 443/tcp 
 
 CMD ["./vpn-server"]

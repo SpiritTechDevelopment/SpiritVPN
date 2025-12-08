@@ -8,7 +8,7 @@
 
 1. **User** - пользователи системы, идентификация через Telegram ID
 2. **Subscription** - подписки пользователей с информацией о тарифных планах и сроках
-3. **VPNConfig** - VPN конфигурации с WireGuard ключами и IP адресами
+3. **VPNConfig** - VPN конфигурации с VLESS UUID и настройками
 4. **VPNServer** - VPN серверы в различных географических локациях
 5. **Payment** - платежи и транзакции пользователей
 6. **TrafficStat** - ежедневная статистика использования трафика
@@ -102,9 +102,8 @@ config := &database.VPNConfig{
     UserID:         user.ID,
     SubscriptionID: subscription.ID,
     ServerID:       server.ID,
-    PublicKey:      "generated_public_key",
-    PrivateKey:     "generated_private_key",
-    IPAddress:      "10.8.0.5",
+    UUID:           "generated_uuid",
+    Flow:           "xtls-rprx-vision",
 }
 
 err = configRepo.Create(config)
