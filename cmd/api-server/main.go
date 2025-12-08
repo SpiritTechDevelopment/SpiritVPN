@@ -15,28 +15,23 @@ import (
 )
 
 func main() {
-	// Загрузка конфигурации
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Подключение к базе данных
 	db, err := database.Connect(cfg)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
-	// Запуск миграций
 	if err := database.Migrate(db); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
-	// Создание API сервера
 	server := api.NewServer(cfg, db)
 
-	// Запуск HTTP сервера
 	httpServer := &http.Server{
 		Addr:         cfg.API.Address,
 		Handler:      server.Router(),
@@ -45,7 +40,6 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Запуск в горутине
 	go func() {
 		log.Printf("API Server starting on %s", cfg.API.Address)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -55,7 +49,6 @@ func main() {
 
 	log.Println("API Server started successfully")
 
-	// Graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
