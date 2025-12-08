@@ -48,7 +48,7 @@ type VPNConfig struct {
 	Port       int    // Порт (обычно 443 для VLESS+Reality)
 	ServerName string // SNI домен (например, google.com для Reality)
 	PrivateKey string // Приватный ключ сервера (X25519)
-	ShortIds   string // ShortIds для Reality (через запятую)
+	ShortIDs   string // ShortIDs для Reality (через запятую)
 }
 
 // TelegramConfig содержит конфигурацию Telegram бота.
@@ -103,7 +103,7 @@ func Load() (*Config, error) {
 			Port:       getEnvAsInt("VPN_PORT", 443),
 			ServerName: getEnv("VPN_SERVER_NAME", "google.com"),
 			PrivateKey: getEnv("VPN_PRIVATE_KEY", ""),
-			ShortIds:   getEnv("VPN_SHORT_IDS", ""),
+			ShortIDs:   getEnv("VPN_SHORT_IDS", ""),
 		},
 		Telegram: TelegramConfig{
 			BotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
