@@ -55,10 +55,8 @@ func (s *Server) Router() *gin.Engine {
 // Включает health check, аутентификацию и API v1 endpoints.
 // Вызывается автоматически при создании сервера.
 func (s *Server) setupRoutes() {
-	// Health check
 	s.router.GET("/health", s.healthCheck)
 
-	// API v1
 	v1 := s.router.Group("/api/v1")
 	{
 		// Аутентификация

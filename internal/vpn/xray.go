@@ -23,8 +23,6 @@ type XrayClient struct {
 func NewXrayClient(address string, port int, inboundTag string) (*XrayClient, error) {
 	target := fmt.Sprintf("%s:%d", address, port)
 
-	// Подключаемся к gRPC серверу Xray
-	// Используем insecure credentials, так как обычно это локальное подключение внутри Docker сети
 	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to xray api: %w", err)
@@ -46,29 +44,23 @@ func (c *XrayClient) Close() error {
 
 // AddUser добавляет пользователя VLESS по UUID
 func (c *XrayClient) AddUser(ctx context.Context, uuid string, email string) error {
-	// Создаем VLESS аккаунт
 	account := &vless.Account{
 		Id: uuid,
-		// Flow: "xtls-rprx-vision", // Можно добавить если нужно, но для базового VLESS+Reality часто не обязательно в конфиге юзера, если сервер настроен
 	}
 
-	// Сериализуем аккаунт в Any
 	accountAny := serial.ToTypedMessage(account)
 
-	// Создаем пользователя
 	user := &protocol.User{
 		Level:   0,
 		Email:   email,
 		Account: accountAny,
 	}
 
-	// Создаем операцию добавления
 	op := &command.AddUserOperation{
 		User: user,
 	}
 	opAny := serial.ToTypedMessage(op)
 
-	// Выполняем запрос
 	_, err := c.client.AlterInbound(ctx, &command.AlterInboundRequest{
 		Tag:       c.inboundTag,
 		Operation: opAny,
@@ -83,13 +75,11 @@ func (c *XrayClient) AddUser(ctx context.Context, uuid string, email string) err
 
 // RemoveUser удаляет пользователя по Email
 func (c *XrayClient) RemoveUser(ctx context.Context, email string) error {
-	// Создаем операцию удаления
 	op := &command.RemoveUserOperation{
 		Email: email,
 	}
 	opAny := serial.ToTypedMessage(op)
 
-	// Выполняем запрос
 	_, err := c.client.AlterInbound(ctx, &command.AlterInboundRequest{
 		Tag:       c.inboundTag,
 		Operation: opAny,

@@ -35,6 +35,9 @@ test: ## Запустить тесты
 lint: ## Запустить линтер
 	golangci-lint run
 
+hooks: ## Установить git hooks (требуется pre-commit)
+	pre-commit install
+
 clean: ## Очистить build артефакты
 	rm -rf bin/
 	rm -f coverage.out coverage.html

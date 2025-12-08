@@ -13,19 +13,17 @@ import (
 )
 
 func main() {
-	// Загрузка конфигурации
+
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Создание VPN сервера
 	server, err := vpn.NewServer(cfg)
 	if err != nil {
 		log.Fatalf("Failed to create VPN server: %v", err)
 	}
 
-	// Запуск сервера
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -36,7 +34,6 @@ func main() {
 	log.Println("VPN Server started successfully")
 	log.Printf("Listening on port %d", cfg.VPN.Port)
 
-	// Graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
