@@ -46,6 +46,8 @@ type RedisConfig struct {
 // VPNConfig содержит конфигурацию VLESS сервера.
 type VPNConfig struct {
 	Port       int    // Порт (обычно 443 для VLESS+Reality)
+	ApiPort    int    // Порт gRPC API Xray (обычно 10085)
+	ApiAddress string // Адрес gRPC API Xray (обычно "localhost" или имя контейнера)
 	ServerName string // SNI домен (например, google.com для Reality)
 	PrivateKey string // Приватный ключ сервера (X25519)
 	ShortIDs   string // ShortIDs для Reality (через запятую)
@@ -101,6 +103,8 @@ func Load() (*Config, error) {
 		},
 		VPN: VPNConfig{
 			Port:       getEnvAsInt("VPN_PORT", 443),
+			ApiPort:    getEnvAsInt("VPN_API_PORT", 10085),
+			ApiAddress: getEnv("VPN_API_ADDRESS", "localhost"),
 			ServerName: getEnv("VPN_SERVER_NAME", "google.com"),
 			PrivateKey: getEnv("VPN_PRIVATE_KEY", ""),
 			ShortIDs:   getEnv("VPN_SHORT_IDS", ""),

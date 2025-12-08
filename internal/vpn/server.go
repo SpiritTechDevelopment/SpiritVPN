@@ -2,6 +2,7 @@ package vpn
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/config"
@@ -11,8 +12,8 @@ import (
 // Server представляет VPN сервер на базе Xray (VLESS).
 // Управляет пользователями и статистикой через Xray API.
 type Server struct {
-	config *config.Config
-	// TODO: добавить gRPC клиент к Xray
+	config     *config.Config
+	xrayClient *XrayClient
 }
 
 // GenerateUUID генерирует новый UUID для VLESS клиента.
@@ -36,9 +37,6 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	server := &Server{
 		config: cfg,
 	}
-
-	// TODO: Инициализация подключения к Xray API
-
 	return server, nil
 }
 
@@ -52,7 +50,13 @@ func NewServer(cfg *config.Config) (*Server, error) {
 func (s *Server) Start(ctx context.Context) error {
 	log.Printf("Starting VPN server integration on port %d", s.config.VPN.Port)
 
-	// TODO: Проверка подключения к Xray
+	// Инициализация подключения к Xray API
+	client, err := NewXrayClient(s.config.VPN.ApiAddress, s.config.VPN.ApiPort, "vless-inbound")
+	if err != nil {
+		return fmt.Errorf("failed to connect to xray api: %w", err)
+	}
+	s.xrayClient = client
+	log.Println("Connected to Xray API")
 
 	go s.monitorConnections(ctx)
 
@@ -68,6 +72,9 @@ func (s *Server) Start(ctx context.Context) error {
 //   - error: ошибка остановки или nil при успехе
 func (s *Server) Stop(ctx context.Context) error {
 	log.Println("Stopping VPN server integration...")
+	if s.xrayClient != nil {
+		return s.xrayClient.Close()
+	}
 	return nil
 }
 
@@ -79,9 +86,11 @@ func (s *Server) Stop(ctx context.Context) error {
 // Возвращает:
 //   - error: ошибка добавления или nil при успехе
 func (s *Server) AddUser(uuid string) error {
-	// TODO: Реализовать вызов Xray API (UserService.AddUser)
-	log.Printf("Adding VLESS user: %s", uuid)
-	return nil
+	if s.xrayClient == nil {
+		return fmt.Errorf("xray client is not initialized")
+	}
+	// Используем UUID как email для идентификации в Xray
+	return s.xrayClient.AddUser(context.Background(), uuid, uuid)
 }
 
 // RemoveUser удаляет пользователя из Xray/VLESS.
@@ -92,9 +101,10 @@ func (s *Server) AddUser(uuid string) error {
 // Возвращает:
 //   - error: ошибка удаления или nil при успехе
 func (s *Server) RemoveUser(uuid string) error {
-	// TODO: Реализовать удаление пользователя через Xray API
-	log.Printf("Removing VLESS user: %s", uuid)
-	return nil
+	if s.xrayClient == nil {
+		return fmt.Errorf("xray client is not initialized")
+	}
+	return s.xrayClient.RemoveUser(context.Background(), uuid)
 }
 
 // GetUserStats возвращает статистику использования для конкретного пользователя.
