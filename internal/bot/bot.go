@@ -102,7 +102,9 @@ func (b *Bot) handleMessage(message *tgbotapi.Message) {
 		b.handleSupport(message)
 	default:
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Неизвестная команда. Используйте /start")
-		b.api.Send(msg)
+		if _, err := b.api.Send(msg); err != nil {
+			log.Printf("Failed to send message: %v", err)
+		}
 	}
 }
 
@@ -149,7 +151,9 @@ func (b *Bot) handleStart(message *tgbotapi.Message) {
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
 	msg.ReplyMarkup = keyboard
-	b.api.Send(msg)
+	if _, err := b.api.Send(msg); err != nil {
+		log.Printf("Failed to send message: %v", err)
+	}
 }
 
 // handleBuy обрабатывает команду /buy.
@@ -190,7 +194,9 @@ func (b *Bot) handleBuy(message *tgbotapi.Message) {
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
 	msg.ReplyMarkup = keyboard
-	b.api.Send(msg)
+	if _, err := b.api.Send(msg); err != nil {
+		log.Printf("Failed to send message: %v", err)
+	}
 }
 
 // handleMyConfig обрабатывает команду /myconfig.
@@ -205,7 +211,9 @@ func (b *Bot) handleMyConfig(message *tgbotapi.Message) {
 	// TODO: Получение конфига из БД
 	text := "⚙️ Для получения конфигурации сначала оформите подписку /buy"
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	b.api.Send(msg)
+	if _, err := b.api.Send(msg); err != nil {
+		log.Printf("Failed to send message: %v", err)
+	}
 }
 
 // handleStats обрабатывает команду /stats.
@@ -220,7 +228,9 @@ func (b *Bot) handleStats(message *tgbotapi.Message) {
 	// TODO: Получение статистики из БД
 	text := "📊 Статистика доступна только для активных пользователей"
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	b.api.Send(msg)
+	if _, err := b.api.Send(msg); err != nil {
+		log.Printf("Failed to send message: %v", err)
+	}
 }
 
 // handleSupport обрабатывает команду /support.
@@ -241,5 +251,7 @@ func (b *Bot) handleSupport(message *tgbotapi.Message) {
 Пожалуйста, опишите вашу проблему максимально подробно.`
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
-	b.api.Send(msg)
+	if _, err := b.api.Send(msg); err != nil {
+		log.Printf("Failed to send message: %v", err)
+	}
 }
