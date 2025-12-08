@@ -10,7 +10,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -18,7 +18,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.25'
 
     - name: Cache Go modules
       uses: actions/cache@v3
@@ -42,7 +42,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -50,7 +50,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.25'
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
@@ -62,7 +62,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: [test, lint]
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, lint]
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
