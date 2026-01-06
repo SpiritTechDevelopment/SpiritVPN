@@ -202,9 +202,7 @@ golangci-lint run
 
 ## Благодарности
 
-- [WireGuard](https://www.wireguard.com/) - за отличный VPN протокол
-- [Go Telegram Bot API](https://github.com/go-telegram-bot-api/telegram-bot-api) - за удобную библиотеку
-- Сообщество Go за поддержку
+- Сообщество Go за саппорт
 
 ## Поддержка
 
