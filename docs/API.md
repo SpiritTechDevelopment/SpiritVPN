@@ -385,6 +385,124 @@ DELETE /configs/:id
 
 ---
 
+## VPN Management
+
+### Генерация конфигурации VLESS
+
+```http
+POST /vpn/config
+```
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request Body:**
+```json
+{
+  "user_id": 1,
+  "server_id": 2
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "protocol": "vless",
+    "uuid": "550e8400-e29b-41d4-a716-446655440000",
+    "server": "vpn.spiritvpn.com",
+    "port": 443,
+    "encryption": "none",
+    "flow": "xtls-rprx-vision",
+    "security": "reality",
+    "sni": "google.com",
+    "fingerprint": "chrome",
+    "public_key": "SLwxKXe...",
+    "short_id": "6ba85179e30d4fc2",
+    "config_url": "vless://550e8400-e29b-41d4-a716-446655440000@vpn.spiritvpn.com:443?encryption=none&security=reality&sni=google.com&fp=chrome&pbk=SLwxKXe...&sid=6ba85179e30d4fc2&type=tcp&flow=xtls-rprx-vision#SpiritVPN",
+    "qr_code": "data:image/png;base64,iVBORw0KGgo..."
+  }
+}
+```
+
+---
+
+### Получение статуса VPN подключения
+
+```http
+GET /vpn/status
+```
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "status": "active",
+    "protocol": "vless",
+    "server": "Germany-1",
+    "connected_since": "2026-01-06T10:30:00Z",
+    "uptime_seconds": 3600,
+    "bytes_sent": 1048576,
+    "bytes_received": 2097152,
+    "connection_quality": "excellent"
+  }
+}
+```
+
+**Статусы:**
+- `active` - активное подключение
+- `inactive` - не подключен
+- `error` - ошибка подключения
+- `expired` - подписка истекла
+
+---
+
+### Получить список доступных серверов
+
+```http
+GET /vpn/servers
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Germany-1",
+      "location": "Frankfurt",
+      "country_code": "DE",
+      "load": 45,
+      "status": "online",
+      "ping": 25,
+      "supports_vless": true
+    },
+    {
+      "id": 2,
+      "name": "Netherlands-1",
+      "location": "Amsterdam",
+      "country_code": "NL",
+      "load": 32,
+      "status": "online",
+      "ping": 18,
+      "supports_vless": true
+    }
+  ]
+}
+```
+
+---
+
 ## Платежи
 
 ### Создать платеж
@@ -660,19 +778,19 @@ type LoginRequest struct {
 
 func main() {
     client := &http.Client{}
-    
+
     // Логин
     body, _ := json.Marshal(LoginRequest{TelegramID: 123456789})
     req, _ := http.NewRequest("POST", "https://api.spiritvpn.com/api/v1/auth/login", bytes.NewBuffer(body))
     req.Header.Set("Content-Type", "application/json")
-    
+
     resp, _ := client.Do(req)
     defer resp.Body.Close()
-    
+
     // Получить конфиг
     req2, _ := http.NewRequest("GET", "https://api.spiritvpn.com/api/v1/configs/user/1", nil)
     req2.Header.Set("Authorization", "Bearer <token>")
-    
+
     resp2, _ := client.Do(req2)
     defer resp2.Body.Close()
 }
