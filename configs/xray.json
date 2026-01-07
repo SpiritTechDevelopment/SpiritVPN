@@ -1,0 +1,68 @@
+{
+  "log": {
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log",
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "port": 443,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "<YOUR_UUID>",
+            "flow": ""
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": "",
+          "dest": "127.0.0.1:80",
+          "servers": [
+            {
+              "publicKey": "<PUBLIC_KEY>",
+              "shortIds": ["<SHORT_ID>"]
+            }
+          ]
+        }
+      },
+      "tag": "vless-inbound"
+    },
+    {
+      "port": 10085,
+      "listen": "127.0.0.1",
+      "protocol": "dokodemo-door",
+      "settings": {
+        "network": "tcp",
+        "address": "127.0.0.1",
+        "port": 10085
+      },
+      "tag": "api"
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
+    }
+  ],
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": []
+  },
+  "api": {
+    "services": ["HandlerService", "StatsService"],
+    "tag": "api"
+  }
+}

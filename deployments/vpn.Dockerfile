@@ -25,6 +25,10 @@ WORKDIR /root/
 
 COPY --from=builder /app/vpn-server .
 
+COPY configs/xray.json /etc/xray/xray.json
+COPY deployments/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 443/tcp
 
-CMD ["./vpn-server"]
+ENTRYPOINT ["/entrypoint.sh"]

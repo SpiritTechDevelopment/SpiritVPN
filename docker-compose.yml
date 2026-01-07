@@ -83,6 +83,7 @@ services:
       - SYS_MODULE
     ports:
       - "51820:51820/udp"
+      - "443:443"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -92,6 +93,7 @@ services:
       - postgres
     volumes:
       - /lib/modules:/lib/modules:ro
+      - ./configs/xray.json:/etc/xray/xray.json:ro
     networks:
       - spiritvpn
 
