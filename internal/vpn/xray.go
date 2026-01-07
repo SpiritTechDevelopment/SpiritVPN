@@ -68,7 +68,7 @@ func NewXrayClient(address string, port int, inboundTag string) (*XrayClient, er
 }
 
 // Close корректно закрывает gRPC соединение с Xray API.
-// Должен вызываться после завершения работы с клиентом для освобождения ресурсов.
+// Вызывается после завершения работы с клиентом для освобождения ресурсов.
 //
 // Returns:
 //   - error: ошибка закрытия соединения или nil при успехе
@@ -77,7 +77,6 @@ func (c *XrayClient) Close() error {
 }
 
 // AddUser динамически добавляет нового пользователя VLESS в работающий Xray сервер.
-// Пользователь будет немедленно активирован и сможет подключиться к VPN.
 //
 // Parameters:
 //   - ctx: контекст для отмены операции и таймаутов
@@ -182,7 +181,6 @@ func (c *XrayClient) GetStats(ctx context.Context, email string) (int64, int64, 
 		return 0, 0, fmt.Errorf("stats client not initialized")
 	}
 
-	// Pattern used by xray to store per-user traffic counters: "user>>>%s>>>traffic>>>uplink/downlink"
 	pattern := "user>>>" + email + ">>>traffic>>>"
 
 	resp, err := c.statsClient.QueryStats(ctx, &statsCommand.QueryStatsRequest{Pattern: pattern, Reset_: false})
@@ -205,6 +203,5 @@ func (c *XrayClient) GetStats(ctx context.Context, email string) (int64, int64, 
 		}
 	}
 
-	// Map: BytesSent = uplink, BytesReceived = downlink
 	return downlink, uplink, nil
 }
