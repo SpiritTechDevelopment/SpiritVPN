@@ -84,6 +84,7 @@ services:
     ports:
       - "51820:51820/udp"
       - "443:443"
+      - "10085:10085"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432

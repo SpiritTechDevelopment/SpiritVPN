@@ -51,12 +51,79 @@ nano configs/.env
 - `JWT_SECRET` - секретный ключ для JWT
 - `YOOKASSA_*` - данные от платежной системы
 
-### 3. Генерация ключей Xray (VLESS)
+### 3. Генерация ключей Xray (VLESS+Reality)
+
+**Генерация X25519 keypair для Reality:**
 
 ```bash
-# Используя Docker образ Xray
-docker run --rm ghcr.io/xtls/xray-core:latest xray x25519
-# Скопируйте Private Key в VPN_PRIVATE_KEY
+# Метод 1: Через Docker
+docker run --rm ghcr.io/xtls/xray-core:latest x25519
+
+# Вывод(Чет наподобие):
+# PrivateKey: aFMF5-Dej2UmPnaKNvOZckEnT2H978VlyE00xo6dynk
+# Password: Ypf35kJ7Yye2HKDqEpOOT9e0mbf7NenJ8F-YsgavBE4  (Public Key)
+# Hash32: 2iaa_9nbBQK4RwQxtcWo-hUz-SNaZoL4bAMK4akhVvs
+
+# Метод 2: Если xray установлен локально
+xray x25519
+
+# Генерация UUID для клиентов
+docker run --rm ghcr.io/xtls/xray-core:latest uuid
+```
+
+**Обновление configs/xray.json:**
+
+Отредактируйте `configs/xray.json` и замените плейсхолдеры:
+
+```json
+{
+  "inbounds": [
+    {
+      "port": 443,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "51a6135e-793b-4111-9142-21da17793aee",
+            "flow": ""
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "www.microsoft.com:443",
+          "xver": 0,
+          "serverNames": ["www.microsoft.com"],
+          "privateKey": "aFMF5-Dej2UmPnaKNvOZckEnT2H978VlyE00xo6dynk",
+          "shortIds": ["6ba85179e30d4fc2"]  // Hex стринга
+        }
+      },
+      "tag": "vless-inbound"
+    }
+  ]
+}
+```
+
+**Важные параметры Reality:**
+- **privateKey** — используйте `PrivateKey` из вывода `x25519` (НЕ Password!)
+- **dest** — целевой сайт для маскировки (google.com, microsoft.com, cloudflare.com)
+- **serverNames** — SNI для TLS, должен совпадать с доменом в `dest`
+- **shortIds** — случайная hex строка, сгенерируйте через `openssl rand -hex 8`
+
+**Добавьте в configs/.env:**
+
+```bash
+VPN_HOST=your-server-ip
+VPN_PORT=443
+VPN_API_PORT=10085
+VPN_API_ADDRESS=127.0.0.1
+VPN_SERVER_NAME=www.microsoft.com
+VPN_PRIVATE_KEY=aFMF5-Dej2UmPnaKNvOZckEnT2H978VlyE00xo6dynk
+VPN_SHORT_IDS=6ba85179e30d4fc2
 ```
 
 ### 4. Запуск сервисов
@@ -248,7 +315,7 @@ global:
 
 route:
   receiver: 'telegram'
-  
+
 receivers:
   - name: 'telegram'
     telegram_configs:
