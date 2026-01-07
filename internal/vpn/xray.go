@@ -51,7 +51,7 @@ type XrayClient struct {
 //	defer client.Close()
 func NewXrayClient(address string, port int, inboundTag string) (*XrayClient, error) {
 	target := fmt.Sprintf("%s:%d", address, port)
-	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to xray api: %w", err)
 	}
