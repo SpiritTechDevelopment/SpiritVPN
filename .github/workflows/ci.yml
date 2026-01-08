@@ -66,6 +66,46 @@ jobs:
         name: coverage-report
         path: coverage.html
 
+    - name: Send coverage report to Telegram
+      if: always()
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
+        BRANCH=${GITHUB_REF#refs/heads/}
+        COMMIT_MSG=$(git log -1 --pretty=%B)
+        COMMIT_SHA=${GITHUB_SHA::7}
+        STATUS="Passed"
+
+        if [ "${{ job.status }}" != "success" ]; then
+          STATUS="Failed"
+        fi
+
+        cat << EOF > telegram_message.txt
+        *Coverage Report*
+
+        *Project:* SpiritVPN
+        *Branch:* \`$BRANCH\`
+        *Commit:* \`$COMMIT_SHA\`
+        *Coverage:* $COVERAGE
+        *Status:* $STATUS
+
+        _${COMMIT_MSG}_
+
+        [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        EOF
+
+        if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+          MESSAGE=$(cat telegram_message.txt)
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="${MESSAGE}" \
+            -d parse_mode="Markdown"
+        else
+          echo "Telegram credentials not configured. Skipping notification."
+        fi
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
