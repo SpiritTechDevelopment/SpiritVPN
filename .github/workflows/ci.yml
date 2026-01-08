@@ -53,9 +53,10 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.out
-        fail_ci_if_error: true
+        fail_ci_if_error: false
         flags: unittests
         name: codecov-umbrella
+      continue-on-error: true
 
     - name: Generate coverage report
       run: go tool cover -html=coverage.out -o coverage.html
