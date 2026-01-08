@@ -140,12 +140,12 @@ func (b *Bot) handleStart(message *tgbotapi.Message) {
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("💳 Купить подписку", "buy"),
-			tgbotapi.NewInlineKeyboardButtonData("⚙️ Мой конфиг", "myconfig"),
+			tgbotapi.NewInlineKeyboardButtonData("Купить подписку", "buy"),
+			tgbotapi.NewInlineKeyboardButtonData("Мой конфиг", "myconfig"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("📊 Статистика", "stats"),
-			tgbotapi.NewInlineKeyboardButtonData("💬 Поддержка", "support"),
+			tgbotapi.NewInlineKeyboardButtonData("Статистика", "stats"),
+			tgbotapi.NewInlineKeyboardButtonData("Поддержка", "support"),
 		),
 	)
 
@@ -163,32 +163,32 @@ func (b *Bot) handleStart(message *tgbotapi.Message) {
 // Параметры:
 //   - message: сообщение с командой /buy
 func (b *Bot) handleBuy(message *tgbotapi.Message) {
-	text := `💳 Выберите тарифный план:
+	text := `Выберите тарифный план:
 
-📦 Basic - 299₽/месяц
+Basic - 299₽/месяц
 • 1 устройство
 • 50 Мбит/с
 • Базовая поддержка
 
-⭐ Premium - 599₽/месяц
+Premium - 599₽/месяц
 • 5 устройств
 • Безлимитная скорость
 • Приоритетная поддержка
 • Все серверы
 
-🎁 Premium Year - 5990₽/год (скидка 16%)
+Premium Year - 5990₽/год (скидка 16%)
 • Все преимущества Premium
 • Экономия 1198₽`
 
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("📦 Basic", "plan_basic"),
+			tgbotapi.NewInlineKeyboardButtonData("Basic", "plan_basic"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("⭐ Premium", "plan_premium"),
+			tgbotapi.NewInlineKeyboardButtonData("Premium", "plan_premium"),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("🎁 Premium Year", "plan_premium_year"),
+			tgbotapi.NewInlineKeyboardButtonData("Premium Year", "plan_premium_year"),
 		),
 	)
 
@@ -209,7 +209,7 @@ func (b *Bot) handleBuy(message *tgbotapi.Message) {
 // TODO: Реализовать получение конфига из БД, генерацию QR-кода
 func (b *Bot) handleMyConfig(message *tgbotapi.Message) {
 	// TODO: Получение конфига из БД
-	text := "⚙️ Для получения конфигурации сначала оформите подписку /buy"
+	text := "Для получения конфигурации сначала оформите подписку /buy"
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
 	if _, err := b.api.Send(msg); err != nil {
 		log.Printf("Failed to send message: %v", err)
@@ -226,7 +226,7 @@ func (b *Bot) handleMyConfig(message *tgbotapi.Message) {
 // TODO: Реализовать получение статистики из БД
 func (b *Bot) handleStats(message *tgbotapi.Message) {
 	// TODO: Получение статистики из БД
-	text := "📊 Статистика доступна только для активных пользователей"
+	text := "Статистика доступна только для активных пользователей"
 	msg := tgbotapi.NewMessage(message.Chat.ID, text)
 	if _, err := b.api.Send(msg); err != nil {
 		log.Printf("Failed to send message: %v", err)
@@ -239,14 +239,14 @@ func (b *Bot) handleStats(message *tgbotapi.Message) {
 // Параметры:
 //   - message: сообщение с командой /support
 func (b *Bot) handleSupport(message *tgbotapi.Message) {
-	text := `💬 Поддержка
+	text := `Поддержка
 
 Если у вас возникли вопросы или проблемы:
 
-📧 Email: support@spiritvpn.com
-💬 Telegram: @spiritvpn_support
+Email: support@spiritvpn.com
+Telegram: @spiritvpn_support
 
-⏰ Время ответа: до 24 часов
+Время ответа: до 24 часов
 
 Пожалуйста, опишите вашу проблему максимально подробно.`
 

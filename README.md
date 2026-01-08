@@ -1,5 +1,10 @@
 # SpiritVPN
 
+[![CI/CD](https://github.com/RomanRyabinkin/SpiritVPN/actions/workflows/ci.yml/badge.svg)](https://github.com/RomanRyabinkin/SpiritVPN/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/RomanRyabinkin/SpiritVPN/branch/main/graph/badge.svg)](https://codecov.io/gh/RomanRyabinkin/SpiritVPN)
+[![Go Report Card](https://goreportcard.com/badge/github.com/RomanRyabinkin/SpiritVPN)](https://goreportcard.com/report/github.com/RomanRyabinkin/SpiritVPN)
+[![License](https://img.shields.io/github/license/RomanRyabinkin/SpiritVPN)](LICENSE)
+
 **SpiritVPN** - VPN сервис с продажей подписок через Telegram бота, написанный на Go.
 
 ## Описание
@@ -157,13 +162,22 @@ VPN_PRIVATE_KEY=your_x25519_private_key
 ### Запуск тестов
 
 ```bash
-# Unit-тесты
+# Unit-тесты (все пакеты)
 go test ./...
+
+# Unit-тесты конкретного пакета
+go test ./pkg/config -v
+
+# С покрытием кода
+go test -cover ./...
 
 # Smoke-тесты
 docker compose up -d vpn
 go run test/smoke/xray_test.go
 ```
+
+**Текущее покрытие:**
+- `pkg/config` - 100%
 
 Подробнее в [TESTING.md](docs/TESTING.md)
 

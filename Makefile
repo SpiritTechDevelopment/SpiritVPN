@@ -32,6 +32,23 @@ test: ## Запустить тесты
 	go test -v -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 
+test-coverage: ## Запустить тесты и показать покрытие
+	go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -func=coverage.out
+	@COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}'); \
+	echo ""; \
+	echo "Total coverage: $$COVERAGE"
+
+test-coverage-html: ## Запустить тесты и открыть HTML отчет
+	go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -html=coverage.out
+
+test-unit: ## Запустить только unit тесты
+	go test -v -short ./...
+
+test-integration: ## Запустить только интеграционные тесты
+	go test -v -run Integration ./...
+
 lint: ## Запустить линтер
 	golangci-lint run
 

@@ -54,6 +54,7 @@ logs/
 # Coverage reports
 coverage.out
 coverage.html
+coverage
 
 # Go workspace file
 go.work

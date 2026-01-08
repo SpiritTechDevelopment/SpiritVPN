@@ -26,10 +26,53 @@ go test -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out
 ```
 
-**Планируемые тесты:**
-- [TEST-01] `pkg/config/config_test.go` - тесты загрузки конфигурации
-- [TEST-02] `internal/vpn/xray_test.go` - тесты XrayClient с моками gRPC
+**Реализованные тесты:**
+- [TEST-01] `pkg/config/config_test.go` - тесты загрузки конфигурации (покрытие 100%)
 
+**Планируемые тесты:**
+- [TEST-02] `internal/vpn/xray_test.go` - тесты XrayClient с моками gRPC
+#### Тесты конфигурации (pkg/config)
+
+Проверяет загрузку конфигурации из переменных окружения.
+
+**Запуск:**
+```bash
+# Запуск тестов
+go test ./pkg/config -v
+
+# С покрытием
+go test ./pkg/config -cover
+
+# Детальный отчет
+go test ./pkg/config -coverprofile=coverage.out
+go tool cover -html=coverage.out
+```
+
+**Покрываемый функционал:**
+- Загрузка конфигурации с проверкой обязательных полей (`TELEGRAM_BOT_TOKEN`)
+- Применение значений по умолчанию (DB_PORT=5432, REDIS_PORT=6379)
+- Загрузка пользовательских переменных окружения
+- Преобразование строк в числа (`getEnvAsInt`)
+
+**Ожидаемый результат:**
+```
+=== RUN   TestLoad
+=== RUN   TestLoad/valid_configuration
+=== RUN   TestLoad/missing_required_telegram_token
+=== RUN   TestLoad/valid_with_default_values
+--- PASS: TestLoad (0.00s)
+=== RUN   TestLoadDefaults
+--- PASS: TestLoadDefaults (0.00s)
+=== RUN   TestLoadCustomValues
+--- PASS: TestLoadCustomValues (0.00s)
+=== RUN   TestGetEnv
+--- PASS: TestGetEnv (0.00s)
+=== RUN   TestGetEnvAsInt
+--- PASS: TestGetEnvAsInt (0.00s)
+PASS
+ok      github.com/RomanRyabinkin/SpiritVPN/pkg/config  0.262s
+coverage: 100.0% of statements
+```
 ### 2. Smoke-тесты
 
 Быстрые проверки основной функциональности после изменений.
@@ -109,6 +152,14 @@ test/
 │   └── xray_test.go   # Проверка Xray API
 ├── integration/        # Интеграционные тесты (планируется)
 └── e2e/               # End-to-end тесты (планируется)
+
+pkg/config/
+└── config_test.go     # Unit-тесты конфигурации (100% покрытие)
+    ├── TestLoad                - загрузка конфигурации
+    ├── TestLoadDefaults        - значения по умолчанию
+    ├── TestLoadCustomValues    - пользовательские значения
+    ├── TestGetEnv              - получение переменных окружения
+    └── TestGetEnvAsInt         - получение числовых переменных
 
 internal/*/
 └── *_test.go          # Unit-тесты рядом с кодом
@@ -227,20 +278,58 @@ func TestSomething(t *testing.T) {
 
 ### 5. Table-driven тесты
 ```go
-func TestXrayClient_AddUser(t *testing.T) {
+func TestLoad(t *testing.T) {
     tests := []struct {
         name    string
-        uuid    string
-        email   string
+        envVars map[string]string
         wantErr bool
     }{
-        {"valid user", "uuid-1", "user@example.com", false},
-        {"invalid uuid", "invalid", "user@example.com", true},
+        {
+            name: "valid configuration",
+            envVars: map[string]string{
+                "TELEGRAM_BOT_TOKEN": "test_token",
+                "DB_HOST": "localhost",
+            },
+            wantErr: false,
+        },
+        {
+            name: "missing required variables",
+            envVars: map[string]string{
+                "DB_HOST": "localhost",
+            },
+            wantErr: true,
+        },
     }
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // ...
+            os.Clearenv()
+            for key, value := range tt.envVars {
+                os.Setenv(key, value)
+            }
+            cfg, err := Load()
+            if (err != nil) != tt.wantErr {
+                t.Errorf("Load() error = %v, wantErr %v", err, tt.wantErr)
+            }
         })
+    }
+}
+```
+
+### 6. Тестирование переменных окружения
+```go
+func TestEnvironmentVariables(t *testing.T) {
+    // Очистка окружения
+    os.Clearenv()
+
+    // Установка тестовых значений
+    os.Setenv("TELEGRAM_BOT_TOKEN", "test_token")
+
+    // Тестирование
+    cfg, err := Load()
+
+    // Проверки
+    if err != nil {
+        t.Fatalf("Load() failed: %v", err)
     }
 }
 ```
@@ -275,7 +364,11 @@ docker compose port vpn 10085
 ## Roadmap тестирования
 
 - [x] Smoke-тест Xray API
-- [ ] [TEST-01] Unit-тесты для pkg/config
+- [x] [TEST-01] Unit-тесты для pkg/config (покрытие 100%)
+  - Тесты загрузки конфигурации с валидацией обязательных полей
+  - Проверка значений по умолчанию (порты 5432, 6379, 443)
+  - Тестирование пользовательских переменных окружения
+  - Тесты функций getEnv и getEnvAsInt
 - [ ] [TEST-02] Unit-тесты для internal/vpn с моками
 - [ ] Интеграционные тесты API сервера
 - [ ] Интеграционные тесты Telegram бота
