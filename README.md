@@ -119,6 +119,7 @@ SpiritVPN/
 - [API документация](docs/API.md)
 - [План разработки](docs/ROADMAP.md)
 - [Гайд по деплою](docs/DEPLOYMENT.md)
+- [Руководство по тестированию](docs/TESTING.md)
 - [FAQ](docs/FAQ.md)
 
 ## Конфигурация
@@ -156,8 +157,15 @@ VPN_PRIVATE_KEY=your_x25519_private_key
 ### Запуск тестов
 
 ```bash
+# Unit-тесты
 go test ./...
+
+# Smoke-тесты
+docker compose up -d vpn
+go run test/smoke/xray_test.go
 ```
+
+Подробнее в [TESTING.md](docs/TESTING.md)
 
 ### Запуск с hot-reload
 
