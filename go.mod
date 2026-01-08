@@ -1,6 +1,8 @@
 module github.com/RomanRyabinkin/SpiritVPN
 
-go 1.25
+go 1.24.0
+
+toolchain go1.24.6
 
 require (
 	github.com/gin-gonic/gin v1.10.1
