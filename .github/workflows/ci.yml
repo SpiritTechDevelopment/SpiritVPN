@@ -74,8 +74,18 @@ jobs:
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
         COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
-        BRANCH=${GITHUB_REF#refs/heads/}
-        COMMIT_MSG=$(git log -1 --pretty=%B)
+
+        if [ -n "${{ github.head_ref }}" ]; then
+          BRANCH="${{ github.head_ref }} → ${{ github.base_ref }}"
+        else
+          BRANCH="${GITHUB_REF#refs/heads/}"
+        fi
+
+        COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+        if [[ "$COMMIT_MSG" == Merge* ]]; then
+          COMMIT_MSG=$(git log --pretty=%B --skip 1 -n 1 | head -n 1)
+        fi
+
         COMMIT_SHA=${GITHUB_SHA::7}
         STATUS="Passed"
 
