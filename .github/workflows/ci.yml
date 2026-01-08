@@ -36,7 +36,7 @@ jobs:
         go test -v -race -coverprofile=coverage.out -covermode=atomic \
           ./internal/vpn \
           ./pkg/config \
-          ./test/smoke || exit 0
+          ./test/smoke
 
     - name: Check coverage threshold
       run: |
@@ -48,13 +48,12 @@ jobs:
         else
           echo "Great! Coverage $COVERAGE% meets the 80% threshold"
         fi
-      continue-on-error: true
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
         file: ./coverage.out
-        fail_ci_if_error: false
+        fail_ci_if_error: true
         flags: unittests
         name: codecov-umbrella
 
