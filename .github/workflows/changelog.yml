@@ -1,0 +1,109 @@
+name: Update Changelog
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  update-changelog:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract PR info
+      id: pr_info
+      run: |
+        PR_NUMBER="${{ github.event.pull_request.number }}"
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+        PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+
+        echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+        echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
+        echo "pr_author=$PR_AUTHOR" >> $GITHUB_OUTPUT
+        echo "pr_labels=$PR_LABELS" >> $GITHUB_OUTPUT
+
+    - name: Determine change type
+      id: change_type
+      run: |
+        LABELS="${{ steps.pr_info.outputs.pr_labels }}"
+
+        if echo "$LABELS" | grep -qi "New feature"; then
+          echo "type=### Добавлено" >> $GITHUB_OUTPUT
+        elif echo "$LABELS" | grep -qi "bug"; then
+          echo "type=### Исправлено" >> $GITHUB_OUTPUT
+        elif echo "$LABELS" | grep -qi "documentation"; then
+          echo "type=### Документация" >> $GITHUB_OUTPUT
+        else
+          echo "type=### Изменено" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Update CHANGELOG.md
+      run: |
+        PR_NUMBER="${{ steps.pr_info.outputs.pr_number }}"
+        PR_TITLE="${{ steps.pr_info.outputs.pr_title }}"
+        PR_AUTHOR="${{ steps.pr_info.outputs.pr_author }}"
+        CHANGE_TYPE="${{ steps.change_type.outputs.type }}"
+        DATE=$(date +%Y-%m-%d)
+
+        ENTRY="- $PR_TITLE ([#$PR_NUMBER](https://github.com/${{ github.repository }}/pull/$PR_NUMBER)) by @$PR_AUTHOR"
+
+        if [ ! -f CHANGELOG.md ]; then
+          echo "CHANGELOG.md not found, creating new one"
+          echo "# История изменений" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "## [Unreleased]" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### Добавлено" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### Изменено" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### Исправлено" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### Документация" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "### Удалено" >> CHANGELOG.md
+        fi
+
+        awk -v type="$CHANGE_TYPE" -v entry="$ENTRY" '
+        BEGIN { found_unreleased=0; found_section=0; inserted=0 }
+        /## \[Unreleased\]/ { found_unreleased=1; print; next }
+        found_unreleased && !found_section && $0 ~ type {
+          found_section=1
+          print
+          print entry
+          inserted=1
+          next
+        }
+        found_unreleased && !inserted && /^### / && $0 != type {
+          print type
+          print entry
+          print ""
+          inserted=1
+        }
+        { print }
+        ' CHANGELOG.md > CHANGELOG.tmp
+
+        mv CHANGELOG.tmp CHANGELOG.md
+
+    - name: Commit changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+
+        git add CHANGELOG.md
+
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+
+        git commit -m "docs: обновлен CHANGELOG для PR #${{ steps.pr_info.outputs.pr_number }}"
+        git push
