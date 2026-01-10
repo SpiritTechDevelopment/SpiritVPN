@@ -106,7 +106,7 @@ func Setup(config *Config) error {
 
 	// Добавляем Telegram хук для критических ошибок
 	if config.TelegramBotToken != "" && config.TelegramChatID != "" {
-		telegramHook := NewTelegramHook(config.TelegramBotToken, config.TelegramChatID, config.TelegramThreadID)
+		telegramHook := NewTelegramHook(config.TelegramBotToken, config.TelegramChatID, config.TelegramThreadID, "")
 		Log.AddHook(telegramHook)
 	}
 
