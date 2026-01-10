@@ -16,6 +16,7 @@ type Config struct {
 	VPN      VPNConfig      // Настройки VPN сервера
 	Telegram TelegramConfig // Настройки Telegram бота
 	Payment  PaymentConfig  // Настройки платежных систем
+	Logger   LoggerConfig   // Настройки логирования
 }
 
 // APIConfig содержит конфигурацию REST API сервера.
@@ -65,6 +66,23 @@ type TelegramConfig struct {
 type PaymentConfig struct {
 	YooKassaShopID    string // Shop ID от ЮКасса
 	YooKassaSecretKey string // Секретный ключ от ЮКасса
+}
+
+// LoggerConfig содержит конфигурацию системы логирования.
+type LoggerConfig struct {
+	Level            string // Уровень логирования: debug, info, warning, error, fatal, panic
+	LogDir           string // Директория для хранения лог-файлов
+	ConsoleOutput    bool   // Выводить ли логи в консоль
+	FileOutput       bool   // Записывать ли логи в файл
+	ColoredOutput    bool   // Использовать ли цветной вывод (только для консоли)
+	ErrorLogFile     bool   // Создавать ли отдельный файл для ошибок
+	Enabled          bool   // Включить/выключить логирование
+	MaxFileSize      int    // Максимальный размер лог-файла в мегабайтах
+	MaxBackups       int    // Максимальное количество старых лог-файлов
+	MaxAge           int    // Максимальное количество дней хранения лог-файлов
+	TelegramBotToken string // Токен Telegram бота для отправки критических ошибок
+	TelegramChatID   string // ID чата для отправки уведомлений
+	TelegramThreadID string // ID топика (thread) в супергруппе для отправки в конкретный топик
 }
 
 // Load загружает конфигурацию приложения из переменных окружения.
@@ -120,6 +138,21 @@ func Load() (*Config, error) {
 		Payment: PaymentConfig{
 			YooKassaShopID:    getEnv("YOOKASSA_SHOP_ID", ""),
 			YooKassaSecretKey: getEnv("YOOKASSA_SECRET_KEY", ""),
+		},
+		Logger: LoggerConfig{
+			Level:            getEnv("LOG_LEVEL", "info"),
+			LogDir:           getEnv("LOG_DIR", "./logs"),
+			ConsoleOutput:    getEnv("LOG_CONSOLE", "true") == "true",
+			FileOutput:       getEnv("LOG_FILE", "true") == "true",
+			ColoredOutput:    getEnv("LOG_COLORED", "true") == "true",
+			ErrorLogFile:     getEnv("LOG_ERROR_FILE", "true") == "true",
+			Enabled:          getEnv("LOG_ENABLED", "true") == "true",
+			MaxFileSize:      getEnvAsInt("LOG_MAX_FILE_SIZE", 10),
+			MaxBackups:       getEnvAsInt("LOG_MAX_BACKUPS", 5),
+			MaxAge:           getEnvAsInt("LOG_MAX_AGE", 30),
+			TelegramBotToken: getEnv("LOG_TELEGRAM_BOT_TOKEN", ""),
+			TelegramChatID:   getEnv("LOG_TELEGRAM_CHAT_ID", ""),
+			TelegramThreadID: getEnv("LOG_TELEGRAM_THREAD_ID", ""),
 		},
 	}
 
