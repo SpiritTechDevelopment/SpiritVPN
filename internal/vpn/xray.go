@@ -15,6 +15,16 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// Минимальный интерфейс для HandlerServiceClient с только необходимыми методами.
+type HandlerClient interface {
+	AlterInbound(ctx context.Context, in *command.AlterInboundRequest, opts ...grpc.CallOption) (*command.AlterInboundResponse, error)
+}
+
+// Минимальный интерфейс для StatsServiceClient с только необходимыми методами.
+type StatsClient interface {
+	QueryStats(ctx context.Context, in *statsCommand.QueryStatsRequest, opts ...grpc.CallOption) (*statsCommand.QueryStatsResponse, error)
+}
+
 // XrayClient управляет подключением к Xray Core через gRPC API.
 // Позволяет динамически добавлять/удалять пользователей VLESS и получать статистику трафика.
 //
@@ -24,10 +34,10 @@ import (
 //   - connection: активное gRPC соединение с Xray API
 //   - inboundTag: тег входящего соединения (inbound) в конфиге Xray (обычно "vless-inbound")
 type XrayClient struct {
-	client      proxymanCommand.HandlerServiceClient
+	client      HandlerClient
 	connection  *grpc.ClientConn
 	inboundTag  string
-	statsClient statsCommand.StatsServiceClient
+	statsClient StatsClient
 }
 
 // NewXrayClient создает и инициализирует новый клиент для подключения к Xray API.

@@ -81,7 +81,7 @@ internal/vpn/
 
 ---
 
-## тап 3: Backend API (3 недели)
+## Этап 3: Backend API (3 недели)
 
 ### Неделя 7-8: REST API сервер
 
@@ -97,15 +97,15 @@ internal/vpn/
 
 **Эндпоинты:**
 ```
-✅ POST   /api/v1/auth/register
-✅ POST   /api/v1/auth/login
-✅ POST   /api/v1/auth/refresh
-✅ GET    /api/v1/users/:id
-✅ PUT    /api/v1/users/:id
-✅ GET    /api/v1/subscriptions/plans
-✅ POST   /api/v1/subscriptions
-✅ GET    /api/v1/configs/user/:user_id
-✅ POST   /api/v1/configs
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh
+GET    /api/v1/users/:id
+PUT    /api/v1/users/:id
+GET    /api/v1/subscriptions/plans
+POST   /api/v1/subscriptions
+GET    /api/v1/configs/user/:user_id
+POST   /api/v1/configs
 ```
 
 **Результат:**
@@ -174,7 +174,7 @@ internal/vpn/
 
 ---
 
-## 🎨 Этап 5: Админ панель (2 недели)
+## Этап 5: Админ панель (2 недели)
 
 ### Неделя 13-14: Web-интерфейс
 
@@ -232,10 +232,10 @@ internal/vpn/
 - [ ] Health checks для серверов
 
 **Локации:**
-- 🇩🇪 Германия (Франкфурт)
-- 🇺🇸 США (Нью-Йорк)
-- 🇯🇵 Япония (Токио)
-- 🇷🇺 Россия (Москва) - опционально
+- Германия (Франкфурт)
+- США (Нью-Йорк)
+- Япония (Токио)
+- Россия (Москва) - опционально
 
 **Результат:**
 - Географически распределенная сеть серверов
@@ -248,6 +248,7 @@ internal/vpn/
 ### Неделя 17: Автоматизированное тестирование
 
 **Задачи:**
+- [x] Unit тесты для pkg/config (100% покрытие)
 - [ ] Unit тесты для всех компонентов
 - [ ] Integration тесты API
 - [ ] E2E тесты для Telegram бота
@@ -298,7 +299,7 @@ internal/vpn/
 - Реферальная программа
 
 **Результат:**
-- 🎉 Успешный запуск SpiritVPN!
+- Успешный запуск SpiritVPN!
 
 ---
 
@@ -365,7 +366,7 @@ internal/vpn/
 
 ---
 
-## 💰 Бюджет и ресурсы
+## Бюджет и ресурсы
 
 ### Минимальный MVP (4-6 месяцев)
 
@@ -392,7 +393,7 @@ internal/vpn/
 
 ---
 
-## ⚠️ Риски и митигация
+## Риски и митигация
 
 | Риск | Вероятность | Митигация |
 |------|-------------|-----------|
@@ -419,7 +420,7 @@ internal/vpn/
 
 ---
 
-## 🎯 Vision на 1 год
+## Vision на 1 год
 
 К концу первого года SpiritVPN должен стать:
 - Надежным VPN-сервисом с 10,000+ пользователями
@@ -436,6 +437,6 @@ internal/vpn/
 
 ---
 
-**Текущий статус:** ✅ Этап 1 - Фундамент (неделя 1 завершена)
+**Текущий статус:** Этап 1 - Фундамент (неделя 1 завершена)
 
 **Следующий шаг:** Настройка инфраструктуры и CI/CD

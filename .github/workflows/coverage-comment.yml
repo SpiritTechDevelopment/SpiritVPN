@@ -1,0 +1,56 @@
+name: Coverage Comment
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  coverage-comment:
+    name: Coverage Comment
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.25'
+
+    - name: Run tests with coverage
+      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+    - name: Generate coverage summary
+      id: coverage
+      run: |
+        TOTAL_COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
+        echo "total_coverage=$TOTAL_COVERAGE" >> $GITHUB_OUTPUT
+
+        echo "## Test Coverage Report" > coverage_report.md
+        echo "" >> coverage_report.md
+        echo "**Total Coverage:** \`$TOTAL_COVERAGE\`" >> coverage_report.md
+        echo "" >> coverage_report.md
+        echo "### Coverage by Package" >> coverage_report.md
+        echo "" >> coverage_report.md
+        echo "| Package | Coverage |" >> coverage_report.md
+        echo "|---------|----------|" >> coverage_report.md
+        go tool cover -func=coverage.out | grep -v "total:" | awk '{print "| " $1 " | " $3 " |"}' >> coverage_report.md
+
+    - name: Comment PR
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const coverage = fs.readFileSync('coverage_report.md', 'utf8');
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: coverage
+          });
