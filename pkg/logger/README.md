@@ -210,20 +210,49 @@ logs/
 
 ## Telegram уведомления
 
-Критические ошибки (FATAL, PANIC) автоматически отправляются в Telegram:
+### Настройка по компонентам
+
+Критические ошибки отправляются в топик **Errors** (Thread ID: `13`) с категоризацией по компонентам:
+
+| Компонент | Префикс | Назначение |
+|-----------|---------|------------|
+| `api-server` | API | HTTP API ошибки |
+| `telegram-bot` | BOT | Telegram Bot ошибки |
+| `vpn-server` | VPN | VPN/Xray ошибки |
+| `infrastructure` | INFRA | Redis, сеть, файлы |
+| `database` | DB | PostgreSQL ошибки |
+
+### Пример настройки
 
 ```go
+// Базовая конфигурация
 config := &logger.Config{
-    TelegramBotToken: "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
-    TelegramChatID:   "-1001234567890",
-    // ... другие настройки
+    Level:         "info",
+    ConsoleOutput: true,
+    FileOutput:    true,
+    FilePath:      "./logs/api-server.log",
 }
 
-logger.Setup(config)
+if err := logger.Setup(config); err != nil {
+    log.Fatal(err)
+}
 
-// Это отправит уведомление в Telegram
-logger.Fatal("Critical database failure!")
+// Добавляем Telegram hook для критических ошибок
+if botToken := os.Getenv("TELEGRAM_BOT_TOKEN"); botToken != "" {
+    hook := logger.NewTelegramHook(
+        botToken,
+        os.Getenv("TELEGRAM_CHAT_ID"),
+        "13",         // Thread ID: Errors
+        "api-server", // Компонент
+    )
+    logger.Log.AddHook(hook)
+}
+
+// Критическая ошибка → Telegram с префиксом API
+logger.Fatal("Database connection failed!")
 ```
+
+Подробнее: [docs/LOGGER_ERRORS.md](../../docs/LOGGER_ERRORS.md)
 
 ## Примеры для разных компонентов
 

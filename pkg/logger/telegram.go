@@ -13,10 +13,11 @@ import (
 // TelegramHook - хук для отправки критических ошибок в Telegram.
 // Поддерживает отправку сообщений в конкретный топик (thread) супергруппы.
 type TelegramHook struct {
-	BotToken string
-	ChatID   string
-	ThreadID string // ID топика (message_thread_id) для отправки в конкретный топик
-	client   *http.Client
+	BotToken  string
+	ChatID    string
+	ThreadID  string // ID топика (message_thread_id) для отправки в конкретный топик
+	Component string // Название компонента/сервиса (api-server, telegram-bot, vpn-server, infrastructure)
+	client    *http.Client
 }
 
 // NewTelegramHook создает новый Telegram хук.
@@ -25,16 +26,23 @@ type TelegramHook struct {
 //   - botToken: токен Telegram бота
 //   - chatID: ID чата или супергруппы
 //   - threadID: ID топика (опционально, передайте "" если не используется)
+//   - component: название компонента (api-server, telegram-bot, vpn-server, infrastructure)
 //
 // Для отправки в топик супергруппы:
 //  1. Создайте супергруппу с включенными Topics
 //  2. Получите message_thread_id топика (можно через GetUpdates API)
 //  3. Передайте его как threadID
-func NewTelegramHook(botToken, chatID, threadID string) *TelegramHook {
+//
+// Примеры использования:
+//
+//	hook := NewTelegramHook(token, chatID, "13", "api-server")
+//	hook := NewTelegramHook(token, chatID, "13", "infrastructure")
+func NewTelegramHook(botToken, chatID, threadID, component string) *TelegramHook {
 	return &TelegramHook{
-		BotToken: botToken,
-		ChatID:   chatID,
-		ThreadID: threadID,
+		BotToken:  botToken,
+		ChatID:    chatID,
+		ThreadID:  threadID,
+		Component: component,
 		client: &http.Client{
 			Timeout: 5 * time.Second,
 		},
@@ -69,7 +77,28 @@ func (hook *TelegramHook) Fire(entry *logrus.Entry) error {
 func (hook *TelegramHook) formatMessage(entry *logrus.Entry) string {
 	var buf bytes.Buffer
 
-	buf.WriteString(fmt.Sprintf("🚨 <b>%s</b>\n\n", entry.Level.String()))
+	// Определяем префикс по типу компонента
+	prefix := "ERROR"
+	switch hook.Component {
+	case "api-server":
+		prefix = "API"
+	case "telegram-bot":
+		prefix = "BOT"
+	case "vpn-server":
+		prefix = "VPN"
+	case "infrastructure":
+		prefix = "INFRA"
+	case "database":
+		prefix = "DB"
+	}
+
+	// Заголовок с компонентом и уровнем
+	if hook.Component != "" {
+		buf.WriteString(fmt.Sprintf("<b>%s %s</b>\n\n", prefix, entry.Level.String()))
+	} else {
+		buf.WriteString(fmt.Sprintf("<b>%s</b>\n\n", entry.Level.String()))
+	}
+
 	buf.WriteString(fmt.Sprintf("<b>Time:</b> %s\n", entry.Time.Format(time.RFC3339)))
 
 	if module, ok := entry.Data["module"].(string); ok {

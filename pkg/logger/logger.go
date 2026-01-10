@@ -10,6 +10,8 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+type Fields = logrus.Fields
+
 var (
 	// Log - глобальный логгер приложения
 	Log *logrus.Logger
