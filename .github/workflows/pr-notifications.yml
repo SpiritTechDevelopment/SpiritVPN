@@ -2,7 +2,7 @@ name: PR Notifications
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review, review_requested]
+    types: [opened, reopened, ready_for_review]
   pull_request_review:
     types: [submitted]
 
