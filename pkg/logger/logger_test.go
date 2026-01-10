@@ -36,7 +36,9 @@ func TestLoggerSetup(t *testing.T) {
 
 func TestGetLogger(t *testing.T) {
 	// Инициализируем логгер
-	logger.Setup(logger.DefaultConfig())
+	if err := logger.Setup(logger.DefaultConfig()); err != nil {
+		t.Fatalf("Failed to setup logger: %v", err)
+	}
 
 	log := logger.GetLogger("test.module", logrus.Fields{
 		"test_id": 123,
@@ -48,7 +50,9 @@ func TestGetLogger(t *testing.T) {
 }
 
 func TestLoggerUtils(t *testing.T) {
-	logger.Setup(logger.DefaultConfig())
+	if err := logger.Setup(logger.DefaultConfig()); err != nil {
+		t.Fatalf("Failed to setup logger: %v", err)
+	}
 	log := logger.GetLogger("test.utils")
 
 	logger.LogTestStart(log, "TestExample", map[string]interface{}{
@@ -62,7 +66,9 @@ func TestLoggerUtils(t *testing.T) {
 }
 
 func TestLoggerWithContext(t *testing.T) {
-	logger.Setup(logger.DefaultConfig())
+	if err := logger.Setup(logger.DefaultConfig()); err != nil {
+		t.Fatalf("Failed to setup logger: %v", err)
+	}
 
 	// User context
 	userLog := logger.WithUserContext(12345)

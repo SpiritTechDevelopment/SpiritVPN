@@ -128,7 +128,7 @@ func Setup(config *Config) error {
 //	log.Info("User connected")
 func GetLogger(name string, fields ...logrus.Fields) *logrus.Entry {
 	if Log == nil {
-		Setup(DefaultConfig())
+		_ = Setup(DefaultConfig())
 	}
 
 	entry := Log.WithField("module", name)
@@ -143,7 +143,7 @@ func GetLogger(name string, fields ...logrus.Fields) *logrus.Entry {
 // WithContext создает логгер с контекстными полями.
 func WithContext(fields logrus.Fields) *logrus.Entry {
 	if Log == nil {
-		Setup(DefaultConfig())
+		_ = Setup(DefaultConfig())
 	}
 	return Log.WithFields(fields)
 }
