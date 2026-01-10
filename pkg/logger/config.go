@@ -46,6 +46,10 @@ type Config struct {
 
 	// TelegramChatID - ID чата для отправки уведомлений
 	TelegramChatID string
+
+	// TelegramThreadID - ID топика (thread) в супергруппе (опционально)
+	// Используется для отправки сообщений в конкретный топик форума
+	TelegramThreadID string
 }
 
 // DefaultConfig возвращает конфигурацию по умолчанию.
@@ -82,6 +86,7 @@ func LoadFromEnv() *Config {
 	cfg.MaxAge = getEnvAsInt("LOG_MAX_AGE", cfg.MaxAge)
 	cfg.TelegramBotToken = getEnv("LOG_TELEGRAM_BOT_TOKEN", cfg.TelegramBotToken)
 	cfg.TelegramChatID = getEnv("LOG_TELEGRAM_CHAT_ID", cfg.TelegramChatID)
+	cfg.TelegramThreadID = getEnv("LOG_TELEGRAM_THREAD_ID", cfg.TelegramThreadID)
 
 	return cfg
 }

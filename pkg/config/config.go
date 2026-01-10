@@ -82,6 +82,7 @@ type LoggerConfig struct {
 	MaxAge           int    // Максимальное количество дней хранения лог-файлов
 	TelegramBotToken string // Токен Telegram бота для отправки критических ошибок
 	TelegramChatID   string // ID чата для отправки уведомлений
+	TelegramThreadID string // ID топика (thread) в супергруппе для отправки в конкретный топик
 }
 
 // Load загружает конфигурацию приложения из переменных окружения.
@@ -151,6 +152,7 @@ func Load() (*Config, error) {
 			MaxAge:           getEnvAsInt("LOG_MAX_AGE", 30),
 			TelegramBotToken: getEnv("LOG_TELEGRAM_BOT_TOKEN", ""),
 			TelegramChatID:   getEnv("LOG_TELEGRAM_CHAT_ID", ""),
+			TelegramThreadID: getEnv("LOG_TELEGRAM_THREAD_ID", ""),
 		},
 	}
 

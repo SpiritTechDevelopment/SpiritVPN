@@ -11,18 +11,30 @@ import (
 )
 
 // TelegramHook - хук для отправки критических ошибок в Telegram.
-
+// Поддерживает отправку сообщений в конкретный топик (thread) супергруппы.
 type TelegramHook struct {
 	BotToken string
 	ChatID   string
+	ThreadID string // ID топика (message_thread_id) для отправки в конкретный топик
 	client   *http.Client
 }
 
-// NewTelegramHook создает новый Telegram хук
-func NewTelegramHook(botToken, chatID string) *TelegramHook {
+// NewTelegramHook создает новый Telegram хук.
+//
+// Параметры:
+//   - botToken: токен Telegram бота
+//   - chatID: ID чата или супергруппы
+//   - threadID: ID топика (опционально, передайте "" если не используется)
+//
+// Для отправки в топик супергруппы:
+//  1. Создайте супергруппу с включенными Topics
+//  2. Получите message_thread_id топика (можно через GetUpdates API)
+//  3. Передайте его как threadID
+func NewTelegramHook(botToken, chatID, threadID string) *TelegramHook {
 	return &TelegramHook{
 		BotToken: botToken,
 		ChatID:   chatID,
+		ThreadID: threadID,
 		client: &http.Client{
 			Timeout: 5 * time.Second,
 		},
@@ -82,7 +94,8 @@ func (hook *TelegramHook) formatMessage(entry *logrus.Entry) string {
 	return buf.String()
 }
 
-// sendMessage отправляет сообщение в Telegram
+// sendMessage отправляет сообщение в Telegram.
+// Если указан ThreadID, сообщение будет отправлено в конкретный топик супергруппы.
 func (hook *TelegramHook) sendMessage(text string) error {
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", hook.BotToken)
 
@@ -90,6 +103,10 @@ func (hook *TelegramHook) sendMessage(text string) error {
 		"chat_id":    hook.ChatID,
 		"text":       text,
 		"parse_mode": "HTML",
+	}
+
+	if hook.ThreadID != "" {
+		payload["message_thread_id"] = hook.ThreadID
 	}
 
 	jsonData, err := json.Marshal(payload)
