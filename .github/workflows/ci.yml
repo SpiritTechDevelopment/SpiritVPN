@@ -90,13 +90,11 @@ jobs:
 
         echo "$COVERAGE" > coverage_cache.txt
 
-        # Определяем статус
         STATUS="Passed"
         if [ "${{ job.status }}" != "success" ]; then
           STATUS="Failed"
         fi
 
-        # Пропускаем уведомление если покрытие не изменилось И тесты прошли успешно
         if [ "$COVERAGE" == "$PREV_COVERAGE" ] && [ -n "$PREV_COVERAGE" ] && [ "$STATUS" == "Passed" ]; then
           echo "Coverage unchanged: $COVERAGE (previous: $PREV_COVERAGE)"
           echo "Status: $STATUS - Skipping Telegram notification"
@@ -129,13 +127,13 @@ jobs:
           DIFF=$(echo "$CURR_NUM - $PREV_NUM" | bc)
 
           if (( $(echo "$DIFF > 0" | bc -l) )); then
-            COVERAGE_CHANGE="📈 +${DIFF}%"
+            COVERAGE_CHANGE=" +${DIFF}%"
           elif (( $(echo "$DIFF < 0" | bc -l) )); then
-            COVERAGE_CHANGE="📉 ${DIFF}%"
+            COVERAGE_CHANGE=" ${DIFF}%"
           fi
         fi
 
-        MESSAGE="*Coverage Report*\n\n*Project:* SpiritVPN\n*Branch:* \`$BRANCH\`\n*Commit:* \`$COMMIT_SHA\`\n*Coverage:* $COVERAGE $COVERAGE_CHANGE\n*Status:* $STATUS\n\n_${COMMIT_MSG}_\n\n[View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+        MESSAGE=$'*Coverage Report*\n\n*Project:* SpiritVPN\n*Branch:* '"$BRANCH"$'\n*Commit:* '"$COMMIT_SHA"$'\n*Coverage:* '"$COVERAGE$COVERAGE_CHANGE"$'\n*Status:* '"$STATUS"$'\n\n_'"$COMMIT_MSG"$'_\n\n[View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})'
 
         if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
