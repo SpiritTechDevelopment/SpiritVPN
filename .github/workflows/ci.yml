@@ -28,6 +28,14 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
+    - name: Restore coverage cache
+      uses: actions/cache/restore@v3
+      with:
+        path: coverage_cache.txt
+        key: coverage-${{ github.ref }}-
+        restore-keys: |
+          coverage-${{ github.ref }}-
+
     - name: Download dependencies
       run: go mod download
 
@@ -75,6 +83,32 @@ jobs:
       run: |
         COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
 
+        PREV_COVERAGE=""
+        if [ -f coverage_cache.txt ]; then
+          PREV_COVERAGE=$(cat coverage_cache.txt)
+        fi
+
+        echo "$COVERAGE" > coverage_cache.txt
+
+        # Определяем статус
+        STATUS="Passed"
+        if [ "${{ job.status }}" != "success" ]; then
+          STATUS="Failed"
+        fi
+
+        # Пропускаем уведомление если покрытие не изменилось И тесты прошли успешно
+        if [ "$COVERAGE" == "$PREV_COVERAGE" ] && [ -n "$PREV_COVERAGE" ] && [ "$STATUS" == "Passed" ]; then
+          echo "Coverage unchanged: $COVERAGE (previous: $PREV_COVERAGE)"
+          echo "Status: $STATUS - Skipping Telegram notification"
+          exit 0
+        fi
+
+        if [ "$STATUS" == "Failed" ]; then
+          echo "Tests failed - sending notification"
+        else
+          echo "Coverage changed: $COVERAGE (previous: $PREV_COVERAGE) - sending notification"
+        fi
+
         if [ -n "${{ github.head_ref }}" ]; then
           BRANCH="${{ github.head_ref }} → ${{ github.base_ref }}"
         else
@@ -87,28 +121,23 @@ jobs:
         fi
 
         COMMIT_SHA=${GITHUB_SHA::7}
-        STATUS="Passed"
 
-        if [ "${{ job.status }}" != "success" ]; then
-          STATUS="Failed"
+        COVERAGE_CHANGE=""
+        if [ -n "$PREV_COVERAGE" ]; then
+          PREV_NUM=$(echo "$PREV_COVERAGE" | sed 's/%//')
+          CURR_NUM=$(echo "$COVERAGE" | sed 's/%//')
+          DIFF=$(echo "$CURR_NUM - $PREV_NUM" | bc)
+
+          if (( $(echo "$DIFF > 0" | bc -l) )); then
+            COVERAGE_CHANGE="📈 +${DIFF}%"
+          elif (( $(echo "$DIFF < 0" | bc -l) )); then
+            COVERAGE_CHANGE="📉 ${DIFF}%"
+          fi
         fi
 
-        cat << EOF > telegram_message.txt
-        *Coverage Report*
-
-        *Project:* SpiritVPN
-        *Branch:* \`$BRANCH\`
-        *Commit:* \`$COMMIT_SHA\`
-        *Coverage:* $COVERAGE
-        *Status:* $STATUS
-
-        _${COMMIT_MSG}_
-
-        [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-        EOF
+        MESSAGE="*Coverage Report*\n\n*Project:* SpiritVPN\n*Branch:* \`$BRANCH\`\n*Commit:* \`$COMMIT_SHA\`\n*Coverage:* $COVERAGE $COVERAGE_CHANGE\n*Status:* $STATUS\n\n_${COMMIT_MSG}_\n\n[View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
 
         if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
-          MESSAGE=$(cat telegram_message.txt)
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d message_thread_id="18" \
@@ -117,6 +146,13 @@ jobs:
         else
           echo "Telegram credentials not configured. Skipping notification."
         fi
+
+    - name: Save coverage cache
+      if: always()
+      uses: actions/cache/save@v3
+      with:
+        path: coverage_cache.txt
+        key: coverage-${{ github.ref }}-${{ github.sha }}
 
   lint:
     name: Lint
