@@ -227,8 +227,9 @@ golangci-lint run
 
 ## Авторы
 
-**Roman Ryabinkin** - GitHub: [@RomanRyabinkin](https://github.com/RomanRyabinkin)
-**Pavel Lensky** - GitHub: [@xvpaul](https://github.com/xvpaul)
+**Roman Ryabinkin**. GitHub: [@RomanRyabinkin](https://github.com/RomanRyabinkin)
+
+**Pavel Lensky**. GitHub: [@xvpaul](https://github.com/xvpaul)
 
 
 ## Благодарности
