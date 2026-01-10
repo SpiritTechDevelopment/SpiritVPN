@@ -29,6 +29,7 @@
 - Исправлены ошибки errcheck линтера в пакете logger
 - Исправлены конфликты функции main в файлах примеров
 - Исправлены import paths в примерах
+- Добавлены permissions для workflow changelog (2eaa2b2)
 
 ### Документация
 
