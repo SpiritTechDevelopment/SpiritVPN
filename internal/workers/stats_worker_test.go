@@ -10,11 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-const (
-	testEmail = "test@example.com"
-	testUUID  = "550e8400-e29b-41d4-a716-446655440000"
-)
-
 // MockXrayStatsClient реализует интерфейс XrayStatsClient для тестирования.
 type MockXrayStatsClient struct {
 	mock.Mock
