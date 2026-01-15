@@ -151,10 +151,15 @@ YOOKASSA_SHOP_ID=your_shop_id
 YOOKASSA_SECRET_KEY=your_secret_key
 
 # VPN
-VPN_SERVER_PORT=443
+VPN_HOST=0.0.0.0
+VPN_PORT=443
+VPN_API_PORT=10085
+VPN_API_ADDRESS=127.0.0.1:10085
 VPN_SERVER_NAME=google.com
 VPN_SHORT_IDS=
 VPN_PRIVATE_KEY=your_x25519_private_key
+VPN_PUBLIC_KEY=your_x25519_public_key
+VPN_STATS_INTERVAL=5m          # Интервал сбора статистики трафика
 ```
 
 ## Разработка
@@ -162,22 +167,33 @@ VPN_PRIVATE_KEY=your_x25519_private_key
 ### Запуск тестов
 
 ```bash
-# Unit-тесты (все пакеты)
+# Все unit-тесты
 go test ./...
 
-# Unit-тесты конкретного пакета
+# С подробным выводом
+go test -v ./...
+
+# Конкретный пакет
 go test ./pkg/config -v
 
 # С покрытием кода
-go test -cover ./...
+make test-coverage
 
-# Smoke-тесты
-docker compose up -d vpn
-go run test/smoke/xray_test.go
+# HTML отчет о покрытии
+make test-coverage-html
+
+# Только unit-тесты (без интеграционных)
+make test-unit
 ```
 
 **Текущее покрытие:**
-- `pkg/config` - 100%
+- `pkg/config` - 100% (парсинг конфигурации, duration helpers)
+- `internal/workers` - 20% (lifecycle тесты StatsWorker)
+- `internal/database` - 10.9% (repository unit-тесты с sqlmock)
+
+**Тестовые зависимости:**
+- `github.com/stretchr/testify` - assertion и mocking
+- `github.com/DATA-DOG/go-sqlmock` - мокирование GORM для unit-тестов
 
 Подробнее в [TESTING.md](docs/TESTING.md)
 
