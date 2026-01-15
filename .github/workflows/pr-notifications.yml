@@ -24,6 +24,7 @@ jobs:
         PR_STATE="${{ github.event.pull_request.state }}"
         DRAFT="${{ github.event.pull_request.draft }}"
         ACTION="${{ github.event.action }}"
+        REVIEWER="${{ github.event.review.user.login }}"
 
         if [ "$ACTION" == "opened" ]; then
           EVENT_TYPE="🆕 Новый PR"
@@ -37,10 +38,13 @@ jobs:
           REVIEW_STATE="${{ github.event.review.state }}"
           if [ "$REVIEW_STATE" == "approved" ]; then
             EVENT_TYPE="✅ PR одобрен"
+            REVIEWER_INFO="*Одобрил:* @${REVIEWER}"
           elif [ "$REVIEW_STATE" == "changes_requested" ]; then
             EVENT_TYPE="🔧 Требуются изменения"
+            REVIEWER_INFO="*Ревьюер:* @${REVIEWER}"
           else
             EVENT_TYPE="💬 Оставлен комментарий"
+            REVIEWER_INFO="*Ревьюер:* @${REVIEWER}"
           fi
         else
           EVENT_TYPE="📝 Обновление PR"
@@ -50,7 +54,14 @@ jobs:
 
         *PR #${PR_NUMBER}:* ${PR_TITLE}
         *Автор:* @${PR_AUTHOR}
-        *Статус:* ${PR_STATE}
+        *Статус:* ${PR_STATE}"
+
+        if [ -n "$REVIEWER_INFO" ]; then
+          MESSAGE="${MESSAGE}
+        ${REVIEWER_INFO}"
+        fi
+
+        MESSAGE="${MESSAGE}
 
         [Открыть PR](${PR_URL})"
 
