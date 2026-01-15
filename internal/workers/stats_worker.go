@@ -5,10 +5,24 @@ import (
 	"time"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/database"
-	"github.com/RomanRyabinkin/SpiritVPN/internal/vpn"
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/logger"
 	"github.com/sirupsen/logrus"
 )
+
+// XrayStatsClient определяет интерфейс для получения статистики из Xray API.
+type XrayStatsClient interface {
+	// GetStats возвращает статистику трафика для пользователя.
+	//
+	// Args:
+	//   - ctx: контекст для отмены операции
+	//   - email: идентификатор пользователя в Xray
+	//
+	// Returns:
+	//   - int64: количество полученных байт (downlink)
+	//   - int64: количество отправленных байт (uplink)
+	//   - error: ошибка получения или nil
+	GetStats(ctx context.Context, email string) (int64, int64, error)
+}
 
 // StatsWorker представляет фоновый процесс для периодического сбора статистики трафика.
 //
@@ -26,7 +40,7 @@ import (
 //   - При ошибках обработки отдельных пользователей воркер продолжает работу с остальными
 //   - Статистика сохраняется с точностью до дня (truncated to 24h)
 type StatsWorker struct {
-	xrayClient *vpn.XrayClient
+	xrayClient XrayStatsClient
 	db         *database.DB
 	interval   time.Duration
 	log        *logrus.Entry
@@ -38,7 +52,7 @@ type StatsWorker struct {
 // Воркер готов к запуску через метод Start().
 //
 // Args:
-//   - xrayClient: инициализированный клиент для подключения к Xray gRPC API
+//   - xrayClient: клиент реализующий интерфейс XrayStatsClient
 //   - db: подключение к базе данных PostgreSQL через GORM
 //   - interval: интервал между циклами сбора статистики (рекомендуется 5m)
 //
@@ -49,7 +63,7 @@ type StatsWorker struct {
 //
 //	worker := NewStatsWorker(xrayClient, db, 5*time.Minute)
 //	go worker.Start(ctx)
-func NewStatsWorker(xrayClient *vpn.XrayClient, db *database.DB, interval time.Duration) *StatsWorker {
+func NewStatsWorker(xrayClient XrayStatsClient, db *database.DB, interval time.Duration) *StatsWorker {
 	return &StatsWorker{
 		xrayClient: xrayClient,
 		db:         db,

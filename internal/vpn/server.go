@@ -3,17 +3,23 @@ package vpn
 import (
 	"context"
 	"fmt"
-	"log"
 
+	"github.com/RomanRyabinkin/SpiritVPN/internal/database"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/workers"
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/config"
+	"github.com/RomanRyabinkin/SpiritVPN/pkg/logger"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // Server представляет VPN сервер на базе Xray (VLESS).
 // Управляет пользователями и статистикой через Xray API.
 type Server struct {
-	config     *config.Config
-	xrayClient *XrayClient
+	config      *config.Config
+	xrayClient  *XrayClient
+	db          *database.DB
+	statsWorker *workers.StatsWorker
+	log         *logrus.Entry
 }
 
 // GenerateUUID генерирует новый UUID для VLESS клиента.
@@ -27,36 +33,45 @@ func GenerateUUID() (string, error) {
 
 // NewServer создает и инициализирует новый VPN сервер.
 //
-// Параметры:
+// Args:
 //   - cfg: конфигурация VPN сервера
+//   - db: подключение к базе данных для сохранения статистики
 //
-// Возвращает:
+// Returns:
 //   - *Server: инициализированный VPN сервер
 //   - error: ошибка инициализации или nil при успехе
-func NewServer(cfg *config.Config) (*Server, error) {
+func NewServer(cfg *config.Config, db *database.DB) (*Server, error) {
 	server := &Server{
 		config: cfg,
+		db:     db,
+		log:    logger.GetLogger("vpn.server"),
 	}
 	return server, nil
 }
 
 // Start запускает VPN сервер (или подключается к нему).
 //
-// Параметры:
+// Args:
 //   - ctx: контекст для graceful shutdown
 //
-// Возвращает:
+// Returns:
 //   - error: ошибка запуска или nil при нормальной остановке
 func (s *Server) Start(ctx context.Context) error {
-	log.Printf("Starting VPN server integration on port %d", s.config.VPN.Port)
+	s.log.WithField("port", s.config.VPN.Port).Info("Starting VPN server integration")
 
-	// Инициализация подключения к Xray API
 	client, err := NewXrayClient(s.config.VPN.ApiAddress, s.config.VPN.ApiPort, "vless-inbound")
 	if err != nil {
 		return fmt.Errorf("failed to connect to xray api: %w", err)
 	}
 	s.xrayClient = client
-	log.Println("Connected to Xray API")
+	s.log.Info("Connected to Xray API")
+
+	if s.db != nil {
+		statsInterval := s.config.VPN.StatsInterval
+		s.statsWorker = workers.NewStatsWorker(s.xrayClient, s.db, statsInterval)
+		go s.statsWorker.Start(ctx)
+		s.log.WithField("interval", statsInterval).Info("Traffic statistics worker started")
+	}
 
 	go s.monitorConnections(ctx)
 
@@ -65,13 +80,14 @@ func (s *Server) Start(ctx context.Context) error {
 
 // Stop корректно останавливает работу с сервером.
 //
-// Параметры:
+// Args:
 //   - ctx: контекст с таймаутом для graceful shutdown
 //
-// Возвращает:
+// Returns:
 //   - error: ошибка остановки или nil при успехе
 func (s *Server) Stop(ctx context.Context) error {
-	log.Println("Stopping VPN server integration...")
+	s.log.Info("Stopping VPN server integration...")
+
 	if s.xrayClient != nil {
 		return s.xrayClient.Close()
 	}
@@ -80,10 +96,10 @@ func (s *Server) Stop(ctx context.Context) error {
 
 // AddUser добавляет пользователя в конфигурацию Xray/VLESS.
 //
-// Параметры:
+// Args:
 //   - uuid: UUID пользователя
 //
-// Возвращает:
+// Returns:
 //   - error: ошибка добавления или nil при успехе
 func (s *Server) AddUser(uuid string) error {
 	if s.xrayClient == nil {
@@ -95,10 +111,10 @@ func (s *Server) AddUser(uuid string) error {
 
 // RemoveUser удаляет пользователя из Xray/VLESS.
 //
-// Параметры:
+// Args:
 //   - uuid: UUID пользователя для удаления
 //
-// Возвращает:
+// Returns:
 //   - error: ошибка удаления или nil при успехе
 func (s *Server) RemoveUser(uuid string) error {
 	if s.xrayClient == nil {
@@ -109,10 +125,10 @@ func (s *Server) RemoveUser(uuid string) error {
 
 // GetUserStats возвращает статистику использования для конкретного пользователя.
 //
-// Параметры:
+// Args:
 //   - uuid: UUID пользователя
 //
-// Возвращает:
+// Returns:
 //   - *UserStats: статистика пользователя
 //   - error: ошибка получения или nil при успехе
 func (s *Server) GetUserStats(uuid string) (*UserStats, error) {
@@ -128,7 +144,7 @@ func (s *Server) GetUserStats(uuid string) (*UserStats, error) {
 func (s *Server) monitorConnections(ctx context.Context) {
 	// TODO: Периодический сбор статистики через Xray API
 	<-ctx.Done()
-	log.Println("Connection monitoring stopped")
+	s.log.Info("Connection monitoring stopped")
 }
 
 // UserStats содержит статистику использования VPN для конкретного пользователя.
