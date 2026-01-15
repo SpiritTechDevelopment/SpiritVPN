@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 const (
@@ -236,6 +237,131 @@ func TestGetEnvAsInt(t *testing.T) {
 			result := getEnvAsInt(tt.key, tt.defaultValue)
 			if result != tt.expected {
 				t.Errorf("getEnvAsInt() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestGetEnvAsDuration проверяет корректность парсинга duration из переменных окружения.
+// Тестирует валидные форматы, невалидные значения и значения по умолчанию.
+func TestGetEnvAsDuration(t *testing.T) {
+	tests := []struct {
+		name         string
+		key          string
+		value        string
+		defaultValue time.Duration
+		expected     time.Duration
+	}{
+		{
+			name:         "valid duration - minutes",
+			key:          "TEST_DURATION",
+			value:        "5m",
+			defaultValue: 1 * time.Minute,
+			expected:     5 * time.Minute,
+		},
+		{
+			name:         "valid duration - seconds",
+			key:          "TEST_DURATION",
+			value:        "30s",
+			defaultValue: 1 * time.Minute,
+			expected:     30 * time.Second,
+		},
+		{
+			name:         "valid duration - hours",
+			key:          "TEST_DURATION",
+			value:        "2h",
+			defaultValue: 1 * time.Minute,
+			expected:     2 * time.Hour,
+		},
+		{
+			name:         "valid duration - complex",
+			key:          "TEST_DURATION",
+			value:        "1h30m",
+			defaultValue: 1 * time.Minute,
+			expected:     90 * time.Minute,
+		},
+		{
+			name:         "invalid duration",
+			key:          "TEST_DURATION",
+			value:        "invalid",
+			defaultValue: 5 * time.Minute,
+			expected:     5 * time.Minute,
+		},
+		{
+			name:         "missing variable",
+			key:          "MISSING_DURATION",
+			value:        "",
+			defaultValue: 10 * time.Minute,
+			expected:     10 * time.Minute,
+		},
+		{
+			name:         "empty value",
+			key:          "TEST_DURATION",
+			value:        "",
+			defaultValue: 3 * time.Minute,
+			expected:     3 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Clearenv()
+			if tt.value != "" {
+				os.Setenv(tt.key, tt.value)
+			}
+
+			result := getEnvAsDuration(tt.key, tt.defaultValue)
+			if result != tt.expected {
+				t.Errorf("getEnvAsDuration() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestVPNConfig_StatsInterval проверяет что VPN_STATS_INTERVAL корректно парсится.
+func TestVPNConfig_StatsInterval(t *testing.T) {
+	tests := []struct {
+		name     string
+		envValue string
+		expected time.Duration
+	}{
+		{
+			name:     "default value when not set",
+			envValue: "",
+			expected: 5 * time.Minute,
+		},
+		{
+			name:     "custom value 10 minutes",
+			envValue: "10m",
+			expected: 10 * time.Minute,
+		},
+		{
+			name:     "custom value 1 hour",
+			envValue: "1h",
+			expected: 1 * time.Hour,
+		},
+		{
+			name:     "custom value 30 seconds",
+			envValue: "30s",
+			expected: 30 * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Clearenv()
+			os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
+			if tt.envValue != "" {
+				os.Setenv("VPN_STATS_INTERVAL", tt.envValue)
+			}
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load() failed: %v", err)
+			}
+
+			if cfg.VPN.StatsInterval != tt.expected {
+				t.Errorf("VPN.StatsInterval = %v, want %v", cfg.VPN.StatsInterval, tt.expected)
 			}
 		})
 	}
