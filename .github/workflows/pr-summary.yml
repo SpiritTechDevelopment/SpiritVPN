@@ -41,17 +41,17 @@ jobs:
           MESSAGE="📊 *Ежедневный отчет по PR*\n\n✅ Нет открытых Pull Requests"
         else
           # Формируем список PR
-          MESSAGE="📊 *Ежедневный отчет по PR*\n\n*Открытых PR:* $PR_COUNT\n\n"
+          MESSAGE="📊 *Ежедневный отчет по PR*\n\n*Открытых PR:* $PR_COUNT\n"
 
           echo "$PRS" | jq -r '.[] |
-            "• [PR #\(.number)](\(.html_url))\n" +
+            "\n• [PR #\(.number)](\(.html_url))\n" +
             "  *\(.title)*\n" +
             "  👤 @\(.user.login) | 📅 \(.created_at[:10])\n" +
-            "  💬 \(.comments) комментариев\n"' | while IFS= read -r line; do
+            "  💬 \(.comments) комментариев"' | while IFS= read -r line; do
             MESSAGE="${MESSAGE}${line}"
           done
 
-          MESSAGE="${MESSAGE}\n[Все PR](https://github.com/${{ github.repository }}/pulls)"
+          MESSAGE="${MESSAGE}\n\n[Все PR](https://github.com/${{ github.repository }}/pulls)"
         fi
 
         # Отправляем в топик Review (Thread ID: 20)
