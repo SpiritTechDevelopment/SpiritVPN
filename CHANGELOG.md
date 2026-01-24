@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### Добавлено
+- Feature/CORE-02: Add traffic statistics monitoring worker ([#18](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/18)) by @RomanRyabinkin
 - Пакет структурированного логирования с интеграцией logrus и lumberjack
 - Цветной вывод в консоль с ANSI кодами
 - Автоматическая ротация лог-файлов (10MB, 5 бэкапов, 30 дней)
