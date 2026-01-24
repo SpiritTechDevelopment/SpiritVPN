@@ -138,6 +138,13 @@ func (r *SubscriptionRepository) GetExpiring(days int) ([]Subscription, error) {
 	return subscriptions, err
 }
 
+// GetAllActive возвращает все активные подписки
+func (r *SubscriptionRepository) GetAllActive() ([]Subscription, error) {
+	var subscriptions []Subscription
+	err := r.db.Where("is_active = true AND end_date > ?", time.Now()).Find(&subscriptions).Error
+	return subscriptions, err
+}
+
 // VPNConfigRepository предоставляет методы для работы с VPN конфигурациями
 type VPNConfigRepository struct {
 	db *gorm.DB
@@ -194,6 +201,13 @@ func (r *VPNConfigRepository) Update(config *VPNConfig) error {
 // Delete удаляет конфигурацию
 func (r *VPNConfigRepository) Delete(id uint) error {
 	return r.db.Delete(&VPNConfig{}, id).Error
+}
+
+// GetBySubscriptionID возвращает все конфигурации для подписки
+func (r *VPNConfigRepository) GetBySubscriptionID(subscriptionID uint) ([]VPNConfig, error) {
+	var configs []VPNConfig
+	err := r.db.Where("subscription_id = ?", subscriptionID).Preload("Server").Find(&configs).Error
+	return configs, err
 }
 
 // VPNServerRepository предоставляет методы для работы с VPN серверами
@@ -359,4 +373,64 @@ func (r *SubscriptionPlanRepository) GetByCode(code string) (*SubscriptionPlan, 
 		return nil, err
 	}
 	return &plan, nil
+}
+
+// TrafficStatsRepository предоставляет методы для работы со статистикой трафика
+type TrafficStatsRepository struct {
+	db *gorm.DB
+}
+
+// NewTrafficStatsRepository создает новый репозиторий статистики трафика
+func NewTrafficStatsRepository(db *DB) *TrafficStatsRepository {
+	return &TrafficStatsRepository{db: db.GetDB()}
+}
+
+// Create создает новую запись статистики
+func (r *TrafficStatsRepository) Create(stat *TrafficStat) error {
+	return r.db.Create(stat).Error
+}
+
+// GetByUserID возвращает статистику пользователя
+func (r *TrafficStatsRepository) GetByUserID(userID uint) ([]TrafficStat, error) {
+	var stats []TrafficStat
+	err := r.db.Where("user_id = ?", userID).Order("date DESC").Find(&stats).Error
+	return stats, err
+}
+
+// GetByUserIDAndDateRange возвращает статистику пользователя за период
+func (r *TrafficStatsRepository) GetByUserIDAndDateRange(userID uint, startDate, endDate time.Time) ([]TrafficStat, error) {
+	var stats []TrafficStat
+	err := r.db.Where("user_id = ? AND date BETWEEN ? AND ?", userID, startDate, endDate).
+		Order("date DESC").
+		Find(&stats).Error
+	return stats, err
+}
+
+// GetByConfigID возвращает статистику для конфигурации
+func (r *TrafficStatsRepository) GetByConfigID(configID uint) ([]TrafficStat, error) {
+	var stats []TrafficStat
+	err := r.db.Where("config_id = ?", configID).Order("date DESC").Find(&stats).Error
+	return stats, err
+}
+
+// UpsertDailyStats создает или обновляет статистику за день (для агрегации данных)
+func (r *TrafficStatsRepository) UpsertDailyStats(stat *TrafficStat) error {
+	// Проверяем существует ли запись за этот день
+	var existing TrafficStat
+	err := r.db.Where("user_id = ? AND config_id = ? AND date = ?", stat.UserID, stat.ConfigID, stat.Date).
+		First(&existing).Error
+
+	if err == nil {
+		// Обновляем существующую запись
+		existing.BytesSent += stat.BytesSent
+		existing.BytesReceived += stat.BytesReceived
+		return r.db.Save(&existing).Error
+	}
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// Создаем новую запись
+		return r.db.Create(stat).Error
+	}
+
+	return err
 }

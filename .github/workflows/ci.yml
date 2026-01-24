@@ -43,6 +43,8 @@ jobs:
       run: |
         go test -v -race -coverprofile=coverage.out -covermode=atomic \
           ./internal/vpn \
+          ./internal/workers \
+          ./internal/database \
           ./pkg/config \
           ./test/smoke
 

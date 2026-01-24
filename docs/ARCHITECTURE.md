@@ -50,9 +50,17 @@ SpiritVPN построен на микросервисной архитекту�
 **Функции:**
 - Прием и обработка VPN соединений
 - Маршрутизация трафика пользователей
-- Сбор статистики по использованию
+- Сбор статистики по использованию через StatsWorker
 - Управление пользователями (UUID)
 - Мониторинг состояния соединений
+- Периодический опрос Xray API для учета трафика
+
+**Background Workers:**
+- **StatsWorker**: фоновый процесс для периодического сбора статистики трафика из Xray API
+  - Опрос активных подписок каждые 5 минут (настраивается через `VPN_STATS_INTERVAL`)
+  - Получение данных о входящем/исходящем трафике для каждого пользователя
+  - Агрегация и сохранение статистики в базу данных
+  - Используется для биллинга и аналитики
 
 #### VLESS протокол
 
@@ -84,6 +92,9 @@ internal/vpn/
 ├── xray.go            # Интеграция с Xray (gRPC)
 ├── user.go            # Управление пользователями
 └── monitor.go         # Мониторинг соединений
+
+internal/workers/
+└── stats_worker.go    # Фоновый сбор статистики трафика
 ```
 
 ### 2. API Server
@@ -241,11 +252,19 @@ CREATE TABLE traffic_stats (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     config_id INTEGER REFERENCES vpn_configs(id),
-    bytes_sent BIGINT DEFAULT 0,
-    bytes_received BIGINT DEFAULT 0,
-    date DATE NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    bytes_sent BIGINT DEFAULT 0,        -- Исходящий трафик
+    bytes_received BIGINT DEFAULT 0,     -- Входящий трафик
+    date DATE NOT NULL,                  -- Дата сбора статистики
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, config_id, date)     -- Одна запись на день
 );
+
+-- Индексы для быстрого доступа
+CREATE INDEX idx_traffic_stats_user_date ON traffic_stats(user_id, date);
+CREATE INDEX idx_traffic_stats_config ON traffic_stats(config_id);
+```
+
+**Примечание**: Статистика собирается автоматически через StatsWorker каждые 5 минут (настраивается через `VPN_STATS_INTERVAL`). Данные агрегируются по дням для биллинга и аналитики.
 ```
 
 ### Redis (Кеширование)
@@ -332,8 +351,10 @@ CREATE TABLE traffic_stats (
 ### Метрики (Prometheus)
 
 ```
-- vpn_active_connections
-- vpn_traffic_bytes_total
+- vpn_active_connections        # Активные соединения
+- vpn_traffic_bytes_total       # Общий трафик
+- vpn_stats_collection_duration # Время сбора статистики
+- vpn_stats_errors_total        # Ошибки при сборе статистики
 - api_requests_total
 - api_response_time
 - payment_success_rate

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -46,14 +47,15 @@ type RedisConfig struct {
 
 // VPNConfig содержит конфигурацию VLESS сервера.
 type VPNConfig struct {
-	Host       string // Публичный IP или домен сервера
-	Port       int    // Порт (обычно 443 для VLESS+Reality)
-	ApiPort    int    // Порт gRPC API Xray (обычно 10085)
-	ApiAddress string // Адрес gRPC API Xray (обычно "localhost" или имя контейнера)
-	ServerName string // SNI домен (например, google.com для Reality)
-	PrivateKey string // Приватный ключ сервера (X25519)
-	PublicKey  string // Публичный ключ сервера (X25519)
-	ShortIDs   string // ShortIDs для Reality (через запятую)
+	Host          string        // Публичный IP или домен сервера
+	Port          int           // Порт (обычно 443 для VLESS+Reality)
+	ApiPort       int           // Порт gRPC API Xray (обычно 10085)
+	ApiAddress    string        // Адрес gRPC API Xray (обычно "localhost" или имя контейнера)
+	ServerName    string        // SNI домен (например, google.com для Reality)
+	PrivateKey    string        // Приватный ключ сервера (X25519)
+	PublicKey     string        // Публичный ключ сервера (X25519)
+	ShortIDs      string        // ShortIDs для Reality (через запятую)
+	StatsInterval time.Duration // Интервал сбора статистики трафика (по умолчанию 5m)
 }
 
 // TelegramConfig содержит конфигурацию Telegram бота.
@@ -122,14 +124,15 @@ func Load() (*Config, error) {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		VPN: VPNConfig{
-			Host:       getEnv("VPN_HOST", "localhost"),
-			Port:       getEnvAsInt("VPN_PORT", 443),
-			ApiPort:    getEnvAsInt("VPN_API_PORT", 10085),
-			ApiAddress: getEnv("VPN_API_ADDRESS", "localhost"),
-			ServerName: getEnv("VPN_SERVER_NAME", "google.com"),
-			PrivateKey: getEnv("VPN_PRIVATE_KEY", ""),
-			PublicKey:  getEnv("VPN_PUBLIC_KEY", ""),
-			ShortIDs:   getEnv("VPN_SHORT_IDS", ""),
+			Host:          getEnv("VPN_HOST", "localhost"),
+			Port:          getEnvAsInt("VPN_PORT", 443),
+			ApiPort:       getEnvAsInt("VPN_API_PORT", 10085),
+			ApiAddress:    getEnv("VPN_API_ADDRESS", "localhost"),
+			ServerName:    getEnv("VPN_SERVER_NAME", "google.com"),
+			PrivateKey:    getEnv("VPN_PRIVATE_KEY", ""),
+			PublicKey:     getEnv("VPN_PUBLIC_KEY", ""),
+			ShortIDs:      getEnv("VPN_SHORT_IDS", ""),
+			StatsInterval: getEnvAsDuration("VPN_STATS_INTERVAL", 5*time.Minute),
 		},
 		Telegram: TelegramConfig{
 			BotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
@@ -199,6 +202,32 @@ func getEnvAsInt(key string, defaultValue int) int {
 	}
 	var value int
 	if _, err := fmt.Sscanf(valueStr, "%d", &value); err != nil {
+		return defaultValue
+	}
+	return value
+}
+
+// getEnvAsDuration получает значение переменной окружения как time.Duration.
+// Вспомогательная функция для загрузки интервалов времени.
+// Поддерживает форматы: "5m", "1h30m", "300s" и т.д.
+//
+// Args:
+//   - key: имя переменной окружения
+//   - defaultValue: значение по умолчанию, если переменная не установлена или некорректна
+//
+// Returns:
+//   - time.Duration: длительность или defaultValue
+//
+// Example:
+//
+//	interval := getEnvAsDuration("STATS_INTERVAL", 5*time.Minute)
+func getEnvAsDuration(key string, defaultValue time.Duration) time.Duration {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		return defaultValue
+	}
+	value, err := time.ParseDuration(valueStr)
+	if err != nil {
 		return defaultValue
 	}
 	return value
