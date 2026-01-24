@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### Добавлено
+- feat: [API-01] added health check api enpoint ([#19](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/19)) by @RomanRyabinkin
 - Feature/CORE-02: Add traffic statistics monitoring worker ([#18](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/18)) by @RomanRyabinkin
 - Пакет структурированного логирования с интеграцией logrus и lumberjack
 - Цветной вывод в консоль с ANSI кодами
