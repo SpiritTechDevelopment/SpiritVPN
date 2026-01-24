@@ -42,6 +42,7 @@ jobs:
     - name: Run tests
       run: |
         go test -v -race -coverprofile=coverage.out -covermode=atomic \
+          ./internal/api/handlers \
           ./internal/vpn \
           ./internal/workers \
           ./internal/database \
