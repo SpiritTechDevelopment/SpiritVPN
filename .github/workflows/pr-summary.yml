@@ -38,20 +38,12 @@ jobs:
         PR_COUNT=$(echo "$PRS" | jq 'length')
 
         if [ "$PR_COUNT" -eq 0 ]; then
-          MESSAGE="📊 *Ежедневный отчет по PR*\n\n✅ Нет открытых Pull Requests"
+          MESSAGE=$(printf "📊 *Ежедневный отчет по PR*\n\n✅ Нет открытых Pull Requests")
         else
           # Формируем список PR
-          MESSAGE="📊 *Ежедневный отчет по PR*\n\n*Открытых PR:* $PR_COUNT\n"
+          PR_LIST=$(echo "$PRS" | jq -r '.[] | "• [PR #\(.number)](\(.html_url))\n  *\(.title)*\n  👤 @\(.user.login) | 📅 \(.created_at[:10])\n  💬 \(.comments) комментариев\n"')
 
-          echo "$PRS" | jq -r '.[] |
-            "\n• [PR #\(.number)](\(.html_url))\n" +
-            "  *\(.title)*\n" +
-            "  👤 @\(.user.login) | 📅 \(.created_at[:10])\n" +
-            "  💬 \(.comments) комментариев"' | while IFS= read -r line; do
-            MESSAGE="${MESSAGE}${line}"
-          done
-
-          MESSAGE="${MESSAGE}\n\n[Все PR](https://github.com/${{ github.repository }}/pulls)"
+          MESSAGE=$(printf "📊 *Ежедневный отчет по PR*\n\n*Открытых PR:* %s\n\n%s\n[Все PR](https://github.com/${{ github.repository }}/pulls)" "$PR_COUNT" "$PR_LIST")
         fi
 
         # Отправляем в топик Review (Thread ID: 20)
