@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/RomanRyabinkin/SpiritVPN/internal/api/handlers"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/database"
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/config"
 	"github.com/gin-gonic/gin"
@@ -55,11 +56,12 @@ func (s *Server) Router() *gin.Engine {
 // Включает health check, аутентификацию и API v1 endpoints.
 // Вызывается автоматически при создании сервера.
 func (s *Server) setupRoutes() {
-	s.router.GET("/health", s.healthCheck)
+	// Health check эндпоинты (без авторизации)
+	s.router.GET("/health", handlers.HealthCheck)
+	s.router.GET("/health/advanced", handlers.HealthCheckAdvanced(s.db))
 
 	v1 := s.router.Group("/api/v1")
 	{
-		// Аутентификация
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/register", s.register)
@@ -67,7 +69,7 @@ func (s *Server) setupRoutes() {
 			auth.POST("/refresh", s.refreshToken)
 		}
 
-		// Пользователи (требуют аутентификации)
+		// Пользователи (требует аутентификации)
 		// users := v1.Group("/users")
 		// users.Use(s.authMiddleware())
 		// {
@@ -82,19 +84,6 @@ func (s *Server) setupRoutes() {
 		// - /stats
 		// - /servers
 	}
-}
-
-// healthCheck обрабатывает GET /health эндпоинт.
-// Возвращает статус работоспособности API сервера.
-// Используется для мониторинга и load balancer health checks.
-//
-// Параметры:
-//   - c: Gin контекст запроса
-func (s *Server) healthCheck(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"status":  "ok",
-		"service": "SpiritVPN API",
-	})
 }
 
 // register обрабатывает POST /api/v1/auth/register эндпоинт.
