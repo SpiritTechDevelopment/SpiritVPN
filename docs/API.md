@@ -1,834 +1,152 @@
-# API Документация SpiritVPN
+# API Documentation
 
-## Базовая информация
+## Общая информация
 
-- **Base URL:** `https://api.spiritvpn.com/api/v1`
-- **Формат данных:** JSON
-- **Аутентификация:** JWT Bearer Token
-- **Rate Limit:** 100 запросов/минуту
+SpiritVPN предоставляет HTTP API для служебных и пользовательских операций. В текущей версии репозитория API находится на стадии базовой реализации.
 
-## Аутентификация
+Основной сервер API расположен в каталоге:
 
-Все защищенные эндпоинты требуют JWT токен в заголовке:
-
-```
-Authorization: Bearer <jwt_token>
+```text
+cmd/api-server/
 ```
 
----
+Логика маршрутизации и обработчиков расположена в:
 
-## Аутентификация
-
-### Регистрация
-
-```http
-POST /auth/register
+```text
+internal/api/
 ```
 
-**Request Body:**
-```json
-{
-  "telegram_id": 123456789,
-  "username": "user123",
-  "email": "user@example.com"
-}
+## Базовые настройки
+
+Параметры API задаются через `configs/.env`:
+
+```env
+API_ADDRESS=:8080
+API_MODE=debug
+JWT_SECRET=your-jwt-secret-key-change-in-production
 ```
 
-**Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "user_id": 1,
-    "telegram_id": 123456789,
-    "username": "user123",
-    "created_at": "2025-11-15T10:00:00Z"
-  },
-  "token": {
-    "access_token": "eyJhbGciOiJIUzI1NiIs...",
-    "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
-    "expires_in": 3600
-  }
-}
-```
-
-**Errors:**
-- `400` - Неверные данные
-- `409` - Пользователь уже существует
-
----
-
-### Вход
-
-```http
-POST /auth/login
-```
-
-**Request Body:**
-```json
-{
-  "telegram_id": 123456789
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "user_id": 1,
-    "telegram_id": 123456789
-  },
-  "token": {
-    "access_token": "eyJhbGciOiJIUzI1NiIs...",
-    "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
-    "expires_in": 3600
-  }
-}
-```
-
----
-
-### Обновление токена
-
-```http
-POST /auth/refresh
-```
-
-**Request Body:**
-```json
-{
-  "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "token": {
-    "access_token": "eyJhbGciOiJIUzI1NiIs...",
-    "expires_in": 3600
-  }
-}
-```
-
----
-
-## Пользователи
-
-### Получить профиль
-
-```http
-GET /users/:id
-```
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "telegram_id": 123456789,
-    "username": "user123",
-    "email": "user@example.com",
-    "subscription": {
-      "plan": "premium",
-      "active": true,
-      "expires_at": "2025-12-15T10:00:00Z"
-    },
-    "created_at": "2025-11-15T10:00:00Z"
-  }
-}
-```
-
----
-
-### Обновить профиль
-
-```http
-PUT /users/:id
-```
-
-**Request Body:**
-```json
-{
-  "username": "newusername",
-  "email": "newemail@example.com"
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "username": "newusername",
-    "email": "newemail@example.com",
-    "updated_at": "2025-11-15T11:00:00Z"
-  }
-}
-```
-
----
-
-## Подписки
-
-### Получить тарифные планы
-
-```http
-GET /subscriptions/plans
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Basic",
-      "duration_days": 30,
-      "price": 299.00,
-      "currency": "RUB",
-      "features": [
-        "1 устройство",
-        "50 Мбит/с",
-        "Базовая поддержка"
-      ]
-    },
-    {
-      "id": 2,
-      "name": "Premium",
-      "duration_days": 30,
-      "price": 599.00,
-      "currency": "RUB",
-      "features": [
-        "5 устройств",
-        "Безлимитная скорость",
-        "Приоритетная поддержка",
-        "Доступ ко всем серверам"
-      ]
-    },
-    {
-      "id": 3,
-      "name": "Premium Year",
-      "duration_days": 365,
-      "price": 5990.00,
-      "currency": "RUB",
-      "discount": "16%",
-      "features": [
-        "5 устройств",
-        "Безлимитная скорость",
-        "Приоритетная поддержка",
-        "Доступ ко всем серверам"
-      ]
-    }
-  ]
-}
-```
-
----
-
-### Создать подписку
-
-```http
-POST /subscriptions
-```
-
-**Request Body:**
-```json
-{
-  "user_id": 1,
-  "plan_id": 2,
-  "payment_method": "yookassa"
-}
-```
-
-**Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "subscription_id": 123,
-    "user_id": 1,
-    "plan": "Premium",
-    "start_date": "2025-11-15T10:00:00Z",
-    "end_date": "2025-12-15T10:00:00Z",
-    "is_active": false,
-    "payment_url": "https://yookassa.ru/checkout/..."
-  }
-}
-```
-
----
-
-### Получить активную подписку
-
-```http
-GET /subscriptions/user/:user_id
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "id": 123,
-    "plan": "Premium",
-    "is_active": true,
-    "start_date": "2025-11-15T10:00:00Z",
-    "end_date": "2025-12-15T10:00:00Z",
-    "auto_renew": true,
-    "days_left": 30
-  }
-}
-```
-
----
-
-### Отменить подписку
-
-```http
-DELETE /subscriptions/:id
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "message": "Подписка отменена. Доступ сохраняется до 2025-12-15"
-}
-```
-
----
-
-## VPN Конфигурации
-
-### Получить конфиг
-
-```http
-GET /configs/user/:user_id
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "config_id": 456,
-    "user_id": 1,
-    "server": {
-      "name": "Germany-1",
-      "location": "Frankfurt",
-      "ip": "45.123.45.67",
-      "port": 443
-    },
-    "uuid": "550e8400-e29b-41d4-a716-446655440000",
-    "flow": "xtls-rprx-vision",
-    "vless_link": "vless://550e8400-e29b-41d4-a716-446655440000@45.123.45.67:443?security=reality&sni=google.com&fp=chrome&pbk=...&sid=...&type=tcp&flow=xtls-rprx-vision#SpiritVPN-Germany",
-    "qr_code": "data:image/png;base64,iVBORw0KGgo...",
-    "created_at": "2025-11-15T10:00:00Z"
-  }
-}
-```
-
----
-
-### Сгенерировать новый конфиг
-
-```http
-POST /configs
-```
-
-**Request Body:**
-```json
-{
-  "user_id": 1,
-  "server_id": 2
-}
-```
-
-**Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "config_id": 457,
-    "config_file": "[Interface]\n...",
-    "qr_code": "data:image/png;base64,..."
-  }
-}
-```
-
----
-
-### Удалить конфиг
-
-```http
-DELETE /configs/:id
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "message": "Конфигурация удалена"
-}
-```
-
----
-
-## VPN Management
-
-### Генерация конфигурации VLESS
-
-```http
-POST /vpn/config
-```
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Request Body:**
-```json
-{
-  "user_id": 1,
-  "server_id": 2
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "protocol": "vless",
-    "uuid": "550e8400-e29b-41d4-a716-446655440000",
-    "server": "vpn.spiritvpn.com",
-    "port": 443,
-    "encryption": "none",
-    "flow": "xtls-rprx-vision",
-    "security": "reality",
-    "sni": "google.com",
-    "fingerprint": "chrome",
-    "public_key": "SLwxKXe...",
-    "short_id": "6ba85179e30d4fc2",
-    "config_url": "vless://550e8400-e29b-41d4-a716-446655440000@vpn.spiritvpn.com:443?encryption=none&security=reality&sni=google.com&fp=chrome&pbk=SLwxKXe...&sid=6ba85179e30d4fc2&type=tcp&flow=xtls-rprx-vision#SpiritVPN",
-    "qr_code": "data:image/png;base64,iVBORw0KGgo..."
-  }
-}
-```
-
----
-
-### Получение статуса VPN подключения
-
-```http
-GET /vpn/status
-```
-
-**Headers:**
-```
-Authorization: Bearer <token>
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "status": "active",
-    "protocol": "vless",
-    "server": "Germany-1",
-    "connected_since": "2026-01-06T10:30:00Z",
-    "uptime_seconds": 3600,
-    "bytes_sent": 1048576,
-    "bytes_received": 2097152,
-    "connection_quality": "excellent"
-  }
-}
-```
-
-**Статусы:**
-- `active` - активное подключение
-- `inactive` - не подключен
-- `error` - ошибка подключения
-- `expired` - подписка истекла
-
----
-
-### Получить список доступных серверов
-
-```http
-GET /vpn/servers
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Germany-1",
-      "location": "Frankfurt",
-      "country_code": "DE",
-      "load": 45,
-      "status": "online",
-      "ping": 25,
-      "supports_vless": true
-    },
-    {
-      "id": 2,
-      "name": "Netherlands-1",
-      "location": "Amsterdam",
-      "country_code": "NL",
-      "load": 32,
-      "status": "online",
-      "ping": 18,
-      "supports_vless": true
-    }
-  ]
-}
-```
-
----
-
-## Платежи
-
-### Создать платеж
-
-```http
-POST /payments
-```
-
-**Request Body:**
-```json
-{
-  "user_id": 1,
-  "subscription_id": 123,
-  "amount": 599.00,
-  "currency": "RUB",
-  "payment_method": "yookassa"
-}
-```
-
-**Response:** `201 Created`
-```json
-{
-  "success": true,
-  "data": {
-    "payment_id": 789,
-    "amount": 599.00,
-    "currency": "RUB",
-    "status": "pending",
-    "payment_url": "https://yookassa.ru/checkout/...",
-    "expires_at": "2025-11-15T11:00:00Z"
-  }
-}
-```
-
----
-
-### Проверить статус платежа
-
-```http
-GET /payments/:id
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "payment_id": 789,
-    "status": "succeeded",
-    "amount": 599.00,
-    "paid_at": "2025-11-15T10:30:00Z",
-    "subscription_activated": true
-  }
-}
-```
-
-**Статусы:**
-- `pending` - Ожидает оплаты
-- `processing` - Обрабатывается
-- `succeeded` - Успешно
-- `failed` - Ошибка
-- `cancelled` - Отменен
-
----
-
-### Webhook для платежей
-
-```http
-POST /payments/webhook
-```
-
-**Request Body (YooKassa):**
-```json
-{
-  "type": "notification",
-  "event": "payment.succeeded",
-  "object": {
-    "id": "payment_id",
-    "status": "succeeded",
-    "amount": {
-      "value": "599.00",
-      "currency": "RUB"
-    },
-    "metadata": {
-      "user_id": "1",
-      "subscription_id": "123"
-    }
-  }
-}
-```
-
----
-
-## Статистика
-
-### Получить статистику пользователя
-
-```http
-GET /stats/user/:user_id
-```
-
-**Query Parameters:**
-- `period` - day, week, month, year (default: month)
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "user_id": 1,
-    "period": "month",
-    "traffic": {
-      "sent": 15728640000,
-      "received": 52428800000,
-      "total": 68157440000,
-      "formatted": {
-        "sent": "14.65 GB",
-        "received": "48.83 GB",
-        "total": "63.48 GB"
-      }
-    },
-    "connection_time": 864000,
-    "connection_time_formatted": "10 дней",
-    "sessions": 45,
-    "avg_speed": {
-      "download": 125829120,
-      "upload": 31457280,
-      "formatted": {
-        "download": "120 Мбит/с",
-        "upload": "30 Мбит/с"
-      }
-    }
-  }
-}
-```
-
----
-
-### Получить общую статистику системы (Admin)
-
-```http
-GET /stats/system
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": {
-    "total_users": 1523,
-    "active_subscriptions": 892,
-    "total_revenue": 532340.00,
-    "servers": [
-      {
-        "name": "Germany-1",
-        "active_users": 234,
-        "load": 45.2,
-        "status": "online"
-      }
-    ],
-    "traffic_total": "15.2 TB"
-  }
-}
-```
-
----
-
-## 🖥️ Серверы
-
-### Получить список серверов
-
-```http
-GET /servers
-```
-
-**Response:** `200 OK`
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Germany-1",
-      "location": "Frankfurt",
-      "country_code": "DE",
-      "ip": "45.123.45.67",
-      "port": 51820,
-      "load": 45.2,
-      "ping": 15,
-      "is_active": true,
-      "current_users": 234,
-      "max_users": 1000
-    },
-    {
-      "id": 2,
-      "name": "USA-1",
-      "location": "New York",
-      "country_code": "US",
-      "ip": "104.123.45.67",
-      "port": 51820,
-      "load": 32.8,
-      "ping": 85,
-      "is_active": true,
-      "current_users": 167,
-      "max_users": 1000
-    }
-  ]
-}
-```
-
----
-
-## Коды ошибок
-
-### Формат ответа с ошибкой
+### Описание параметров
+
+* `API_ADDRESS` — адрес и порт HTTP-сервера;
+* `API_MODE` — режим работы Gin (`debug` или `production`);
+* `JWT_SECRET` — секрет для токенов аутентификации.
+
+## Текущая реализация маршрутов
+
+В текущей версии маршруты регистрируются в `internal/api/server.go`.
+
+### Health Check
+
+#### `GET /health`
+
+Базовый эндпоинт проверки доступности сервиса.
+
+**Назначение:**
+
+* проверка того, что API-сервер запущен и отвечает на запросы.
+
+#### `GET /health/advanced`
+
+Расширенный эндпоинт проверки состояния приложения.
+
+**Назначение:**
+
+* базовая проверка доступности API-сервера;
+* проверка состояния подключенной базы данных.
+
+## Заготовки для auth API
+
+В структуре сервера уже зарегистрированы следующие маршруты:
+
+### `POST /api/v1/auth/register`
+
+Предназначен для регистрации пользователя.
+
+**Текущее состояние:**
+
+* маршрут зарегистрирован;
+* бизнес-логика не реализована;
+* возвращает `501 Not Implemented`.
+
+### `POST /api/v1/auth/login`
+
+Предназначен для аутентификации пользователя.
+
+**Текущее состояние:**
+
+* маршрут зарегистрирован;
+* бизнес-логика не реализована;
+* возвращает `501 Not Implemented`.
+
+### `POST /api/v1/auth/refresh`
+
+Предназначен для обновления токена.
+
+**Текущее состояние:**
+
+* маршрут зарегистрирован;
+* бизнес-логика не реализована;
+* возвращает `501 Not Implemented`.
+
+## Планируемые группы эндпоинтов
+
+В коде API-сервера предусмотрены комментарии и точки расширения для следующих групп:
+
+* `/users`
+* `/subscriptions`
+* `/configs`
+* `/payments`
+* `/stats`
+* `/servers`
+
+На текущем этапе эти группы не реализованы полностью и не должны рассматриваться как доступный публичный контракт API.
+
+## Формат ответов
+
+Для текущих заглушек используется JSON-ответ следующего вида:
 
 ```json
 {
   "success": false,
-  "error": {
-    "code": "INVALID_TOKEN",
-    "message": "JWT токен истек",
-    "details": {}
-  }
+  "error": "Not implemented"
 }
 ```
 
-### HTTP статусы
+## Коды ответа
 
-- `200` - OK
-- `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized
-- `403` - Forbidden
-- `404` - Not Found
-- `409` - Conflict
-- `429` - Too Many Requests
-- `500` - Internal Server Error
+В текущей реализации встречаются:
 
-### Коды ошибок приложения
+* `200 OK` — для успешных health check запросов;
+* `501 Not Implemented` — для незавершенных auth-эндпоинтов.
 
-| Код | Описание |
-|-----|----------|
-| `INVALID_REQUEST` | Неверный запрос |
-| `INVALID_TOKEN` | Неверный токен |
-| `TOKEN_EXPIRED` | Токен истек |
-| `USER_NOT_FOUND` | Пользователь не найден |
-| `USER_EXISTS` | Пользователь уже существует |
-| `SUBSCRIPTION_NOT_FOUND` | Подписка не найдена |
-| `SUBSCRIPTION_EXPIRED` | Подписка истекла |
-| `PAYMENT_FAILED` | Ошибка платежа |
-| `SERVER_UNAVAILABLE` | Сервер недоступен |
-| `RATE_LIMIT_EXCEEDED` | Превышен лимит запросов |
+## Инициализация API-сервера
 
----
+Сервер создается через `api.NewServer(cfg, db)`.
 
-## Пример использования
+Основные шаги инициализации:
 
-### Go Client
+1. загрузка конфигурации;
+2. инициализация подключения к базе данных;
+3. создание Gin router;
+4. регистрация маршрутов;
+5. запуск HTTP-сервера.
 
-```go
-package main
+## Логирование API
 
-import (
-    "bytes"
-    "encoding/json"
-    "net/http"
-)
+Для API-сервера в проекте предусмотрен пакет `pkg/logger`, который включает:
 
-type LoginRequest struct {
-    TelegramID int64 `json:"telegram_id"`
-}
+* middleware для Gin;
+* request ID;
+* логирование статусов ответов и времени выполнения запроса.
 
-func main() {
-    client := &http.Client{}
+Подробности приведены в `pkg/logger/README.md`.
 
-    // Логин
-    body, _ := json.Marshal(LoginRequest{TelegramID: 123456789})
-    req, _ := http.NewRequest("POST", "https://api.spiritvpn.com/api/v1/auth/login", bytes.NewBuffer(body))
-    req.Header.Set("Content-Type", "application/json")
+## Развитие API
 
-    resp, _ := client.Do(req)
-    defer resp.Body.Close()
+При дальнейшем развитии API рекомендуется:
 
-    // Получить конфиг
-    req2, _ := http.NewRequest("GET", "https://api.spiritvpn.com/api/v1/configs/user/1", nil)
-    req2.Header.Set("Authorization", "Bearer <token>")
-
-    resp2, _ := client.Do(req2)
-    defer resp2.Body.Close()
-}
-```
-
-### Python Client
-
-```python
-import requests
-
-# Логин
-response = requests.post(
-    'https://api.spiritvpn.com/api/v1/auth/login',
-    json={'telegram_id': 123456789}
-)
-token = response.json()['token']['access_token']
-
-# Получить конфиг
-headers = {'Authorization': f'Bearer {token}'}
-config = requests.get(
-    'https://api.spiritvpn.com/api/v1/configs/user/1',
-    headers=headers
-).json()
-```
-
----
-
-## Changelog
-
-### v1.0.0 (2025-11-15)
-- ✅ Базовая аутентификация
-- ✅ Управление пользователями
-- ✅ Подписки и платежи
-- ✅ Генерация конфигов
-- ✅ Статистика
-
-### Планируется в v1.1.0
-- [ ] Реферальная система
-- [ ] Push уведомления
-- [ ] Расширенная аналитика
-- [ ] Промокоды
+1. фиксировать только реально реализованные маршруты;
+2. документировать request/response схемы после реализации;
+3. указывать требования к авторизации отдельно для каждого эндпоинта;
+4. покрывать новые эндпоинты unit- и integration-тестами.

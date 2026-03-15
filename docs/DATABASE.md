@@ -1,239 +1,256 @@
 # Database Architecture
 
-## Модели данных
+## Общая информация
 
-Проект использует GORM для работы с PostgreSQL. Все модели находятся в `internal/database/models.go`.
+SpiritVPN использует PostgreSQL в качестве основной базы данных. Работа с данными реализована через GORM и внутренний слой `internal/database`.
 
-### Основные модели:
+В каталоге `internal/database` находятся:
 
-1. **User** - пользователи системы, идентификация через Telegram ID
-2. **Subscription** - подписки пользователей с информацией о тарифных планах и сроках
-3. **VPNConfig** - VPN конфигурации с VLESS UUID и настройками
-4. **VPNServer** - VPN серверы в различных географических локациях
-5. **Payment** - платежи и транзакции пользователей
-6. **TrafficStat** - ежедневная статистика использования трафика
-7. **SubscriptionPlan** - тарифные планы с ценами и ограничениями
+* `database.go` — подключение и базовые операции инициализации;
+* `models.go` — модели данных;
+* `repository.go` — слой репозиториев;
+* `repository_test.go` — unit-тесты репозиториев.
 
-## Связи между таблицами
+## Основные модели
 
+В проекте определены следующие основные сущности:
+
+1. **User** — пользователь системы
+2. **Subscription** — подписка пользователя
+3. **VPNConfig** — VPN-конфигурация пользователя
+4. **VPNServer** — сервер VPN
+5. **Payment** — запись о платеже
+6. **TrafficStat** — статистика трафика
+7. **SubscriptionPlan** — тарифный план
+
+## Описание моделей
+
+### User
+
+Хранит идентификационные данные пользователя.
+
+Ключевые поля:
+
+* `ID`
+* `TelegramID`
+* `Username`
+* `Email`
+* `CreatedAt`
+* `UpdatedAt`
+
+Связи:
+
+* `Subscriptions`
+* `VPNConfigs`
+* `Payments`
+* `TrafficStats`
+
+### Subscription
+
+Описывает срок действия и параметры подписки.
+
+Ключевые поля:
+
+* `ID`
+* `UserID`
+* `PlanType`
+* `StartDate`
+* `EndDate`
+* `IsActive`
+* `AutoRenew`
+* `CreatedAt`
+
+Вспомогательные методы:
+
+* `IsExpired()`
+* `DaysLeft()`
+
+### VPNConfig
+
+Содержит параметры VPN-подключения, связанные с пользователем, подпиской и конкретным сервером.
+
+Ключевые поля:
+
+* `ID`
+* `UserID`
+* `SubscriptionID`
+* `ServerID`
+* `UUID`
+* `Flow`
+* `CreatedAt`
+* `UpdatedAt`
+
+### VPNServer
+
+Описывает сервер VPN в инфраструктуре.
+
+Ключевые поля:
+
+* `ID`
+* `Name`
+* `Host`
+* `Port`
+* `PublicKey`
+* `Location`
+* `CountryCode`
+* `IsActive`
+* `MaxUsers`
+* `CurrentUsers`
+* `LoadPercent`
+* `CreatedAt`
+* `UpdatedAt`
+
+Вспомогательные методы:
+
+* `HasCapacity()`
+* `UpdateLoad()`
+
+### Payment
+
+Хранит платежные записи и статус обработки оплаты.
+
+Ключевые поля:
+
+* `ID`
+* `UserID`
+* `SubscriptionID`
+* `Amount`
+* `Currency`
+* `Status`
+* `PaymentMethod`
+* `TransactionID`
+* `Metadata`
+* `CreatedAt`
+* `UpdatedAt`
+
+Вспомогательные методы:
+
+* `IsSuccessful()`
+* `IsPending()`
+
+### TrafficStat
+
+Используется для хранения статистики трафика по пользователю и VPN-конфигурации.
+
+Ключевые поля:
+
+* `ID`
+* `UserID`
+* `ConfigID`
+* `BytesSent`
+* `BytesReceived`
+* `Date`
+* `CreatedAt`
+
+Вспомогательные методы:
+
+* `TotalBytes()`
+* `TotalGB()`
+
+### SubscriptionPlan
+
+Описывает доступные тарифные планы.
+
+Ключевые поля:
+
+* `ID`
+* `Name`
+* `Code`
+* `DurationDays`
+* `Price`
+* `Currency`
+* `MaxDevices`
+* `MaxSpeed`
+* `Description`
+* `Features`
+* `IsActive`
+* `DisplayOrder`
+* `CreatedAt`
+* `UpdatedAt`
+
+## Связи между сущностями
+
+```text
+User (1) ──< Subscription (N)
+User (1) ──< VPNConfig (N)
+User (1) ──< Payment (N)
+User (1) ──< TrafficStat (N)
+
+Subscription (1) ──< VPNConfig (N)
+Subscription (1) ──< Payment (N)
+
+VPNServer (1) ──< VPNConfig (N)
+
+VPNConfig (1) ──< TrafficStat (N)
 ```
-User (1) ──< (N) Subscription
-User (1) ──< (N) VPNConfig
-User (1) ──< (N) Payment
-User (1) ──< (N) TrafficStat
-
-Subscription (1) ──< (N) VPNConfig
-Subscription (1) ──< (N) Payment
-
-VPNServer (1) ──< (N) VPNConfig
-
-VPNConfig (1) ──< (N) TrafficStat
-```
-
-## Использование Repository
-
-Repository слой предоставляет абстракцию над GORM для работы с моделями данных.
-Каждая модель имеет свой репозиторий с методами CRUD и специализированными запросами.
-
-### Пример создания пользователя:
-
-```go
-// Создание репозитория
-userRepo := database.NewUserRepository(db)
-
-// Создание пользователя
-user := &database.User{
-    TelegramID: 123456789,
-    Username:   "john_doe",
-    Email:      "john@example.com",
-}
-
-err := userRepo.Create(user)
-if err != nil {
-    log.Fatal(err)
-}
-
-// Поиск пользователя
-foundUser, err := userRepo.GetByTelegramID(123456789)
-```
-
-### Пример работы с подписками:
-
-```go
-subscriptionRepo := database.NewSubscriptionRepository(db)
-
-// Создание подписки
-subscription := &database.Subscription{
-    UserID:    user.ID,
-    PlanType:  "premium",
-    StartDate: time.Now(),
-    EndDate:   time.Now().AddDate(0, 1, 0), // +1 месяц
-    IsActive:  true,
-    AutoRenew: true,
-}
-
-err := subscriptionRepo.Create(subscription)
-
-// Получение активной подписки
-activeSub, err := subscriptionRepo.GetActiveByUserID(user.ID)
-
-// Проверка истечения
-if activeSub.IsExpired() {
-    fmt.Println("Подписка истекла!")
-}
-
-fmt.Printf("Осталось дней: %d\n", activeSub.DaysLeft())
-```
-
-### Пример работы с VPN конфигурациями:
-
-```go
-configRepo := database.NewVPNConfigRepository(db)
-serverRepo := database.NewVPNServerRepository(db)
-
-// Получение оптимального сервера
-server, err := serverRepo.GetOptimal()
-if err != nil {
-    log.Fatal(err)
-}
-
-// Создание конфигурации
-config := &database.VPNConfig{
-    UserID:         user.ID,
-    SubscriptionID: subscription.ID,
-    ServerID:       server.ID,
-    UUID:           "generated_uuid",
-    Flow:           "xtls-rprx-vision",
-}
-
-err = configRepo.Create(config)
-
-// Увеличение счетчика пользователей на сервере
-err = serverRepo.IncrementUsers(server.ID)
-```
-
-### Пример работы с платежами:
-
-```go
-paymentRepo := database.NewPaymentRepository(db)
-
-// Создание платежа
-payment := &database.Payment{
-    UserID:         user.ID,
-    SubscriptionID: &subscription.ID,
-    Amount:         599.00,
-    Currency:       "RUB",
-    Status:         "pending",
-    PaymentMethod:  "yookassa",
-    TransactionID:  "unique_transaction_id",
-}
-
-err := paymentRepo.Create(payment)
-
-// Обновление статуса после webhook
-err = paymentRepo.UpdateStatus(payment.ID, "succeeded")
-
-// Проверка статуса
-if payment.IsSuccessful() {
-    // Активировать подписку
-}
-```
-
-## Миграции
-
-Миграции выполняются автоматически при запуске приложения через GORM AutoMigrate.
-Система миграций обеспечивает актуальность структуры базы данных без ручного вмешательства.
-
-```go
-db, err := database.Connect(cfg)
-if err != nil {
-    log.Fatal(err)
-}
-
-// Выполнение миграций
-err = database.Migrate(db)
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-AutoMigrate:
-- Создает таблицы если их нет
-- Добавляет недостающие столбцы
-- Создает индексы
-- **НЕ удаляет** столбцы (для безопасности данных)
 
 ## Индексы
 
-Созданы следующие индексы для оптимизации:
+В моделях проекта определены, в частности, следующие индексы:
 
-- `users.telegram_id` - уникальный индекс
-- `subscriptions(user_id, is_active)` - для поиска активных подписок
-- `payments(status, created_at)` - для фильтрации платежей
-- `vpn_servers(is_active, load_percent)` - для выбора оптимального сервера
-- `vpn_configs.public_key` - уникальный индекс
-- `vpn_configs.ip_address` - уникальный индекс
-- `traffic_stats(user_id, date)` - композитный индекс
+* уникальный индекс `users.telegram_id`;
+* индекс `subscriptions.user_id`;
+* индекс `subscriptions.is_active`;
+* индекс `vpn_configs.uuid`;
+* индексы `vpn_configs.user_id`, `vpn_configs.subscription_id`, `vpn_configs.server_id`;
+* индекс `payments.user_id`;
+* индекс `payments.subscription_id`;
+* индекс `payments.status`;
+* индекс `vpn_servers.name`;
+* индекс `vpn_servers.is_active`;
+* составной индекс `traffic_stats(user_id, date)`.
 
-## Начальные данные (Seeding)
+## Репозитории
 
-При первом запуске автоматически создаются базовые тарифные планы.
-Система проверяет наличие планов в базе и создает их только если они отсутствуют.
+Слой репозиториев расположен в `internal/database/repository.go` и предназначен для инкапсуляции операций чтения и записи данных.
 
-- **Basic** - 299₽/мес (1 устройство, 50 Мбит/с)
-- **Premium** - 599₽/мес (5 устройств, безлимит)
-- **Premium Year** - 5990₽/год (экономия 16%)
+Назначение слоя репозиториев:
 
-## Настройка подключения
+* изолировать бизнес-логику от деталей GORM;
+* централизовать типовые операции с моделями;
+* упростить unit-тестирование.
 
-Параметры подключения к базе данных задаются через переменные окружения в файле `configs/.env`.
-Все параметры обязательны для корректной работы приложения.
+## Подключение к базе данных
+
+Базовые параметры подключения задаются через `configs/.env`:
 
 ```env
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=spiritdb
-DB_PASSWORD=your_password
+DB_PASSWORD=your_secure_password_here
 DB_NAME=spiritdb
 ```
 
-Пул подключений настроен:
-- Max Idle Connections: 10
-- Max Open Connections: 100
-- Connection Max Lifetime: 1 час
+## Миграции
 
-## Вспомогательные методы моделей
+В текущей структуре проекта отдельная CLI-команда миграции отсутствует. Инициализация схемы выполняется через слой `internal/database` при вызове соответствующей логики приложения.
 
-Каждая модель предоставляет набор helper методов для упрощения работы с данными.
-Эти методы инкапсулируют бизнес-логику и повышают читаемость кода.
+При использовании `AutoMigrate` в GORM следует учитывать следующее:
 
-### User
-```go
-user.Subscriptions // Все подписки пользователя
-user.VPNConfigs    // Все конфигурации
-user.Payments      // Все платежи
+* таблицы создаются, если отсутствуют;
+* недостающие столбцы могут быть добавлены;
+* индексы могут быть созданы;
+* удаление столбцов автоматически не выполняется.
+
+## Тестирование слоя данных
+
+Для тестирования репозиториев используются unit-тесты и мокирование SQL-запросов.
+
+Основные инструменты:
+
+* `github.com/stretchr/testify`
+* `github.com/DATA-DOG/go-sqlmock`
+
+Запуск тестов:
+
+```bash
+go test ./internal/database -v
 ```
 
-### Subscription
-```go
-subscription.IsExpired()  // Проверка истечения
-subscription.DaysLeft()   // Дней до окончания
-```
+## Практические рекомендации
 
-### VPNServer
-```go
-server.HasCapacity()  // Есть ли места
-server.UpdateLoad()   // Обновить процент загрузки
-```
-
-### Payment
-```go
-payment.IsSuccessful()  // Успешен ли платеж
-payment.IsPending()     // Ожидает обработки
-```
-
-### TrafficStat
-```go
-stat.TotalBytes()  // Общий трафик в байтах
-stat.TotalGB()     // Общий трафик в ГБ
-```
+* не хранить секреты БД в репозитории;
+* использовать отдельную конфигурацию для production и local development;
+* покрывать репозитории unit-тестами;
+* поддерживать согласованность моделей, документации и конфигурации окружения.

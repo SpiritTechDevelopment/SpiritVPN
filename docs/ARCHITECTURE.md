@@ -1,448 +1,224 @@
-# Архитектура SpiritVPN
+# Architecture
 
-## Обзор системы
+## Общая схема
 
-SpiritVPN построен на микросервисной архитектуре с тремя основными компонентами, взаимодействующими через REST API и общую базу данных.
+SpiritVPN построен как многокомпонентное приложение на Go с разделением на отдельные исполняемые сервисы и внутренние модули.
 
-```
-┌─────────────────┐
-│   Telegram Bot  │
-│                 │
-│  - Регистрация  │
-│  - Платежи      │
-│  - Выдача       │
-│    конфигов     │
-└────────┬────────┘
-         │
-         │ REST API
-         │
-         ▼
-┌─────────────────┐      ┌──────────────┐      ┌─────────────┐
-│   API Server    │◄────►│  PostgreSQL  │◄────►│    Redis    │
-│                 │      │              │      │   (Cache)   │
-│  - Auth         │      │  - Users     │      └─────────────┘
-│  - User Mgmt    │      │  - Subs      │
-│  - Config Gen   │      │  - Configs   │
-│  - Billing      │      │  - Payments  │
-└────────┬────────┘      └──────────────┘
-         │
-         │ gRPC/API
-         │
-         ▼
-┌─────────────────┐      ┌──────────────┐
-│   VPN Server    │◄────►│  Xray Core   │
-│                 │      │   (VLESS)    │
-│  - Routing      │      │              │
-│  - Traffic      │      └──────────────┘
-│  - Monitoring   │
-└─────────────────┘
+Базовая архитектура включает:
+
+* **VPN Server** — работа с Xray и VPN-логикой;
+* **API Server** — HTTP API и служебные эндпоинты;
+* **Telegram Bot** — Telegram-интерфейс;
+* **Database Layer** — модели, репозитории и доступ к PostgreSQL;
+* **Workers** — фоновые задачи;
+* **Shared Packages** — конфигурация и логирование.
+
+## Структура верхнего уровня
+
+```text
+SpiritVPN/
+├── cmd/
+├── configs/
+├── deployments/
+├── docs/
+├── examples/
+├── internal/
+├── pkg/
+├── test/
+├── docker-compose.yml
+├── go.mod
+└── go.sum
 ```
 
-## Компоненты системы
+## Исполняемые компоненты
 
-### 1. VPN Server
+### `cmd/api-server`
 
-**Технологии:**
-- Xray (VLESS+Reality)
-- Go (управляющий сервис)
-- gRPC (управление Xray)
+Точка входа REST API сервера.
 
-**Функции:**
-- Прием и обработка VPN соединений
-- Маршрутизация трафика пользователей
-- Сбор статистики по использованию через StatsWorker
-- Управление пользователями (UUID)
-- Мониторинг состояния соединений
-- Периодический опрос Xray API для учета трафика
+Назначение:
 
-**Background Workers:**
-- **StatsWorker**: фоновый процесс для периодического сбора статистики трафика из Xray API
-  - Опрос активных подписок каждые 5 минут (настраивается через `VPN_STATS_INTERVAL`)
-  - Получение данных о входящем/исходящем трафике для каждого пользователя
-  - Агрегация и сохранение статистики в базу данных
-  - Используется для биллинга и аналитики
+* запуск Gin-based HTTP API;
+* регистрация health check маршрутов;
+* использование слоя `internal/api`.
 
-#### VLESS протокол
+### `cmd/telegram-bot`
 
-VLESS - это легковесный протокол без шифрования на уровне протокола, использующий TLS для безопасности.
+Точка входа Telegram-бота.
 
-**Основные характеристики:**
-- Транспорт: TCP/WebSocket
-- Шифрование: TLS 1.3
-- Аутентификация: UUID
-- Поддержка Flow для управления потоком данных
-- Reality технология для маскировки трафика
+Назначение:
 
-**Конфигурация:**
-- Private Key: X25519 ключ для шифрования
-- Short IDs: идентификаторы для маскировки трафика
-- SNI: Server Name Indication для маскировки под легитимный домен
-- Public Key: публичный ключ для клиентов
+* запуск пользовательского интерфейса сервиса в Telegram;
+* работа с бизнес-логикой бота из `internal/bot`.
 
-**Преимущества VLESS:**
-- Высокая производительность
-- Лучшая защита от обнаружения
-- Простота настройки
-- Совместимость с популярными клиентами
+### `cmd/vpn-server`
 
-**Файловая структура:**
-```
-internal/vpn/
-├── server.go          # Основной VPN сервер
-├── xray.go            # Интеграция с Xray (gRPC)
-├── user.go            # Управление пользователями
-└── monitor.go         # Мониторинг соединений
+Точка входа VPN-сервера.
 
-internal/workers/
-└── stats_worker.go    # Фоновый сбор статистики трафика
-```
+Назначение:
 
-### 2. API Server
+* инициализация VPN-компонента;
+* взаимодействие с Xray;
+* запуск связанных фоновых процессов.
 
-**Технологии:**
-- Gin (web framework)
-- GORM (ORM)
-- JWT (аутентификация)
+## Внутренние модули
 
-**Функции:**
-- REST API для управления системой
-- Аутентификация и авторизация
-- CRUD операции для пользователей
-- Управление подписками
-- Генерация конфигураций
-- Биллинг и платежи
-- Статистика и аналитика
+### `internal/api`
 
-**Эндпоинты:**
-```
-POST   /api/v1/auth/register
-POST   /api/v1/auth/login
-GET    /api/v1/users/:id
-POST   /api/v1/subscriptions
-GET    /api/v1/configs/:user_id
-POST   /api/v1/payments
-GET    /api/v1/stats/:user_id
-```
+Содержит сервер API и обработчики.
 
-**Файловая структура:**
-```
-internal/api/
-├── handlers/
-│   ├── auth.go        # Аутентификация
-│   ├── users.go       # Пользователи
-│   ├── subscriptions.go
-│   ├── configs.go
-│   └── payments.go
-├── middleware/
-│   ├── auth.go        # JWT middleware
-│   └── cors.go
-├── routes/
-│   └── routes.go      # Роуты
-└── server.go          # HTTP сервер
-```
+Основные элементы:
 
-### 3. Telegram Bot
+* `server.go` — создание сервера, маршрутов и групп API;
+* `handlers/health.go` — health check обработчики.
 
-**Технологии:**
-- go-telegram-bot-api
-- Inline клавиатуры
-- Webhook/Long Polling
+### `internal/bot`
 
-**Функции:**
-- Регистрация новых пользователей
-- Выбор и покупка подписок
-- Интеграция с платежными системами
-- Выдача конфигурационных файлов
-- Продление подписок
-- Статистика использования
-- Поддержка пользователей
+Содержит логику Telegram-бота.
 
-**Сценарии использования:**
-```
-/start          → Регистрация/Главное меню
-/buy            → Выбор тарифа → Оплата → Конфиг
-/myconfig       → Получение конфига
-/stats          → Статистика использования
-/extend         → Продление подписки
-/support        → Связь с поддержкой
-```
+Назначение:
 
-**Файловая структура:**
-```
-internal/bot/
-├── handlers/
-│   ├── start.go       # Команда /start
-│   ├── buy.go         # Покупка подписки
-│   ├── config.go      # Выдача конфигов
-│   └── stats.go       # Статистика
-├── keyboards/
-│   └── inline.go      # Inline клавиатуры
-├── middleware/
-│   └── auth.go        # Проверка пользователя
-└── bot.go             # Основной бот
-```
+* обработка команд и пользовательских сценариев;
+* взаимодействие с другими сервисными слоями проекта.
 
-## База данных
+### `internal/database`
 
-### PostgreSQL Schema
+Содержит слой данных.
 
-```sql
--- Пользователи
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    telegram_id BIGINT UNIQUE NOT NULL,
-    username VARCHAR(255),
-    email VARCHAR(255),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+Основные элементы:
 
--- Подписки
-CREATE TABLE subscriptions (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    plan_type VARCHAR(50) NOT NULL,
-    start_date TIMESTAMP NOT NULL,
-    end_date TIMESTAMP NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    auto_renew BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+* модели GORM;
+* подключение к PostgreSQL;
+* репозитории;
+* unit-тесты для слоя данных.
 
--- Конфигурации VPN
-CREATE TABLE vpn_configs (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    subscription_id INTEGER REFERENCES subscriptions(id),
-    public_key TEXT NOT NULL,
-    private_key TEXT NOT NULL,
-    ip_address INET NOT NULL,
-    server_id INTEGER REFERENCES vpn_servers(id),
-    created_at TIMESTAMP DEFAULT NOW()
-);
+### `internal/vpn`
 
--- VPN серверы
-CREATE TABLE vpn_servers (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    host VARCHAR(255) NOT NULL,
-    port INTEGER NOT NULL,
-    public_key TEXT NOT NULL,
-    location VARCHAR(100),
-    is_active BOOLEAN DEFAULT true,
-    max_users INTEGER DEFAULT 1000,
-    current_users INTEGER DEFAULT 0
-);
+Содержит VPN-логику и интеграцию с Xray.
 
--- Платежи
-CREATE TABLE payments (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    subscription_id INTEGER REFERENCES subscriptions(id),
-    amount DECIMAL(10, 2) NOT NULL,
-    currency VARCHAR(3) DEFAULT 'RUB',
-    status VARCHAR(50) NOT NULL,
-    payment_method VARCHAR(50),
-    transaction_id VARCHAR(255),
-    created_at TIMESTAMP DEFAULT NOW()
-);
+Назначение:
 
--- Статистика трафика
-CREATE TABLE traffic_stats (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
-    config_id INTEGER REFERENCES vpn_configs(id),
-    bytes_sent BIGINT DEFAULT 0,        -- Исходящий трафик
-    bytes_received BIGINT DEFAULT 0,     -- Входящий трафик
-    date DATE NOT NULL,                  -- Дата сбора статистики
-    created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(user_id, config_id, date)     -- Одна запись на день
-);
+* работа с Xray API;
+* управление VPN-пользователями;
+* получение статистики трафика.
 
--- Индексы для быстрого доступа
-CREATE INDEX idx_traffic_stats_user_date ON traffic_stats(user_id, date);
-CREATE INDEX idx_traffic_stats_config ON traffic_stats(config_id);
+### `internal/workers`
+
+Содержит фоновые задачи.
+
+Текущее назначение:
+
+* сбор и обработка статистики трафика.
+
+## Переиспользуемые пакеты
+
+### `pkg/config`
+
+Пакет загрузки конфигурации приложения из `configs/.env` и переменных окружения.
+
+Содержит настройки для:
+
+* API;
+* базы данных;
+* Redis;
+* VPN;
+* Telegram;
+* платежей;
+* логирования.
+
+### `pkg/logger`
+
+Пакет структурированного логирования.
+
+Поддерживает:
+
+* консольное логирование;
+* файловое логирование;
+* ротацию файлов;
+* Gin middleware;
+* GORM logger;
+* Telegram hook.
+
+## Слой данных
+
+В приложении используется PostgreSQL как основная база данных и Redis как вспомогательное хранилище.
+
+Ключевые сущности БД:
+
+* `User`
+* `Subscription`
+* `VPNConfig`
+* `VPNServer`
+* `Payment`
+* `TrafficStat`
+* `SubscriptionPlan`
+
+Подробности приведены в `docs/DATABASE.md`.
+
+## Конфигурация
+
+Конфигурация хранится в `configs/.env` и загружается через `pkg/config`.
+
+Ключевые группы настроек:
+
+* API;
+* PostgreSQL;
+* Redis;
+* VPN/Xray;
+* Telegram Bot;
+* Payment;
+* Logging.
+
+Также в `configs/` расположен файл `xray.json`.
+
+## Схема взаимодействия компонентов
+
+```text
+Telegram Bot ───────┐
+                    │
+                    ▼
+                API Server ─────────────► Database (PostgreSQL)
+                    │
+                    │
+                    ├───────────────────► Redis
+                    │
+                    ▼
+                VPN Layer ──────────────► Xray API
+                    │
+                    ▼
+                 Workers
 ```
 
-**Примечание**: Статистика собирается автоматически через StatsWorker каждые 5 минут (настраивается через `VPN_STATS_INTERVAL`). Данные агрегируются по дням для биллинга и аналитики.
-```
+## Логирование и наблюдаемость
 
-### Redis (Кеширование)
+Для всех компонентов предусмотрен единый пакет логирования `pkg/logger`.
 
-```
-Ключи:
-- user:{telegram_id}           # Данные пользователя
-- config:{user_id}             # VPN конфигурация
-- stats:{user_id}:{date}       # Статистика за день
-- session:{token}              # JWT сессии
-- rate_limit:{telegram_id}     # Rate limiting
-```
+Архитектурно логирование включает:
 
-## Безопасность
+* общий формат записей;
+* разделение общих логов и ошибок;
+* контекстные поля;
+* интеграцию с HTTP и SQL-слоями;
+* Telegram-уведомления для критических событий.
 
-### Аутентификация
+## Тестирование
 
-1. **Telegram Bot**: Аутентификация через Telegram ID
-2. **API**: JWT токены с refresh механизмом
-3. **VPN**: Аутентификация через WireGuard ключи
+В проекте используются:
 
-### Шифрование
+* unit-тесты для отдельных пакетов;
+* smoke-сценарии для проверки интеграции с Xray;
+* тесты обработчиков и репозиториев.
 
-- WireGuard: Использует ChaCha20 для шифрования
-- API: HTTPS/TLS 1.3
-- БД: Шифрование чувствительных данных (AES-256)
+## Текущее состояние архитектуры
 
-### Защита от атак
+Архитектура уже разделена по компонентам и пригодна для дальнейшего расширения. При этом ряд бизнес-сценариев находится в стадии реализации, поэтому архитектурная документация описывает текущую структуру и направления интеграции, а не завершенный пользовательский функционал.
 
-- Rate limiting (Redis)
-- CORS настройки
-- SQL injection защита (GORM prepared statements)
-- XSS защита
-- DDoS защита на уровне сервера
+## Рекомендации по развитию
 
-## Масштабирование
+При дальнейшем развитии архитектуры рекомендуется:
 
-### Горизонтальное масштабирование
-
-```
-                    ┌─────────────┐
-                    │   Nginx LB  │
-                    └──────┬──────┘
-                           │
-            ┌──────────────┼──────────────┐
-            │              │              │
-       ┌────▼────┐    ┌────▼────┐   ┌────▼────┐
-       │  API 1  │    │  API 2  │   │  API 3  │
-       └─────────┘    └─────────┘   └─────────┘
-            │              │              │
-            └──────────────┼──────────────┘
-                           │
-                    ┌──────▼──────┐
-                    │ PostgreSQL  │
-                    │   Master    │
-                    └──────┬──────┘
-                           │
-                    ┌──────┴──────┐
-                    │             │
-              ┌─────▼────┐  ┌─────▼────┐
-              │ Replica1 │  │ Replica2 │
-              └──────────┘  └──────────┘
-```
-
-### Мультисерверная архитектура VPN
-
-```
-┌──────────────┐
-│  API Server  │
-└──────┬───────┘
-       │
-       │ Управление
-       │
-   ┌───┴───────────┬────────────┬────────────┐
-   │               │            │            │
-┌──▼───────┐  ┌───▼────────┐  ┌▼────────┐  ┌▼────────┐
-│ VPN US-1 │  │ VPN EU-1   │  │ VPN AS-1│  │ VPN RU-1│
-│ (USA)    │  │ (Germany)  │  │ (Japan) │  │ (Russia)│
-└──────────┘  └────────────┘  └─────────┘  └─────────┘
-```
-
-## Мониторинг и Логирование
-
-### Метрики (Prometheus)
-
-```
-- vpn_active_connections        # Активные соединения
-- vpn_traffic_bytes_total       # Общий трафик
-- vpn_stats_collection_duration # Время сбора статистики
-- vpn_stats_errors_total        # Ошибки при сборе статистики
-- api_requests_total
-- api_response_time
-- payment_success_rate
-- subscription_active_count
-```
-
-### Логирование (Structured logging)
-
-```go
-logger.Info("User connected",
-    "user_id", userID,
-    "server", serverName,
-    "ip", clientIP,
-)
-```
-
-### Алерты
-
-- Падение VPN сервера
-- Превышение лимита подключений
-- Ошибки платежей > 5%
-- Проблемы с БД
-- Высокая нагрузка на CPU/RAM
-
-## CI/CD Pipeline
-
-```
-┌──────────┐
-│   Git    │
-│  Push    │
-└────┬─────┘
-     │
-     ▼
-┌──────────────┐
-│ GitHub       │
-│ Actions      │
-└────┬─────────┘
-     │
-     ├──► Tests (unit, integration)
-     ├──► Linting
-     ├──► Build Docker images
-     │
-     ▼
-┌──────────────┐
-│ Docker       │
-│ Registry     │
-└────┬─────────┘
-     │
-     ▼
-┌──────────────┐
-│ Deploy to    │
-│ Production   │
-└──────────────┘
-```
-
-## Развертывание
-
-### Production Stack
-
-```yaml
-# docker-compose.yml
-services:
-  postgres:
-    image: postgres:14
-  redis:
-    image: redis:7
-  api:
-    build: ./cmd/api-server
-    replicas: 3
-  bot:
-    build: ./cmd/telegram-bot
-  vpn:
-    build: ./cmd/vpn-server
-    cap_add:
-      - NET_ADMIN
-  nginx:
-    image: nginx:latest
-  prometheus:
-    image: prom/prometheus
-  grafana:
-    image: grafana/grafana
-```
-
----
-
-Эта архитектура обеспечивает:
-- Высокую доступность
-- Масштабируемость
-- Безопасность
-- Простоту поддержки
-- Мониторинг и логирование
+1. сохранять разделение `cmd`, `internal` и `pkg`;
+2. развивать API и bot-логику через отдельные сервисные слои;
+3. документировать новые контракты API после их фактической реализации;
+4. изолировать интеграции с внешними сервисами в отдельных пакетах;
+5. поддерживать синхронность между кодом, конфигурацией и документацией.
