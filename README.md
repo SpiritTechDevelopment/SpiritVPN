@@ -5,257 +5,289 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/RomanRyabinkin/SpiritVPN)](https://goreportcard.com/report/github.com/RomanRyabinkin/SpiritVPN)
 [![License](https://img.shields.io/github/license/RomanRyabinkin/SpiritVPN)](LICENSE)
 
-**SpiritVPN** - VPN сервис с продажей подписок через Telegram бота, написанный на Go.
+**SpiritVPN** — сервис на Go для управления VPN-инфраструктурой на базе Xray с поддержкой VLESS + Reality, REST API, Telegram-бота и внутренней подсистемы учета пользователей, подписок и статистики трафика.
 
-## Описание
+## Назначение
 
-SpiritVPN представляет собой комплексное решение для создания и управления VPN-сервисом:
-- VPN-сервер на базе Xray с поддержкой VLESS+Reality протокола
-- Telegram бот для продажи подписок и управления аккаунтом
-- Интеграция с платежными системами
-- API для управления пользователями и серверами
-- Административная панель
+Проект предназначен для построения VPN-сервиса со следующими компонентами:
 
-## Особенности
+* **VPN Server** — взаимодействие с Xray и управление VPN-конфигурациями
+* **API Server** — REST API для служебных и пользовательских операций
+* **Telegram Bot** — пользовательский интерфейс в Telegram
+* **Database Layer** — модели, репозитории и работа с PostgreSQL
+* **Workers** — фоновые задачи, включая сбор статистики трафика
+* **Logger Package** — структурированное логирование с поддержкой файлов, Gin, GORM и Telegram-уведомлений
 
-- VPN сервер на базе VLESS протокола с поддержкой Reality
-- Высокая производительность и защита от обнаружения
-- Telegram бот для управления подписками
-- REST API для интеграции
-- Интеграция с ЮKassa для приема платежей
-- PostgreSQL + Redis для хранения данных
-- Docker-ready архитектура
-- QR-коды для быстрой настройки клиентов
+## Текущее состояние проекта
+
+В текущей версии репозитория доступны:
+
+* базовая структура многокомпонентного сервиса;
+* загрузка конфигурации из `configs/.env`;
+* API-сервер с health check эндпоинтами;
+* слой моделей и репозиториев для PostgreSQL;
+* модуль интеграции с Xray;
+* worker для сбора статистики трафика;
+* пакет структурированного логирования;
+* unit-тесты для отдельных пакетов.
+
+Публичные пользовательские сценарии, включая полный billing flow, выдачу клиентских конфигураций через API и завершенные bot/API бизнес-эндпоинты, находятся в стадии развития.
 
 ## Архитектура
 
-Проект состоит из трех основных компонентов:
+Структура приложения разделена на отдельные исполняемые компоненты:
 
-1. **VPN Server** - сервер для маршрутизации трафика пользователей
-2. **API Server** - REST API для управления системой
-3. **Telegram Bot** - интерфейс для пользователей
+1. **VPN Server** — управление Xray и VPN-логикой
+2. **API Server** — HTTP API и служебные эндпоинты
+3. **Telegram Bot** — Telegram-интерфейс сервиса
 
-Подробнее в [ARCHITECTURE.md](docs/ARCHITECTURE.md)
+Дополнительная информация приведена в `docs/ARCHITECTURE.md`.
+
+## Требования
+
+* Go 1.21+
+* PostgreSQL 14+
+* Redis 7+
+* Xray-core
+* Docker и Docker Compose — опционально
 
 ## Быстрый старт
 
-### Требования
+### 1. Клонирование репозитория
 
-- Go 1.21+
-- PostgreSQL 14+
-- Redis 7+
-- Docker & Docker Compose (опционально)
-
-### Установка
-
-1. Клонируйте репозиторий:
 ```bash
 git clone https://github.com/RomanRyabinkin/SpiritVPN.git
 cd SpiritVPN
 ```
 
-2. Установите зависимости:
+### 2. Установка зависимостей
+
 ```bash
 go mod download
 ```
 
-3. Создайте файл конфигурации:
+### 3. Подготовка конфигурации
+
 ```bash
 cp configs/.env.example configs/.env
 ```
 
-4. Настройте переменные окружения в `configs/.env`
+Заполните переменные окружения в `configs/.env`.
 
-5. Запустите миграции базы данных:
-```bash
-go run cmd/migrate/main.go
-```
+### 4. Подготовка инфраструктуры
 
-6. Запустите сервисы:
+Перед запуском сервисов должны быть доступны:
 
-**VPN Server:**
+* PostgreSQL
+* Redis
+* Xray API
+
+### 5. Запуск сервисов
+
+**VPN Server**
+
 ```bash
 go run cmd/vpn-server/main.go
 ```
 
-**API Server:**
+**API Server**
+
 ```bash
 go run cmd/api-server/main.go
 ```
 
-**Telegram Bot:**
+**Telegram Bot**
+
 ```bash
 go run cmd/telegram-bot/main.go
 ```
 
-### Docker
-
-Запуск всех сервисов через Docker Compose:
+### 6. Запуск через Docker Compose
 
 ```bash
 docker-compose up -d
 ```
 
-## Структура проекта
-
-```
-SpiritVPN/
-├── cmd/                    # Точки входа приложений
-│   ├── vpn-server/        # VPN сервер
-│   ├── api-server/        # REST API сервер
-│   └── telegram-bot/      # Telegram бот
-├── internal/              # Внутренняя бизнес-логика
-│   ├── vpn/              # Логика VPN сервера
-│   ├── api/              # API handlers и routes
-│   ├── bot/              # Telegram бот handlers
-│   ├── database/         # Работа с БД
-│   └── payment/          # Платежные системы
-├── pkg/                   # Публичные библиотеки
-│   └── config/           # Конфигурация
-├── docs/                  # Документация
-├── configs/              # Конфигурационные файлы
-├── deployments/          # Docker, Kubernetes конфиги
-└── scripts/              # Вспомогательные скрипты
-```
-
-## Документация
-
-- [Архитектура системы](docs/ARCHITECTURE.md)
-- [API документация](docs/API.md)
-- [План разработки](docs/ROADMAP.md)
-- [Гайд по деплою](docs/DEPLOYMENT.md)
-- [Руководство по тестированию](docs/TESTING.md)
-- [FAQ](docs/FAQ.md)
-
 ## Конфигурация
 
-Основные настройки в файле `configs/.env`:
+Основные настройки приложения задаются в `configs/.env`.
 
 ```env
 # Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=spiritdb
-DB_PASSWORD=your_password
+DB_PASSWORD=your_secure_password_here
 DB_NAME=spiritdb
 
 # Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
+# API
+API_ADDRESS=:8080
+API_MODE=debug
+JWT_SECRET=your-jwt-secret-key-change-in-production
+
+# VPN
+VPN_HOST=localhost
+VPN_PORT=443
+VPN_API_PORT=10085
+VPN_API_ADDRESS=localhost
+VPN_SERVER_NAME=google.com
+VPN_PRIVATE_KEY=
+VPN_PUBLIC_KEY=
+VPN_SHORT_IDS=
+VPN_STATS_INTERVAL=5m
 
 # Telegram Bot
-TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+TELEGRAM_DEBUG=false
 
 # Payment
 YOOKASSA_SHOP_ID=your_shop_id
 YOOKASSA_SECRET_KEY=your_secret_key
 
-# VPN
-VPN_HOST=0.0.0.0
-VPN_PORT=443
-VPN_API_PORT=10085
-VPN_API_ADDRESS=127.0.0.1:10085
-VPN_SERVER_NAME=google.com
-VPN_SHORT_IDS=
-VPN_PRIVATE_KEY=your_x25519_private_key
-VPN_PUBLIC_KEY=your_x25519_public_key
-VPN_STATS_INTERVAL=5m          # Интервал сбора статистики трафика
+# Logging
+LOG_LEVEL=info
+LOG_DIR=./logs
+LOG_CONSOLE=true
+LOG_FILE=true
+LOG_COLORED=true
+LOG_ERROR_FILE=true
+LOG_ENABLED=true
+LOG_MAX_FILE_SIZE=10
+LOG_MAX_BACKUPS=5
+LOG_MAX_AGE=30
+LOG_TELEGRAM_BOT_TOKEN=
+LOG_TELEGRAM_CHAT_ID=
+LOG_TELEGRAM_THREAD_ID=
 ```
 
-## Разработка
+## Важное замечание по конфигурации
 
-### Запуск тестов
+Общая загрузка конфигурации выполняется через пакет `pkg/config`. В текущей реализации `TELEGRAM_BOT_TOKEN` является обязательным параметром при вызове `config.Load()`.
+
+## Миграции базы данных
+
+В текущей структуре проекта отдельная команда `cmd/migrate` отсутствует.
+
+Для инициализации схемы используется функциональность слоя `internal/database`, включая вызов миграции из кода приложения.
+
+## Структура проекта
+
+```text
+SpiritVPN/
+├── cmd/                    # Точки входа приложений
+│   ├── api-server/         # REST API сервер
+│   ├── telegram-bot/       # Telegram бот
+│   └── vpn-server/         # VPN сервер
+├── configs/                # Конфигурационные файлы
+├── deployments/            # Docker-файлы и служебные скрипты запуска
+├── docs/                   # Проектная документация
+├── examples/               # Примеры использования модулей
+├── internal/               # Внутренняя бизнес-логика
+│   ├── api/                # API сервер и handlers
+│   ├── bot/                # Логика Telegram бота
+│   ├── database/           # Модели, подключение, репозитории
+│   ├── vpn/                # Интеграция с Xray и VPN-логика
+│   └── workers/            # Фоновые worker'ы
+├── pkg/                    # Переиспользуемые пакеты
+│   ├── config/             # Загрузка конфигурации
+│   └── logger/             # Структурированное логирование
+├── test/                   # Тестовые сценарии
+│   └── smoke/              # Smoke-сценарии
+├── CHANGELOG.md
+├── LICENSE
+├── LOGGER_IMPLEMENTATION.md
+├── Makefile
+├── README.md
+├── docker-compose.yml
+├── go.mod
+└── go.sum
+```
+
+## Тестирование
+
+### Unit-тесты
 
 ```bash
-# Все unit-тесты
 go test ./...
+```
 
-# С подробным выводом
+### Подробный вывод
+
+```bash
 go test -v ./...
+```
 
-# Конкретный пакет
+### Тестирование отдельного пакета
+
+```bash
 go test ./pkg/config -v
+```
 
-# С покрытием кода
+### Покрытие
+
+```bash
 make test-coverage
-
-# HTML отчет о покрытии
 make test-coverage-html
+```
 
-# Только unit-тесты (без интеграционных)
+### Только unit-тесты
+
+```bash
 make test-unit
 ```
 
-**Текущее покрытие:**
-- `pkg/config` - 100% (парсинг конфигурации, duration helpers)
-- `internal/workers` - 20% (lifecycle тесты StatsWorker)
-- `internal/database` - 10.9% (repository unit-тесты с sqlmock)
+### Smoke-сценарий Xray
 
-**Тестовые зависимости:**
-- `github.com/stretchr/testify` - assertion и mocking
-- `github.com/DATA-DOG/go-sqlmock` - мокирование GORM для unit-тестов
+В каталоге `test/smoke/` находится отдельный smoke-сценарий для проверки взаимодействия с Xray API.
 
-Подробнее в [TESTING.md](docs/TESTING.md)
-
-### Запуск с hot-reload
-
-```bash
-# Установите air
-go install github.com/cosmtrek/air@latest
-
-# Запустите
-air
-```
-
-### Линтинг
+## Линтинг
 
 ```bash
 golangci-lint run
 ```
 
+## Документация
+
+* `docs/API.md` — REST API
+* `docs/ARCHITECTURE.md` — архитектура системы
+* `docs/DATABASE.md` — модели и слой данных
+* `docs/DEPLOYMENT.md` — развертывание
+* `docs/FAQ.md` — ответы на частые вопросы
+* `docs/ROADMAP.md` — план развития
+* `docs/TESTING.md` — тестирование
+* `docs/VLESS.md` — описание протокола VLESS и настройки Xray
+* `pkg/logger/README.md` — документация по логированию
+
 ## Roadmap
 
-- [x] Инициализация проекта
-- [ ] Реализация VPN сервера (VLESS)
-- [ ] REST API для управления
-- [ ] Telegram бот
-- [ ] Интеграция платежей
-- [ ] Админ панель
-- [ ] Мультисерверная архитектура
-- [ ] Мониторинг и логирование
-- [ ] CI/CD pipeline
+К основным направлениям развития проекта относятся:
 
-Полный план в [ROADMAP.md](docs/ROADMAP.md)
+* развитие пользовательских и административных API;
+* завершение Telegram bot flow;
+* интеграция платежных сценариев;
+* развитие логики выдачи VPN-конфигураций;
+* расширение покрытия тестами;
+* развитие многосерверной архитектуры.
 
 ## Вклад в проект
 
-Мы приветствуем любой вклад! Пожалуйста:
-
-1. Форкните репозиторий
-2. Создайте feature-ветку (`git checkout -b feature/AmazingFeature`)
-3. Закоммитьте изменения (`git commit -m 'Add some AmazingFeature'`)
-4. Запушьте в ветку (`git push origin feature/AmazingFeature`)
+1. Создайте fork репозитория
+2. Создайте feature-ветку
+3. Внесите изменения
+4. Добавьте или обновите тесты при необходимости
 5. Откройте Pull Request
 
 ## Лицензия
 
-Этот проект распространяется под лицензией MIT. Подробности в файле [LICENSE](LICENSE).
+Проект распространяется под лицензией MIT. Подробности приведены в файле `LICENSE`.
 
 ## Авторы
 
-**Roman Ryabinkin**. GitHub: [@RomanRyabinkin](https://github.com/RomanRyabinkin)
-
-**Pavel Lensky**. GitHub: [@xvpaul](https://github.com/xvpaul)
-
-
-## Благодарности
-
-- Сообщество Go за саппорт
-
-## Поддержка
-
-Если у вас есть вопросы или проблемы:
-- Создайте [Issue](https://github.com/RomanRyabinkin/SpiritVPN/issues)
-- Напишите в [Discussions](https://github.com/RomanRyabinkin/SpiritVPN/discussions)
-
----
+* **Roman Ryabinkin** — @RomanRyabinkin
+* **Pavel Lensky** — @xvpaul

@@ -1,431 +1,237 @@
-# Гайд по деплою SpiritVPN
+# Deployment Guide
 
-## Подготовка сервера
+## Назначение
 
-### Требования
+Документ описывает базовые требования и порядок развертывания компонентов SpiritVPN в текущем состоянии репозитория.
 
-- Ubuntu 20.04+ / Debian 11+
-- Минимум 2 CPU cores
-- Минимум 2GB RAM
-- 20GB SSD
-- Публичный IP адрес
-- Root доступ
+## Компоненты развертывания
 
-### Установка необходимого ПО
+В проект входят следующие исполняемые сервисы:
 
-```bash
-# Обновление системы
-sudo apt update && sudo apt upgrade -y
+* `api-server`
+* `telegram-bot`
+* `vpn-server`
 
-# Установка Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+Для контейнерного запуска в репозитории предусмотрены:
 
-# Установка Docker Compose
-sudo apt install docker-compose -y
+* `deployments/api.Dockerfile`
+* `deployments/bot.Dockerfile`
+* `deployments/vpn.Dockerfile`
+* `deployments/entrypoint.sh`
+* `docker-compose.yml`
 
-# Разрешение IP forwarding
-echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-```
+## Требования окружения
 
-## Деплой через Docker Compose
+Для запуска необходимы:
 
-### 1. Клонирование репозитория
+* Go 1.21+;
+* PostgreSQL 14+;
+* Redis 7+;
+* Xray-core;
+* Docker и Docker Compose — при контейнерном запуске.
 
-```bash
-git clone https://github.com/RomanRyabinkin/SpiritVPN.git
-cd SpiritVPN
-```
+## Подготовка конфигурации
 
-### 2. Настройка переменных окружения
+Создайте локальный конфигурационный файл:
 
 ```bash
 cp configs/.env.example configs/.env
-nano configs/.env
 ```
 
-Заполните все необходимые переменные:
-- `TELEGRAM_BOT_TOKEN` - токен от BotFather
-- `DB_PASSWORD` - надежный пароль для PostgreSQL
-- `JWT_SECRET` - секретный ключ для JWT
-- `YOOKASSA_*` - данные от платежной системы
+Заполните как минимум следующие группы параметров:
 
-### 3. Генерация ключей Xray (VLESS+Reality)
+* параметры подключения к PostgreSQL;
+* параметры подключения к Redis;
+* параметры Telegram Bot;
+* параметры VPN/Xray;
+* параметры логирования.
 
-**Генерация X25519 keypair для Reality:**
+## Локальный запуск
+
+### API Server
 
 ```bash
-# Метод 1: Через Docker
-docker run --rm ghcr.io/xtls/xray-core:latest x25519
-
-# Вывод(Чет наподобие):
-# PrivateKey: aFMF5-Dej2UmPnaKNvOZckEnT2H978VlyE00xo6dynk
-# Password: Ypf35kJ7Yye2HKDqEpOOT9e0mbf7NenJ8F-YsgavBE4  (Public Key)
-# Hash32: 2iaa_9nbBQK4RwQxtcWo-hUz-SNaZoL4bAMK4akhVvs
-
-# Метод 2: Если xray установлен локально
-xray x25519
-
-# Генерация UUID для клиентов
-docker run --rm ghcr.io/xtls/xray-core:latest uuid
+go run cmd/api-server/main.go
 ```
 
-**Обновление configs/xray.json:**
-
-Отредактируйте `configs/xray.json` и замените плейсхолдеры:
-
-```json
-{
-  "inbounds": [
-    {
-      "port": 443,
-      "protocol": "vless",
-      "settings": {
-        "clients": [
-          {
-            "id": "51a6135e-793b-4111-9142-21da17793aee",
-            "flow": ""
-          }
-        ],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "reality",
-        "realitySettings": {
-          "show": false,
-          "dest": "www.microsoft.com:443",
-          "xver": 0,
-          "serverNames": ["www.microsoft.com"],
-          "privateKey": "aFMF5-Dej2UmPnaKNvOZckEnT2H978VlyE00xo6dynk",
-          "shortIds": ["6ba85179e30d4fc2"]  // Hex стринга
-        }
-      },
-      "tag": "vless-inbound"
-    }
-  ]
-}
-```
-
-**Важные параметры Reality:**
-- **privateKey** — используйте `PrivateKey` из вывода `x25519` (НЕ Password!)
-- **dest** — целевой сайт для маскировки (google.com, microsoft.com, cloudflare.com)
-- **serverNames** — SNI для TLS, должен совпадать с доменом в `dest`
-- **shortIds** — случайная hex строка, сгенерируйте через `openssl rand -hex 8`
-
-**Добавьте в configs/.env:**
+### Telegram Bot
 
 ```bash
-VPN_HOST=your-server-ip
-VPN_PORT=443
-VPN_API_PORT=10085
-VPN_API_ADDRESS=127.0.0.1
-VPN_SERVER_NAME=www.microsoft.com
-VPN_PRIVATE_KEY=aFMF5-Dej2UmPnaKNvOZckEnT2H978VlyE00xo6dynk
-VPN_SHORT_IDS=6ba85179e30d4fc2
+go run cmd/telegram-bot/main.go
 ```
 
-### 4. Запуск сервисов
+### VPN Server
+
+```bash
+go run cmd/vpn-server/main.go
+```
+
+## Развертывание через Docker Compose
+
+Для базового контейнерного запуска используйте:
 
 ```bash
 docker-compose up -d
 ```
 
-### 5. Проверка статуса
+Для просмотра состояния контейнеров:
 
 ```bash
 docker-compose ps
+```
+
+Для просмотра логов:
+
+```bash
 docker-compose logs -f
 ```
 
-## Деплой вручную (без Docker)
+## Переменные окружения
 
-### 1. Установка Go
+Ниже приведен пример основных переменных:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=spiritdb
+DB_PASSWORD=your_secure_password_here
+DB_NAME=spiritdb
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
+API_ADDRESS=:8080
+API_MODE=debug
+JWT_SECRET=your-jwt-secret-key-change-in-production
+
+VPN_HOST=localhost
+VPN_PORT=443
+VPN_API_PORT=10085
+VPN_API_ADDRESS=localhost
+VPN_SERVER_NAME=google.com
+VPN_PRIVATE_KEY=
+VPN_PUBLIC_KEY=
+VPN_SHORT_IDS=
+VPN_STATS_INTERVAL=5m
+
+TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+TELEGRAM_DEBUG=false
+
+YOOKASSA_SHOP_ID=your_shop_id
+YOOKASSA_SECRET_KEY=your_secret_key
+
+LOG_LEVEL=info
+LOG_DIR=./logs
+LOG_CONSOLE=true
+LOG_FILE=true
+LOG_COLORED=true
+LOG_ERROR_FILE=true
+LOG_ENABLED=true
+LOG_MAX_FILE_SIZE=10
+LOG_MAX_BACKUPS=5
+LOG_MAX_AGE=30
+LOG_TELEGRAM_BOT_TOKEN=
+LOG_TELEGRAM_CHAT_ID=
+LOG_TELEGRAM_THREAD_ID=
+```
+
+## Подготовка Xray
+
+Для корректной работы VPN-компонента должны быть подготовлены:
+
+* установленный Xray-core;
+* доступный Xray API;
+* согласованная конфигурация `configs/xray.json`;
+* корректные Reality-ключи и значения `VPN_PRIVATE_KEY`, `VPN_PUBLIC_KEY`, `VPN_SHORT_IDS`.
+
+## База данных
+
+В текущей структуре проекта отдельная CLI-команда миграций не выделена. Подготовка схемы выполняется через слой `internal/database` из логики приложения.
+
+Перед запуском рекомендуется убедиться, что:
+
+* PostgreSQL доступен;
+* учетные данные корректны;
+* база данных создана;
+* приложение имеет права на подключение и изменение схемы.
+
+## Проверка запуска
+
+После старта API-сервера доступны базовые health check эндпоинты:
+
+* `GET /health`
+* `GET /health/advanced`
+
+Пример проверки:
 
 ```bash
-wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-source ~/.bashrc
+curl http://localhost:8080/health
 ```
 
-### 2. Установка PostgreSQL
+## Логирование
 
-```bash
-sudo apt install postgresql postgresql-contrib -y
-sudo -u postgres psql
+Для сервисов можно использовать файловое и консольное логирование через `pkg/logger`.
 
-CREATE DATABASE spiritdb;
-CREATE USER spiritdb WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE spiritdb TO spiritdb;
-\q
+При включенном файловом логировании создаются:
+
+```text
+logs/
+├── spirit_vpn.log
+└── spirit_vpn_error.log
 ```
 
-### 3. Установка Redis
-
-```bash
-sudo apt install redis-server -y
-sudo systemctl enable redis-server
-sudo systemctl start redis-server
-```
-
-### 4. Сборка проекта
-
-```bash
-cd SpiritVPN
-go mod download
-make build
-```
-
-### 5. Создание systemd сервисов
-
-**API Server** (`/etc/systemd/system/spiritvpn-api.service`):
-```ini
-[Unit]
-Description=SpiritVPN API Server
-After=network.target postgresql.service
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/SpiritVPN
-EnvironmentFile=/opt/SpiritVPN/configs/.env
-ExecStart=/opt/SpiritVPN/bin/api-server
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**VPN Server** (`/etc/systemd/system/spiritvpn-vpn.service`):
-```ini
-[Unit]
-Description=SpiritVPN VPN Server
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/SpiritVPN
-EnvironmentFile=/opt/SpiritVPN/configs/.env
-ExecStart=/opt/SpiritVPN/bin/vpn-server
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Telegram Bot** (`/etc/systemd/system/spiritvpn-bot.service`):
-```ini
-[Unit]
-Description=SpiritVPN Telegram Bot
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/SpiritVPN
-EnvironmentFile=/opt/SpiritVPN/configs/.env
-ExecStart=/opt/SpiritVPN/bin/telegram-bot
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### 6. Запуск сервисов
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable spiritvpn-api spiritvpn-vpn spiritvpn-bot
-sudo systemctl start spiritvpn-api spiritvpn-vpn spiritvpn-bot
-```
-
-## Настройка Nginx
-
-### Установка
-
-```bash
-sudo apt install nginx certbot python3-certbot-nginx -y
-```
-
-### Конфигурация
-
-`/etc/nginx/sites-available/spiritvpn`:
-
-```nginx
-server {
-    listen 80;
-    server_name api.spiritvpn.com;
-
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-```
-
-### Активация и SSL
-
-```bash
-sudo ln -s /etc/nginx/sites-available/spiritvpn /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-
-# Получение SSL сертификата
-sudo certbot --nginx -d api.spiritvpn.com
-```
-
-## Настройка файрвола
-
-```bash
-# Разрешить необходимые порты
-sudo ufw allow 22/tcp      # SSH
-sudo ufw allow 80/tcp      # HTTP
-sudo ufw allow 443/tcp     # HTTPS
-sudo ufw allow 51820/udp   # WireGuard
-sudo ufw enable
-```
-
-## Мониторинг
-
-### Prometheus + Grafana
+## Рекомендации по production-развертыванию
 
-После запуска через docker-compose:
-
-- Prometheus: `http://your-server:9090`
-- Grafana: `http://your-server:3000`
-  - Login: admin
-  - Password: admin (или из переменной)
-
-### Настройка алертов
+1. Хранить `.env` вне репозитория
+2. Не сохранять приватные ключи и токены в Git
+3. Включать файловое логирование и ротацию логов
+4. Использовать отдельные учетные записи для БД и Redis
+5. Проверять доступность внешних портов и внутренних сервисов
+6. Поддерживать согласованность `configs/.env` и `configs/xray.json`
 
-Создайте файл `configs/alertmanager.yml`:
+## Диагностика проблем
 
-```yaml
-global:
-  resolve_timeout: 5m
+### API не отвечает
 
-route:
-  receiver: 'telegram'
+Проверьте:
 
-receivers:
-  - name: 'telegram'
-    telegram_configs:
-      - bot_token: 'YOUR_BOT_TOKEN'
-        chat_id: YOUR_CHAT_ID
-        message: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
-```
+* корректность `API_ADDRESS`;
+* логи API-сервера;
+* доступность порта;
+* подключение к базе данных.
 
-## Backup
+### Telegram Bot не запускается
 
-### Автоматический backup базы данных
+Проверьте:
 
-Создайте скрипт `/opt/backup.sh`:
+* значение `TELEGRAM_BOT_TOKEN`;
+* сетевую доступность Telegram API;
+* логи bot-сервиса.
 
-```bash
-#!/bin/bash
-BACKUP_DIR="/opt/backups"
-DATE=$(date +%Y%m%d_%H%M%S)
-PGPASSWORD="your_password" pg_dump -U spiritdb -h localhost spiritdb > $BACKUP_DIR/db_$DATE.sql
-find $BACKUP_DIR -mtime +7 -delete
-```
+### VPN Server не работает корректно
 
-Добавьте в crontab:
-```bash
-crontab -e
-0 2 * * * /opt/backup.sh
-```
+Проверьте:
 
-## Обновление
+* доступность Xray API;
+* корректность `configs/xray.json`;
+* значения `VPN_API_ADDRESS`, `VPN_API_PORT`, `VPN_SERVER_NAME`;
+* валидность Reality-ключей.
 
-### С использованием Docker
+### Ошибки подключения к PostgreSQL
 
-```bash
-cd SpiritVPN
-git pull
-docker-compose down
-docker-compose build
-docker-compose up -d
-```
+Проверьте:
 
-### Без Docker
+* `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`;
+* наличие базы данных;
+* права пользователя.
 
-```bash
-cd SpiritVPN
-git pull
-make build
-sudo systemctl restart spiritvpn-api spiritvpn-vpn spiritvpn-bot
-```
+## Связанные документы
 
-## Troubleshooting
-
-### Проверка логов
-
-**Docker:**
-```bash
-docker-compose logs api
-docker-compose logs vpn
-docker-compose logs bot
-```
-
-**Systemd:**
-```bash
-sudo journalctl -u spiritvpn-api -f
-sudo journalctl -u spiritvpn-vpn -f
-sudo journalctl -u spiritvpn-bot -f
-```
-
-### Проверка подключения к БД
-
-```bash
-docker-compose exec postgres psql -U spiritdb -d spiritdb
-```
-
-### Проверка WireGuard
-
-```bash
-sudo wg show
-```
-
-### Перезапуск сервисов
-
-```bash
-docker-compose restart api
-# или
-sudo systemctl restart spiritvpn-api
-```
-
-## Масштабирование
-
-### Добавление нового VPN сервера
-
-1. Разверните сервер в новой локации
-2. Установите VPN компонент
-3. Зарегистрируйте сервер в БД
-4. Настройте балансировку
-
-### Горизонтальное масштабирование API
-
-Используйте Kubernetes или Docker Swarm для запуска множественных экземпляров API сервера за load balancer'ом.
-
----
-
-## Чеклист перед продакшеном
-
-- [ ] Все пароли изменены на безопасные
-- [ ] SSL сертификаты установлены
-- [ ] Файрвол настроен
-- [ ] Backup настроен
-- [ ] Мониторинг работает
-- [ ] Логи ротируются
-- [ ] Тестовые платежи проходят
-- [ ] DNS записи настроены
-- [ ] Документация актуальна
+* `README.md`
+* `docs/ARCHITECTURE.md`
+* `docs/API.md`
+* `docs/DATABASE.md`
+* `docs/VLESS.md`
+* `pkg/logger/README.md`

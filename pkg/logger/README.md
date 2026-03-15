@@ -1,144 +1,198 @@
 # Logger Package
 
-Структурированная система логирования для SpiritVPN с использованием `logrus` и `lumberjack`.
+## Назначение
+
+Пакет `pkg/logger` предоставляет структурированную систему логирования для компонентов SpiritVPN на базе `logrus` и `lumberjack`.
+
+Пакет предназначен для:
+
+* консольного и файлового логирования;
+* разделения общих логов и логов ошибок;
+* использования контекстных полей;
+* интеграции с Gin;
+* интеграции с GORM;
+* отправки критических уведомлений в Telegram.
 
 ## Возможности
 
-- **Цветной вывод** в консоль с ANSI цветами
-- **Ротация файлов** с автоматическим сжатием старых логов
-- **Уровни логирования**: Debug, Info, Warning, Error, Fatal, Panic
-- **Структурированное логирование** с контекстными полями
-- **Отдельный файл для ошибок** (error.log)
-- **Telegram уведомления** для критических ошибок
-- **Информация о вызывающем коде** (файл:строка:функция)
+* настройка уровня логирования;
+* цветной вывод в консоль;
+* запись логов в файл с ротацией;
+* отдельный файл для ошибок;
+* форматирование логов с указанием caller;
+* контекстные логгеры для пользователя, VPN и HTTP-запросов;
+* middleware для Gin;
+* адаптер логирования для GORM;
+* Telegram hook для критических событий.
+
+## Структура пакета
+
+```text
+pkg/logger/
+├── README.md
+├── config.go
+├── doc.go
+├── formatter.go
+├── gin.go
+├── gorm.go
+├── hooks.go
+├── logger.go
+├── logger_test.go
+├── telegram.go
+├── telegram_test.go
+└── utils.go
+```
 
 ## Быстрый старт
 
-### 1. Инициализация логгера
+### Инициализация
 
 ```go
 package main
 
 import (
+    "log"
+
     "github.com/RomanRyabinkin/SpiritVPN/pkg/logger"
 )
 
 func main() {
-    // Использование конфигурации по умолчанию
-    logger.Setup(logger.DefaultConfig())
-
-    // Или кастомная конфигурация
-    config := &logger.Config{
-        Level:         "info",
-        LogDir:        "./logs",
-        ConsoleOutput: true,
-        FileOutput:    true,
-        ColoredOutput: true,
+    if err := logger.Setup(logger.DefaultConfig()); err != nil {
+        log.Fatal(err)
     }
-    logger.Setup(config)
+
+    logger.Info("application started")
 }
 ```
 
-### 2. Базовое использование
+### Кастомная конфигурация
 
 ```go
-// Простое логирование
-logger.Info("Application started")
-logger.Debug("Debug information")
-logger.Warn("Warning message")
-logger.Error("Error occurred")
+cfg := &logger.Config{
+    Level:           "info",
+    LogDir:          "./logs",
+    ConsoleOutput:   true,
+    FileOutput:      true,
+    ColoredOutput:   true,
+    ErrorLogFile:    true,
+    Enabled:         true,
+    TimestampFormat: time.RFC3339,
+    MaxFileSize:     10,
+    MaxBackups:      5,
+    MaxAge:          30,
+}
 
-// Форматированное логирование
-logger.Infof("User %s connected from %s", username, ip)
-logger.Errorf("Failed to connect to database: %v", err)
+if err := logger.Setup(cfg); err != nil {
+    log.Fatal(err)
+}
 ```
 
-### 3. Логирование с контекстом
+## Основные функции
+
+### Глобальные функции
+
+Пакет предоставляет глобальные функции логирования:
+
+* `Debug()` / `Debugf()`
+* `Info()` / `Infof()`
+* `Warn()` / `Warnf()`
+* `Error()` / `Errorf()`
+* `Fatal()` / `Fatalf()`
+* `Panic()` / `Panicf()`
+
+### Получение логгера с контекстом
 
 ```go
-import "github.com/sirupsen/logrus"
+log := logger.GetLogger("api.server")
+log.Info("server started")
+```
 
-// Получение логгера с контекстными полями
+С дополнительными полями:
+
+```go
 log := logger.GetLogger("vpn.server", logrus.Fields{
     "user_id": 123,
     "email":   "user@example.com",
 })
 
-log.Info("User connected to VPN")
-log.WithField("bandwidth", "100MB/s").Info("Traffic info")
+log.Info("user connected")
 ```
 
-### 4. Специализированные контексты
+### Универсальный контекст
 
 ```go
-// Контекст пользователя
-userLog := logger.WithUserContext(12345)
-userLog.Info("User logged in")
-
-// Контекст VPN
-vpnLog := logger.WithVPNContext(12345, "user@example.com")
-vpnLog.Info("VPN connection established")
-
-// Контекст HTTP запроса
-reqLog := logger.WithRequestContext("GET", "/api/users", "req-123")
-reqLog.Info("Handling request")
-```
-
-### 5. Утилитные функции для тестов
-
-```go
-import "time"
-
-log := logger.GetLogger("test.smoke")
-
-// Логирование начала теста
-logger.LogTestStart(log, "TestVPNConnection", map[string]interface{}{
-    "server": "vpn.example.com",
-    "port":   443,
+entry := logger.WithContext(logrus.Fields{
+    "request_id": "req-123",
+    "component":  "api",
 })
 
-// ... выполнение теста ...
+entry.Info("request received")
+```
 
-// Логирование окончания теста
-logger.LogTestEnd(log, "TestVPNConnection", "PASS", 2*time.Second)
+## Специализированные контекстные функции
 
-// Логирование команд
-logger.LogCommand(log, "xray -test -config config.json")
+### Пользовательский контекст
 
-// Логирование HTTP ответов
-logger.LogResponse(log, 200, responseBody, 500)
+```go
+userLog := logger.WithUserContext(12345)
+userLog.Info("user logged in")
+```
+
+### Контекст HTTP-запроса
+
+```go
+reqLog := logger.WithRequestContext("GET", "/health", "req-123")
+reqLog.Info("request started")
+```
+
+### Контекст VPN
+
+```go
+vpnLog := logger.WithVPNContext(12345, "user@example.com")
+vpnLog.Info("vpn session started")
 ```
 
 ## Конфигурация
 
-### Из кода
+### Структура Config
 
 ```go
-config := &logger.Config{
-    Level:            "info",        // debug, info, warning, error, fatal, panic
-    LogDir:           "./logs",       // Директория для логов
-    ConsoleOutput:    true,           // Вывод в консоль
-    FileOutput:       true,           // Запись в файл
-    ColoredOutput:    true,           // Цветной вывод
-    ErrorLogFile:     true,           // Отдельный файл для ошибок
-    Enabled:          true,           // Включить логирование
-    TimestampFormat:  time.RFC3339,   // Формат времени
-    MaxFileSize:      10,             // Макс. размер файла (МБ)
-    MaxBackups:       5,              // Кол-во бэкапов
-    MaxAge:           30,             // Дни хранения
-    TelegramBotToken: "bot_token",    // Токен Telegram бота
-    TelegramChatID:   "chat_id",      // ID чата
+type Config struct {
+    Level            string
+    LogDir           string
+    ConsoleOutput    bool
+    FileOutput       bool
+    ColoredOutput    bool
+    ErrorLogFile     bool
+    Enabled          bool
+    TimestampFormat  string
+    MaxFileSize      int
+    MaxBackups       int
+    MaxAge           int
+    TelegramBotToken string
+    TelegramChatID   string
+    TelegramThreadID string
 }
-
-logger.Setup(config)
 ```
 
-### Из переменных окружения
+### Конфигурация по умолчанию
 
-Добавьте в `.env` файл:
+`logger.DefaultConfig()` возвращает конфигурацию со следующими параметрами:
+
+* уровень `info`;
+* директория `./logs`;
+* вывод в консоль включен;
+* запись в файл включена;
+* цветной вывод включен;
+* отдельный файл ошибок включен.
+
+### Загрузка из переменных окружения
+
+Для загрузки конфигурации логгера можно использовать `logger.LoadFromEnv()`.
+
+Поддерживаются переменные:
 
 ```env
-# Настройки логирования
 LOG_LEVEL=info
 LOG_DIR=./logs
 LOG_CONSOLE=true
@@ -149,201 +203,197 @@ LOG_ENABLED=true
 LOG_MAX_FILE_SIZE=10
 LOG_MAX_BACKUPS=5
 LOG_MAX_AGE=30
-
-# Telegram уведомления (опционально)
-LOG_TELEGRAM_BOT_TOKEN=your_bot_token
-LOG_TELEGRAM_CHAT_ID=your_chat_id
+LOG_TELEGRAM_BOT_TOKEN=
+LOG_TELEGRAM_CHAT_ID=
+LOG_TELEGRAM_THREAD_ID=
 ```
 
-Затем в коде:
+Пример:
 
 ```go
-import "github.com/RomanRyabinkin/SpiritVPN/pkg/config"
-
-cfg, _ := config.Load()
-
-loggerConfig := &logger.Config{
-    Level:            cfg.Logger.Level,
-    LogDir:           cfg.Logger.LogDir,
-    ConsoleOutput:    cfg.Logger.ConsoleOutput,
-    FileOutput:       cfg.Logger.FileOutput,
-    ColoredOutput:    cfg.Logger.ColoredOutput,
-    ErrorLogFile:     cfg.Logger.ErrorLogFile,
-    Enabled:          cfg.Logger.Enabled,
-    MaxFileSize:      cfg.Logger.MaxFileSize,
-    MaxBackups:       cfg.Logger.MaxBackups,
-    MaxAge:           cfg.Logger.MaxAge,
-    TelegramBotToken: cfg.Logger.TelegramBotToken,
-    TelegramChatID:   cfg.Logger.TelegramChatID,
+cfg := logger.LoadFromEnv()
+if err := logger.Setup(cfg); err != nil {
+    log.Fatal(err)
 }
-
-logger.Setup(loggerConfig)
 ```
 
-## Структура файлов
+## Формат вывода
 
+При включенном цветном формате в консоли используются следующие цвета уровней:
+
+* `DEBUG` — cyan
+* `INFO` — green
+* `WARN` — yellow
+* `ERROR` — red
+* `FATAL` / `PANIC` — magenta
+
+Формат записи включает:
+
+* временную метку;
+* уровень логирования;
+* caller (`file:line:function`);
+* сообщение;
+* структурированные поля.
+
+Пример:
+
+```text
+[2026-01-10T15:04:05Z] [INFO   ] [server.go:42:Start] Application started {module=api.server}
 ```
+
+## Файлы логов
+
+При включенном файловом логировании создаются:
+
+```text
 logs/
-├── spirit_vpn.log          # Основной лог-файл
-├── spirit_vpn.log.1.gz     # Ротированные архивы
-├── spirit_vpn.log.2.gz
-├── spirit_vpn_error.log    # Только ошибки (ERROR, FATAL, PANIC)
-└── spirit_vpn_error.log.1.gz
+├── spirit_vpn.log
+└── spirit_vpn_error.log
 ```
 
-## Цветной вывод
+### Назначение файлов
 
-Логи в консоли отображаются с цветами:
+* `spirit_vpn.log` — общий лог;
+* `spirit_vpn_error.log` — записи уровней `ERROR`, `FATAL`, `PANIC`.
 
-- **DEBUG** - Cyan (голубой)
-- **INFO** - Green (зеленый)
-- **WARNING** - Yellow (желтый)
-- **ERROR** - Red (красный)
-- **FATAL/PANIC** - Magenta (пурпурный)
+Ротация логов выполняется через `lumberjack`.
 
-Пример вывода:
-```
-[2024-01-10T15:04:05Z] [INFO   ] [server.go:42:Start] Application started {module=api.server, version=1.0.0}
-[2024-01-10T15:04:06Z] [WARNING] [handler.go:123:Handle] Rate limit exceeded {user_id=123, ip=192.168.1.1}
-[2024-01-10T15:04:07Z] [ERROR  ] [db.go:56:Connect] Failed to connect to database {error=connection timeout}
-```
+## Telegram-уведомления
 
-## Telegram уведомления
+Пакет поддерживает `TelegramHook`.
 
-### Настройка по компонентам
+### Назначение
 
-Критические ошибки отправляются в топик **Errors** (Thread ID: `13`) с категоризацией по компонентам:
+Telegram hook предназначен для отправки критических событий в Telegram-чат или топик.
 
-| Компонент | Префикс | Назначение |
-|-----------|---------|------------|
-| `api-server` | API | HTTP API ошибки |
-| `telegram-bot` | BOT | Telegram Bot ошибки |
-| `vpn-server` | VPN | VPN/Xray ошибки |
-| `infrastructure` | INFRA | Redis, сеть, файлы |
-| `database` | DB | PostgreSQL ошибки |
+### Поддерживаемые параметры
+
+* `TelegramBotToken`
+* `TelegramChatID`
+* `TelegramThreadID`
+
+### Поведение текущей реализации
+
+В текущей реализации отправка сообщений в Telegram выполняется для событий уровней:
+
+* `FATAL`
+* `PANIC`
 
 ### Пример настройки
 
 ```go
-// Базовая конфигурация
-config := &logger.Config{
-    Level:         "info",
-    ConsoleOutput: true,
-    FileOutput:    true,
-    FilePath:      "./logs/api-server.log",
+cfg := &logger.Config{
+    Level:            "info",
+    LogDir:           "./logs",
+    ConsoleOutput:    true,
+    FileOutput:       true,
+    ColoredOutput:    true,
+    ErrorLogFile:     true,
+    Enabled:          true,
+    TimestampFormat:  time.RFC3339,
+    TelegramBotToken: os.Getenv("LOG_TELEGRAM_BOT_TOKEN"),
+    TelegramChatID:   os.Getenv("LOG_TELEGRAM_CHAT_ID"),
+    TelegramThreadID: os.Getenv("LOG_TELEGRAM_THREAD_ID"),
 }
 
-if err := logger.Setup(config); err != nil {
+if err := logger.Setup(cfg); err != nil {
     log.Fatal(err)
 }
+```
 
-// Добавляем Telegram hook для критических ошибок
-if botToken := os.Getenv("TELEGRAM_BOT_TOKEN"); botToken != "" {
-    hook := logger.NewTelegramHook(
-        botToken,
-        os.Getenv("TELEGRAM_CHAT_ID"),
-        "13",         // Thread ID: Errors
-        "api-server", // Компонент
-    )
-    logger.Log.AddHook(hook)
+### Ручное добавление hook
+
+```go
+hook := logger.NewTelegramHook(botToken, chatID, threadID, "api-server")
+logger.Log.AddHook(hook)
+```
+
+## Интеграция с GORM
+
+Для интеграции с GORM используется адаптер `NewGormLogger()`.
+
+```go
+gormLogger := logger.NewGormLogger("database", 200*time.Millisecond)
+
+db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+    Logger: gormLogger,
+})
+```
+
+В адаптере поддерживаются:
+
+* информационные сообщения;
+* предупреждения;
+* ошибки;
+* логирование медленных SQL-запросов.
+
+## Интеграция с Gin
+
+Для HTTP-логирования используется middleware `GinMiddleware()`.
+
+```go
+router := gin.New()
+router.Use(logger.GinMiddleware())
+```
+
+Middleware автоматически добавляет:
+
+* `request_id`;
+* HTTP method;
+* path;
+* IP клиента;
+* user agent;
+* статус ответа;
+* latency;
+* размер ответа.
+
+Извлечение логгера из контекста:
+
+```go
+func handler(c *gin.Context) {
+    log := logger.GetLoggerFromGinContext(c)
+    log.Info("processing request")
 }
-
-// Критическая ошибка → Telegram с префиксом API
-logger.Fatal("Database connection failed!")
 ```
 
-Подробнее: [docs/LOGGER_ERRORS.md](../../docs/LOGGER_ERRORS.md)
+## Вспомогательные функции
 
-## Примеры для разных компонентов
+Пакет содержит дополнительные функции:
 
-### API Server
+* `LogTestStart()`
+* `LogTestEnd()`
+* `LogCommand()`
+* `LogResponse()`
+* `GetRequestID()`
 
-```go
-log := logger.GetLogger("api.server")
+## Отключение логирования
 
-// Старт сервера
-log.Info("Starting API server on :8080")
-
-// HTTP запросы
-reqLog := logger.WithRequestContext(
-    r.Method,
-    r.URL.Path,
-    requestID,
-)
-reqLog.Info("Handling request")
-```
-
-### VPN Server
-
-```go
-log := logger.GetLogger("vpn.server")
-
-// Подключение пользователя
-vpnLog := logger.WithVPNContext(userID, email)
-vpnLog.Info("User connecting to VPN")
-
-// Статистика трафика
-vpnLog.WithFields(logrus.Fields{
-    "received": receivedBytes,
-    "sent":     sentBytes,
-}).Info("Traffic stats")
-```
-
-### Telegram Bot
-
-```go
-log := logger.GetLogger("bot.handler")
-
-// Обработка команды
-log.WithFields(logrus.Fields{
-    "user_id":  update.Message.From.ID,
-    "username": update.Message.From.UserName,
-    "command":  update.Message.Text,
-}).Info("Processing command")
-```
-
-### Database
-
-```go
-log := logger.GetLogger("database")
-
-// Подключение
-log.Info("Connecting to PostgreSQL")
-
-// Ошибка соединения
-log.WithFields(logrus.Fields{
-    "host": cfg.Database.Host,
-    "port": cfg.Database.Port,
-}).Error("Failed to connect to database")
-```
+Если `Enabled=false`, пакет переводит вывод логов в `io.Discard`.
 
 ## Тестирование
 
+Запуск тестов пакета:
+
 ```bash
-# Запуск тестов
 go test ./pkg/logger/...
+```
 
-# С выводом логов
+С подробным выводом:
+
+```bash
 go test -v ./pkg/logger/...
+```
 
-# С покрытием
+С покрытием:
+
+```bash
 go test -cover ./pkg/logger/...
 ```
 
+## Практические рекомендации
 
-## Best Practices
-
-1. **Инициализируйте один раз** - вызывайте `logger.Setup()` в `main()` функции
-2. **Используйте контекстные поля** - добавляйте `user_id`, `request_id` и другие идентификаторы
-3. **Правильные уровни**:
-   - `Debug` - отладочная информация для разработки
-   - `Info` - нормальная работа приложения
-   - `Warn` - предупреждения, не критичные проблемы
-   - `Error` - ошибки, требующие внимания
-   - `Fatal` - критические ошибки, приложение не может продолжить работу
-4. **Структурированные данные** - используйте поля вместо форматированных строк
-5. **Не логируйте чувствительные данные** - пароли, токены, ключи API
-
-## License
-
-MIT
+1. Инициализировать логгер один раз при старте приложения
+2. Использовать контекстные поля вместо длинных форматированных строк
+3. Не логировать секреты, токены и приватные ключи
+4. Для production включать файловое логирование и ротацию
+5. Для HTTP и SQL использовать готовые интеграции пакета
