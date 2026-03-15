@@ -6,6 +6,9 @@
 
 ## [Unreleased]
 
+### Документация
+- feat: [DOCS-01] updated docs ([#20](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/20)) by @RomanRyabinkin
+
 ### Добавлено
 
 * Добавлен API health check эндпоинт (`/health`, `/health/advanced`) (#19) by @RomanRyabinkin
