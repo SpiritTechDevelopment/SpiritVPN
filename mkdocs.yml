@@ -1,0 +1,40 @@
+site_name: SpiritVPN Documentation
+site_description: База знаний SpiritVPN на базе VLESS
+site_author: Roman Ryabinkin, Pavel Lensky
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections 
+    - search.suggest 
+    - search.highlight
+
+nav:
+  - Главная: index.md
+  - Архитектура:
+      - Общая архитектура: ARCHITECTURE.md
+      - База данных: DATABASE.md
+      - VPN и протокол VLESS: VLESS.md
+  - Разработка и API:
+      - Документация API: API.md
+      - Руководство по тестированию: TESTING.md
+      - Правила Changelog: CHANGELOG_GUIDE.md
+  - Инфраструктура:
+      - Развертывание (Деплой): DEPLOYMENT.md
+  - Развитие:
+      - План разработки (Roadmap): ROADMAP.md
+      - Частые вопросы (FAQ): FAQ.md
