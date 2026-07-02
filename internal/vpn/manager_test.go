@@ -23,7 +23,7 @@ type ManagerTestSuite struct {
 }
 
 func (s *ManagerTestSuite) SetupSuite() {
-	logger.Setup(&logger.Config{Enabled: false}) 
+	_ = logger.Setup(&logger.Config{Enabled: false}) 
 
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{

@@ -44,7 +44,7 @@ type PaymentServiceTestSuite struct {
 }
 
 func (s *PaymentServiceTestSuite) SetupSuite() {
-	logger.Setup(&logger.Config{Enabled: false})
+	_ = logger.Setup(&logger.Config{Enabled: false})
 
 	cfg := &config.Config{Database: config.DatabaseConfig{Host: "localhost", Port: 5432, User: "spiritdb", Password: "your_secure_password", Name: "spiritdb"}}
 	db, err := database.Connect(cfg)

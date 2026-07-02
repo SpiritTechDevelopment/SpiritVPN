@@ -29,6 +29,7 @@ nav:
       - Общая архитектура: ARCHITECTURE.md
       - База данных: DATABASE.md
       - VPN и протокол VLESS: VLESS.md
+      - Биллинг и выдача доступа: PAYMENTS.md 
   - Разработка и API:
       - Документация API: API.md
       - Руководство по тестированию: TESTING.md
