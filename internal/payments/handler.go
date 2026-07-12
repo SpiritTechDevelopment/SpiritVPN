@@ -27,11 +27,13 @@ func SetupRoutes(router *gin.Engine, svc *Service) {
 				Amount float64 `json:"amount"`
 			}
 
+			// Десериализация и первичная валидация входящего тела запроса
 			if err := c.BindJSON(&req); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 				return
 			}
 
+			// Делегирование задачи генерации ссылки сервису бизнес-логики
 			url, err := svc.GeneratePaymentLink(c.Request.Context(), req.UserID, req.Amount, "RUB")
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -41,9 +43,10 @@ func SetupRoutes(router *gin.Engine, svc *Service) {
 			c.JSON(http.StatusOK, gin.H{"payment_url": url})
 		})
 
-		// POST /api/v1/payments/webhook/cryptomus
-		// Эндпоинт для приема асинхронных серверных уведомлений (Server-to-Server) от Cryptomus.
-		group.POST("/webhook/cryptomus", func(c *gin.Context) {
+		// POST /api/v1/payments/webhook/cryptopay
+		// Эндпоинт для приема асинхронных серверных уведомлений (Server-to-Server) от CryptoPay (@CryptoBot).
+		// Требует строгой проверки криптографической подписи для предотвращения несанкционированного изменения статуса заказов.
+		group.POST("/webhook/cryptopay", func(c *gin.Context) {
 			// Чтение сырого тела запроса необходимо для корректного вычисления хеша подписи
 			rawBody, err := io.ReadAll(c.Request.Body)
 			if err != nil {
@@ -51,8 +54,8 @@ func SetupRoutes(router *gin.Engine, svc *Service) {
 				return
 			}
 
-			// Извлечение криптографической подписи из HTTP header'ов
-			signature := c.GetHeader("sign")
+			// Извлечение криптографической подписи
+			signature := c.GetHeader("crypto-pay-api-signature")
 
 			// Передача сырых данных в слой сервиса для верификации и обновления состояния БД
 			err = svc.ProcessWebhook(c.Request.Context(), rawBody, signature)

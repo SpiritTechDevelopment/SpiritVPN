@@ -10,7 +10,7 @@ import (
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/api"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/database"
-	"github.com/RomanRyabinkin/SpiritVPN/internal/payments" // Правильный импорт
+	"github.com/RomanRyabinkin/SpiritVPN/internal/payments"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/vpn"
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/config"
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/logger"
@@ -68,7 +68,15 @@ func main() {
 	
 	vpnManager := vpn.NewManager(db, xrayClient)
 
-	cryptoProvider := payments.NewCryptomusProvider(cfg.Payment.YooKassaShopID, cfg.Payment.YooKassaSecretKey)
+	// ==========================================
+	// Инициализация CryptoPay 
+	// ==========================================
+	cryptoToken := os.Getenv("CRYPTOPAY_TOKEN")
+	if cryptoToken == "" {
+		log.Warn("CRYPTOPAY_TOKEN is empty! Payments will fail.")
+	}
+	cryptoProvider := payments.NewCryptoPayProvider(cryptoToken, true)
+	
 	paymentLog := logger.GetLogger("payments.service")
 	paymentService := payments.NewService(db, cryptoProvider, paymentLog, vpnManager)
 
