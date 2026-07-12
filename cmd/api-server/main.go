@@ -62,7 +62,7 @@ func main() {
 	if err != nil {
 		log.WithError(err).Warn("Could not connect to Xray API (is it running?)")
 	} else {
-		defer xrayClient.Close()
+		defer func () { _ = xrayClient.Close() } ()
 		log.Info("Connected to Xray API successfully")
 	}
 	

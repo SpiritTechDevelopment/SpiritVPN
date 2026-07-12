@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/xtls/xray-core/app/proxyman/command"
-	proxymanCommand "github.com/xtls/xray-core/app/proxyman/command"
 	statsCommand "github.com/xtls/xray-core/app/stats/command"
 	"github.com/xtls/xray-core/common/protocol"
 	"github.com/xtls/xray-core/common/serial"
@@ -66,7 +65,7 @@ func NewXrayClient(address string, port int, inboundTag string) (*XrayClient, er
 		return nil, fmt.Errorf("failed to connect to xray api: %w", err)
 	}
 
-	client := proxymanCommand.NewHandlerServiceClient(conn)
+	client := command.NewHandlerServiceClient(conn)
 	statsClient := statsCommand.NewStatsServiceClient(conn)
 
 	return &XrayClient{

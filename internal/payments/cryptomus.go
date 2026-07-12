@@ -84,7 +84,7 @@ func (c *CryptomusProvider) CreateInvoice(ctx context.Context, orderID string, a
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result struct {
 		State  int `json:"state"`
@@ -133,9 +133,10 @@ func (c *CryptomusProvider) VerifyWebhook(rawBody []byte, signature string) (*We
 	}
 
 	status := "pending"
-	if payload.Status == "paid" || payload.Status == "paid_over" {
+	switch payload.Status {
+	case "paid", "paid_over":
 		status = "paid"
-	} else if payload.Status == "cancel" || payload.Status == "fail" {
+	case "cancel", "fail":
 		status = "failed"
 	}
 

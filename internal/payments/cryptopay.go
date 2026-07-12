@@ -65,7 +65,7 @@ func (c *CryptoPayProvider) CreateInvoice(ctx context.Context, orderID string, a
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() } ()
 
 	var result struct {
 		Ok     bool `json:"ok"`

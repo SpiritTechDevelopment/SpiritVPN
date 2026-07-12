@@ -52,14 +52,12 @@ func (m *Manager) GrantAccess(ctx context.Context, userID uint, planCode string)
 		var activeSub database.Subscription
 		err := tx.Where("user_id = ? AND is_active = ?", userID, true).First(&activeSub).Error
 
-		if err == nil {
-			// Продление существующей подписки
+		switch err {
+		case nil:
 			activeSub.EndDate = activeSub.EndDate.AddDate(0, 0, plan.DurationDays)
 			tx.Save(&activeSub)
 			m.log.WithField("user_id", userID).Infof("Extended subscription until %s", activeSub.EndDate)
-			
-		} else if err == gorm.ErrRecordNotFound {
-			// Создание новой подписки
+		case gorm.ErrRecordNotFound:
 			newSub := database.Subscription{
 				UserID:    userID,
 				PlanType:  plan.Code,
@@ -102,7 +100,7 @@ func (m *Manager) GrantAccess(ctx context.Context, userID uint, planCode string)
 			}
 			
 			m.log.WithFields(logrus.Fields{"user_id": userID, "uuid": newUUID, "server": server.Name}).Info("Provisioned new VPN access")
-		} else {
+		default:
 			return err
 		}
 		return nil

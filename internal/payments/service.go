@@ -77,26 +77,22 @@ func (s *Service) ProcessWebhook(ctx context.Context, rawBody []byte, signature 
 			return nil
 		}
 
-		if payload.Status == "paid" {
+		switch payload.Status {
+		case "paid":
 			payment.Status = "succeeded"
 			payment.TransactionID = payload.TransactionID
-			
 			if err := tx.Save(&payment).Error; err != nil {
 				return err
 			}
-
-			// Асинхронная выдача VPN доступа
 			go func(userID uint) {
-				// TODO: В будущем брать код тарифа из payment.Metadata
 				err := s.vpnManager.GrantAccess(context.Background(), userID, "premium")
 				if err != nil {
-					s.log.WithError(err).WithField("user_id", userID).Error("Failed to grant VPN access after payment")
+					s.log.WithError(err).WithField("user_id", userID).Error("Failed to grant VPN")
 				}
 			}(payment.UserID)
-			
 			s.log.WithField("order_id", orderID).Info("Payment successfully processed!")
-			
-		} else if payload.Status == "failed" {
+
+		case "failed":
 			payment.Status = "failed"
 			tx.Save(&payment)
 		}

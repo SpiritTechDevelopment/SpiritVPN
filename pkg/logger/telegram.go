@@ -94,28 +94,28 @@ func (hook *TelegramHook) formatMessage(entry *logrus.Entry) string {
 
 	// Заголовок с компонентом и уровнем
 	if hook.Component != "" {
-		buf.WriteString(fmt.Sprintf("<b>%s %s</b>\n\n", prefix, entry.Level.String()))
+		fmt.Fprintf(&buf, "<b>%s %s</b>\n\n", prefix, entry.Level.String())
 	} else {
-		buf.WriteString(fmt.Sprintf("<b>%s</b>\n\n", entry.Level.String()))
+		fmt.Fprintf(&buf, "<b>%s</b>\n\n", entry.Level.String())
 	}
 
-	buf.WriteString(fmt.Sprintf("<b>Time:</b> %s\n", entry.Time.Format(time.RFC3339)))
+	fmt.Fprintf(&buf, "<b>Time:</b> %s\n", entry.Time.Format(time.RFC3339))
 
 	if module, ok := entry.Data["module"].(string); ok {
-		buf.WriteString(fmt.Sprintf("<b>Module:</b> %s\n", module))
+    	fmt.Fprintf(&buf, "<b>Module:</b> %s\n", module)
 	}
 
 	if userID, ok := entry.Data["user_id"]; ok {
-		buf.WriteString(fmt.Sprintf("<b>User ID:</b> %v\n", userID))
+		fmt.Fprintf(&buf, "<b>User ID:</b> %v\n", userID)
 	}
 
-	buf.WriteString(fmt.Sprintf("\n<b>Message:</b>\n%s\n", entry.Message))
+	fmt.Fprintf(&buf, "\n<b>Message:</b>\n%s\n", entry.Message)
 
 	if len(entry.Data) > 0 {
 		buf.WriteString("\n<b>Context:</b>\n")
 		for key, value := range entry.Data {
 			if key != "module" && key != "user_id" {
-				buf.WriteString(fmt.Sprintf("• %s: %v\n", key, value))
+				fmt.Fprintf(&buf, "• %s: %v\n", key, value)
 			}
 		}
 	}
@@ -147,7 +147,7 @@ func (hook *TelegramHook) sendMessage(text string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func () { _ = resp.Body.Close() } ()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("telegram api returned status %d", resp.StatusCode)
