@@ -104,6 +104,16 @@ services:
     networks:
       - spiritvpn
 
+# Документация (MkDocs)
+  docs:
+    image: squidfunk/mkdocs-material:latest
+    container_name: spiritvpn-docs
+    restart: unless-stopped
+    ports:
+      - "8081:8000" 
+    volumes:
+      - ./:/docs 
+
   # Prometheus (Monitoring)
   prometheus:
     image: prom/prometheus:latest
