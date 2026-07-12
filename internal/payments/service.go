@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/database"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/vpn"
@@ -33,6 +34,7 @@ func (s *Service) GeneratePaymentLink(ctx context.Context, userID uint, amount f
 		Currency:      currency,
 		Status:        "pending",
 		PaymentMethod: s.provider.Name(),
+		TransactionID: fmt.Sprintf("pending-%d", time.Now().UnixNano()),
 	}
 
 	if err := s.db.GetDB().Create(payment).Error; err != nil {

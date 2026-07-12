@@ -75,7 +75,7 @@ func main() {
 	if cryptoToken == "" {
 		log.Warn("CRYPTOPAY_TOKEN is empty! Payments will fail.")
 	}
-	cryptoProvider := payments.NewCryptoPayProvider(cryptoToken, true)
+	cryptoProvider := payments.NewCryptoPayProvider(cryptoToken, false)
 	
 	paymentLog := logger.GetLogger("payments.service")
 	paymentService := payments.NewService(db, cryptoProvider, paymentLog, vpnManager)
