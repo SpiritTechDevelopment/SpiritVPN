@@ -49,9 +49,13 @@ func (s *PaymentServiceTestSuite) SetupSuite() {
 	cfg := &config.Config{Database: config.DatabaseConfig{Host: "localhost", Port: 5432, User: "spiritdb", Password: "your_secure_password", Name: "spiritdb"}}
 	db, err := database.Connect(cfg)
 	s.Require().NoError(err)
+	
+	err = database.Migrate(db)
+	s.Require().NoError(err)
+
 	s.db = db
 
-	vpnManager := vpn.NewManager(db, nil) // Без реального Xray
+	vpnManager := vpn.NewManager(db, nil)
 	s.mock = &MockProvider{MockInvoiceURL: "https://mock.pay/123"}
 	
 	s.service = payments.NewService(db, s.mock, logger.GetLogger("test"), vpnManager)
@@ -63,6 +67,9 @@ func (s *PaymentServiceTestSuite) SetupTest() {
 }
 
 func (s *PaymentServiceTestSuite) TearDownTest() {
+	if s.user == nil {
+		return
+	}
 	s.db.GetDB().Exec("DELETE FROM payments WHERE user_id = ?", s.user.ID)
 	s.db.GetDB().Exec("DELETE FROM users WHERE id = ?", s.user.ID)
 }

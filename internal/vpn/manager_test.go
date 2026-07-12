@@ -23,7 +23,7 @@ type ManagerTestSuite struct {
 }
 
 func (s *ManagerTestSuite) SetupSuite() {
-	_ = logger.Setup(&logger.Config{Enabled: false}) 
+	_ = logger.Setup(&logger.Config{Enabled: false})
 
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
@@ -32,8 +32,11 @@ func (s *ManagerTestSuite) SetupSuite() {
 	}
 	db, err := database.Connect(cfg)
 	s.Require().NoError(err, "Ожидается успешное подключение к БД")
-	s.db = db
+	
+	err = database.Migrate(db)
+	s.Require().NoError(err, "Ожидается успешная миграция БД")
 
+	s.db = db
 	s.manager = vpn.NewManager(db, nil)
 }
 
@@ -54,6 +57,10 @@ func (s *ManagerTestSuite) SetupTest() {
 }
 
 func (s *ManagerTestSuite) TearDownTest() {
+	if s.user == nil || s.server == nil {
+		return 
+	}
+	
 	gormDB := s.db.GetDB()
 	gormDB.Exec("DELETE FROM vpn_configs WHERE user_id = ?", s.user.ID)
 	gormDB.Exec("DELETE FROM subscriptions WHERE user_id = ?", s.user.ID)
