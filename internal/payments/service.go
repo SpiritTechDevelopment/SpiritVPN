@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/database"
-	"github.com/RomanRyabinkin/SpiritVPN/internal/vpn"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -17,15 +16,19 @@ type Service struct {
 	db         *database.DB
 	provider   Provider
 	log        *logrus.Entry
-	vpnManager *vpn.Manager
+	vpnManager accessGranter
+}
+
+type accessGranter interface {
+	GrantAccess(ctx context.Context, userID uint, planCode string) error
 }
 
 // Создает новый экземпляр платежного сервиса.
-func NewService(db *database.DB, provider Provider, log *logrus.Entry, vpnManager *vpn.Manager) *Service {
+func NewService(db *database.DB, provider Provider, log *logrus.Entry, vpnManager accessGranter) *Service {
 	return &Service{db: db, provider: provider, log: log, vpnManager: vpnManager}
 }
 
-// Создает запись о платеже в статусе 'pending' 
+// Создает запись о платеже в статусе 'pending'
 // и запрашивает у провайдера (например, Cryptomus) URL для оплаты.
 func (s *Service) GeneratePaymentLink(ctx context.Context, userID uint, amount float64, currency string) (string, error) {
 	payment := &database.Payment{
@@ -53,7 +56,7 @@ func (s *Service) GeneratePaymentLink(ctx context.Context, userID uint, amount f
 }
 
 // Обрабатывает уведомления от платежного шлюза.
-// Использует блокировку строк (FOR UPDATE) базы данных для предотвращения 
+// Использует блокировку строк (FOR UPDATE) базы данных для предотвращения
 // двойных начислений при race conditions.
 func (s *Service) ProcessWebhook(ctx context.Context, rawBody []byte, signature string) error {
 	payload, err := s.provider.VerifyWebhook(rawBody, signature)
@@ -62,11 +65,14 @@ func (s *Service) ProcessWebhook(ctx context.Context, rawBody []byte, signature 
 		return err
 	}
 
-	orderID, _ := strconv.ParseUint(payload.OrderID, 10, 32)
+	orderID, err := strconv.ParseUint(payload.OrderID, 10, 32)
+	if err != nil || orderID == 0 {
+		return fmt.Errorf("invalid order id %q", payload.OrderID)
+	}
 
 	return s.db.GetDB().Transaction(func(tx *gorm.DB) error {
 		var payment database.Payment
-		
+
 		// Блокирует строку от изменений другими транзакциями
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&payment, orderID).Error; err != nil {
 			return err
@@ -94,7 +100,9 @@ func (s *Service) ProcessWebhook(ctx context.Context, rawBody []byte, signature 
 
 		case "failed":
 			payment.Status = "failed"
-			tx.Save(&payment)
+			if err := tx.Save(&payment).Error; err != nil {
+				return err
+			}
 		}
 
 		return nil

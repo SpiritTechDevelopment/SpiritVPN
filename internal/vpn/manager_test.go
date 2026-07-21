@@ -2,6 +2,7 @@ package vpn_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/config"
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/logger"
 	"github.com/stretchr/testify/suite"
-	"fmt"
 )
 
 type ManagerTestSuite struct {
@@ -23,6 +23,10 @@ type ManagerTestSuite struct {
 }
 
 func (s *ManagerTestSuite) SetupSuite() {
+	if testing.Short() {
+		s.T().Skip("skipping PostgreSQL integration tests in local mode")
+	}
+
 	_ = logger.Setup(&logger.Config{Enabled: false})
 
 	cfg := &config.Config{
@@ -32,7 +36,7 @@ func (s *ManagerTestSuite) SetupSuite() {
 	}
 	db, err := database.Connect(cfg)
 	s.Require().NoError(err, "Ожидается успешное подключение к БД")
-	
+
 	err = database.Migrate(db)
 	s.Require().NoError(err, "Ожидается успешная миграция БД")
 
@@ -50,7 +54,7 @@ func (s *ManagerTestSuite) SetupTest() {
 	gormDB.Where("code = ?", "test_plan").FirstOrCreate(s.plan)
 
 	s.server = &database.VPNServer{
-		Name: fmt.Sprintf("TestServer-%d", time.Now().UnixNano()), Host: "1.1.1.1", Port: 443, 
+		Name: fmt.Sprintf("TestServer-%d", time.Now().UnixNano()), Host: "1.1.1.1", Port: 443,
 		PublicKey: "key", IsActive: true, MaxUsers: 10, CurrentUsers: 0,
 	}
 	s.Require().NoError(gormDB.Create(s.server).Error)
@@ -58,9 +62,9 @@ func (s *ManagerTestSuite) SetupTest() {
 
 func (s *ManagerTestSuite) TearDownTest() {
 	if s.user == nil || s.server == nil {
-		return 
+		return
 	}
-	
+
 	gormDB := s.db.GetDB()
 	gormDB.Exec("DELETE FROM vpn_configs WHERE user_id = ?", s.user.ID)
 	gormDB.Exec("DELETE FROM subscriptions WHERE user_id = ?", s.user.ID)
@@ -81,7 +85,7 @@ func (s *ManagerTestSuite) TestGrantAccess_NewSubscription() {
 	err = gormDB.Where("user_id = ?", s.user.ID).First(&sub).Error
 	s.Require().NoError(err)
 	s.True(sub.IsActive)
-	
+
 	expectedEndDate := time.Now().AddDate(0, 0, s.plan.DurationDays)
 	s.WithinDuration(expectedEndDate, sub.EndDate, 5*time.Second)
 
@@ -110,7 +114,7 @@ func (s *ManagerTestSuite) TestGrantAccess_ExtendSubscription() {
 
 	var extendedSub database.Subscription
 	s.db.GetDB().Where("user_id = ?", s.user.ID).First(&extendedSub)
-	
+
 	expectedExtendedDate := initialSub.EndDate.AddDate(0, 0, s.plan.DurationDays)
 	s.WithinDuration(expectedExtendedDate, extendedSub.EndDate, 2*time.Second)
 
