@@ -29,7 +29,7 @@ func NewService(db *database.DB, provider Provider, log *logrus.Entry, vpnManage
 }
 
 // Создает запись о платеже в статусе 'pending'
-// и запрашивает у провайдера (например, Cryptomus) URL для оплаты.
+// и запрашивает у провайдера URL для оплаты.
 func (s *Service) GeneratePaymentLink(ctx context.Context, userID uint, amount float64, currency string) (string, error) {
 	payment := &database.Payment{
 		UserID:        userID,
