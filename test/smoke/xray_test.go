@@ -18,7 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("[ERROR] Failed to connect to Xray API: %v", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	fmt.Println("[OK] Connected successfully")
 
 	ctx := context.Background()

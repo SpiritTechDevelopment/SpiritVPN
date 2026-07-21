@@ -62,7 +62,7 @@ func TestLoad(t *testing.T) {
 			os.Clearenv()
 
 			for key, value := range tt.envVars {
-				os.Setenv(key, value)
+				_ = os.Setenv(key, value)
 			}
 
 			cfg, err := Load()
@@ -92,7 +92,7 @@ func TestLoad(t *testing.T) {
 // при отсутствии переменных окружения.
 func TestLoadDefaults(t *testing.T) {
 	os.Clearenv()
-	os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
+	_ = os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
 
 	cfg, err := Load()
 	if err != nil {
@@ -128,11 +128,11 @@ func TestLoadDefaults(t *testing.T) {
 // переопределяющих значения по умолчанию.
 func TestLoadCustomValues(t *testing.T) {
 	os.Clearenv()
-	os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
-	os.Setenv("DB_HOST", testCustomHost)
-	os.Setenv("DB_PORT", "3306")
-	os.Setenv("API_ADDRESS", testAPIAddress)
-	os.Setenv("VPN_HOST", testVPNHost)
+	_ = os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
+	_ = os.Setenv("DB_HOST", testCustomHost)
+	_ = os.Setenv("DB_PORT", "3306")
+	_ = os.Setenv("API_ADDRESS", testAPIAddress)
+	_ = os.Setenv("VPN_HOST", testVPNHost)
 
 	cfg, err := Load()
 	if err != nil {
@@ -183,7 +183,7 @@ func TestGetEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Clearenv()
 			if tt.value != "" {
-				os.Setenv(tt.key, tt.value)
+				_ = os.Setenv(tt.key, tt.value)
 			}
 
 			result := getEnv(tt.key, tt.defaultValue)
@@ -231,7 +231,7 @@ func TestGetEnvAsInt(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Clearenv()
 			if tt.value != "" {
-				os.Setenv(tt.key, tt.value)
+				_ = os.Setenv(tt.key, tt.value)
 			}
 
 			result := getEnvAsInt(tt.key, tt.defaultValue)
@@ -307,7 +307,7 @@ func TestGetEnvAsDuration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Clearenv()
 			if tt.value != "" {
-				os.Setenv(tt.key, tt.value)
+				_ = os.Setenv(tt.key, tt.value)
 			}
 
 			result := getEnvAsDuration(tt.key, tt.defaultValue)
@@ -350,9 +350,9 @@ func TestVPNConfig_StatsInterval(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Clearenv()
-			os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
+			_ = os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
 			if tt.envValue != "" {
-				os.Setenv("VPN_STATS_INTERVAL", tt.envValue)
+				_ = os.Setenv("VPN_STATS_INTERVAL", tt.envValue)
 			}
 
 			cfg, err := Load()

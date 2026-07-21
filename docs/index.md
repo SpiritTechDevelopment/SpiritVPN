@@ -1,9 +1,8 @@
 # SpiritVPN
 
-[![CI/CD](https://github.com/RomanRyabinkin/SpiritVPN/actions/workflows/ci.yml/badge.svg)](https://github.com/RomanRyabinkin/SpiritVPN/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/RomanRyabinkin/SpiritVPN/branch/main/graph/badge.svg)](https://codecov.io/gh/RomanRyabinkin/SpiritVPN)
-[![Go Report Card](https://goreportcard.com/badge/github.com/RomanRyabinkin/SpiritVPN)](https://goreportcard.com/report/github.com/RomanRyabinkin/SpiritVPN)
-[![License](https://img.shields.io/github/license/RomanRyabinkin/SpiritVPN)](LICENSE)
+![Go Version](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat&logo=go)
+![Status](https://img.shields.io/badge/Status-In_Development-blueviolet)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 **SpiritVPN** — сервис на Go для управления VPN-инфраструктурой на базе Xray с поддержкой VLESS + Reality, REST API, Telegram-бота и внутренней подсистемы учета пользователей, подписок и статистики трафика.
 
