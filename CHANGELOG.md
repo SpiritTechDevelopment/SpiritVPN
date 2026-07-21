@@ -6,6 +6,9 @@
 
 ## [Unreleased]
 
+### Изменено
+- Feature/billing developing ([#21](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/21)) by @RomanRyabinkin
+
 ### Документация
 - feat: [DOCS-01] updated docs ([#20](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/20)) by @RomanRyabinkin
 
@@ -26,6 +29,7 @@
 * Добавлена категоризация критических событий по компонентам (`API`, `BOT`, `VPN`, `INFRA`, `DB`)
 
 ### Изменено
+- Feature/billing developing ([#21](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/21)) by @RomanRyabinkin
 
 * Обновлена конфигурация Telegram hook для использования отдельных топиков
 * Обновлена проектная документация и описание логирования
