@@ -8,7 +8,6 @@ SpiritVPN построен как многокомпонентное прило�
 
 * **VPN Server** — работа с Xray и VPN-логикой;
 * **API Server** — HTTP API и служебные эндпоинты;
-* **Telegram Bot** — Telegram-интерфейс;
 * **Database Layer** — модели, репозитории и доступ к PostgreSQL;
 * **Workers** — фоновые задачи;
 * **Shared Packages** — конфигурация и логирование.
@@ -42,15 +41,6 @@ SpiritVPN/
 * регистрация health check маршрутов;
 * использование слоя `internal/api`.
 
-### `cmd/telegram-bot`
-
-Точка входа Telegram-бота.
-
-Назначение:
-
-* запуск пользовательского интерфейса сервиса в Telegram;
-* работа с бизнес-логикой бота из `internal/bot`.
-
 ### `cmd/vpn-server`
 
 Точка входа VPN-сервера.
@@ -71,15 +61,6 @@ SpiritVPN/
 
 * `server.go` — создание сервера, маршрутов и групп API;
 * `handlers/health.go` — health check обработчики.
-
-### `internal/bot`
-
-Содержит логику Telegram-бота.
-
-Назначение:
-
-* обработка команд и пользовательских сценариев;
-* взаимодействие с другими сервисными слоями проекта.
 
 ### `internal/database`
 
@@ -122,7 +103,6 @@ SpiritVPN/
 * базы данных;
 * Redis;
 * VPN;
-* Telegram;
 * платежей;
 * логирования.
 
@@ -165,7 +145,6 @@ SpiritVPN/
 * PostgreSQL;
 * Redis;
 * VPN/Xray;
-* Telegram Bot;
 * Payment;
 * Logging.
 
@@ -174,19 +153,15 @@ SpiritVPN/
 ## Схема взаимодействия компонентов
 
 ```text
-Telegram Bot ───────┐
-                    │
-                    ▼
-                API Server ─────────────► Database (PostgreSQL)
-                    │
-                    │
-                    ├───────────────────► Redis
-                    │
-                    ▼
-                VPN Layer ──────────────► Xray API
-                    │
-                    ▼
-                 Workers
+API Server ─────────────► Database (PostgreSQL)
+    │
+    ├───────────────────► Redis
+    │
+    ▼
+VPN Layer ──────────────► Xray API
+    │
+    ▼
+ Workers
 ```
 
 ## Логирование и наблюдаемость

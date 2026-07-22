@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: SpiritVPN API
+  version: 1.0.0
+  description: Service-to-service contract used by trusted external adapters.
+servers:
+  - url: http://api:8080
+paths:
+  /internal/v1/vpn/test-access:
+    post:
+      operationId: issueTestVPNAccess
+      summary: Issue or return idempotent test VPN access for an external user
+      security:
+        - internalBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestAccessRequest'
+      responses:
+        '200':
+          description: Existing or newly issued client profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientProfile'
+        '400':
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid service token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Database or Xray provisioning is temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    internalBearer:
+      type: http
+      scheme: bearer
+  schemas:
+    TestAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [telegram_id]
+      properties:
+        telegram_id:
+          type: integer
+          format: int64
+          minimum: 1
+        username:
+          type: string
+          maxLength: 255
+    ClientProfile:
+      type: object
+      additionalProperties: false
+      required: [uri, uuid, expires_at]
+      properties:
+        uri:
+          type: string
+          pattern: '^vless://'
+        uuid:
+          type: string
+          format: uuid
+        expires_at:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string

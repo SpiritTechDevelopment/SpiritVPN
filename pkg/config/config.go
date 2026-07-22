@@ -15,16 +15,16 @@ type Config struct {
 	Database DatabaseConfig // Настройки PostgreSQL
 	Redis    RedisConfig    // Настройки Redis кеша
 	VPN      VPNConfig      // Настройки VPN сервера
-	Telegram TelegramConfig // Настройки Telegram бота
 	Payment  PaymentConfig  // Настройки платежных систем
 	Logger   LoggerConfig   // Настройки логирования
 }
 
 // APIConfig содержит конфигурацию REST API сервера.
 type APIConfig struct {
-	Address   string // Адрес для прослушивания (например, ":8080")
-	Mode      string // Режим работы: "debug" или "production"
-	JWTSecret string // Секретный ключ для подписи JWT токенов
+	Address       string // Адрес для прослушивания (например, ":8080")
+	Mode          string // Режим работы: "debug" или "production"
+	JWTSecret     string // Секретный ключ для подписи JWT токенов
+	InternalToken string // Bearer token для service-to-service API
 }
 
 // DatabaseConfig содержит параметры подключения к PostgreSQL.
@@ -51,17 +51,16 @@ type VPNConfig struct {
 	Port          int           // Порт (обычно 443 для VLESS+Reality)
 	ApiPort       int           // Порт gRPC API Xray (обычно 10085)
 	ApiAddress    string        // Адрес gRPC API Xray (обычно "localhost" или имя контейнера)
+	InboundTag    string        // Тег клиентского VLESS inbound в Xray
+	NodeName      string        // Стабильное имя entry-ноды
+	EndpointsFile string        // Путь к client-endpoints.json из Infrastructure
 	ServerName    string        // SNI домен (например, google.com для Reality)
 	PrivateKey    string        // Приватный ключ сервера (X25519)
 	PublicKey     string        // Публичный ключ сервера (X25519)
 	ShortIDs      string        // ShortIDs для Reality (через запятую)
+	Fingerprint   string        // TLS fingerprint клиента
+	TestAccessTTL time.Duration // Срок тестового доступа, выдаваемого через internal API
 	StatsInterval time.Duration // Интервал сбора статистики трафика (по умолчанию 5m)
-}
-
-// TelegramConfig содержит конфигурацию Telegram бота.
-type TelegramConfig struct {
-	BotToken string // Токен бота от @BotFather
-	Debug    bool   // Включить отладочные логи
 }
 
 // PaymentConfig содержит конфигурацию интеграции с платежными системами.
@@ -93,7 +92,7 @@ type LoggerConfig struct {
 //
 // Возвращает:
 //   - *Config: загруженная конфигурация
-//   - error: ошибка валидации (например, отсутствует TELEGRAM_BOT_TOKEN)
+//   - error: ошибка загрузки конфигурации
 //
 // Пример:
 //
@@ -106,9 +105,10 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		API: APIConfig{
-			Address:   getEnv("API_ADDRESS", ":8080"),
-			Mode:      getEnv("API_MODE", "debug"),
-			JWTSecret: getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+			Address:       getEnv("API_ADDRESS", ":8080"),
+			Mode:          getEnv("API_MODE", "debug"),
+			JWTSecret:     getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+			InternalToken: getEnv("INTERNAL_API_TOKEN", ""),
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
@@ -128,15 +128,16 @@ func Load() (*Config, error) {
 			Port:          getEnvAsInt("VPN_PORT", 443),
 			ApiPort:       getEnvAsInt("VPN_API_PORT", 10085),
 			ApiAddress:    getEnv("VPN_API_ADDRESS", "localhost"),
+			InboundTag:    getEnv("VPN_INBOUND_TAG", "vless-in"),
+			NodeName:      getEnv("VPN_NODE_NAME", "entry-1"),
+			EndpointsFile: getEnv("VPN_ENDPOINTS_FILE", ""),
 			ServerName:    getEnv("VPN_SERVER_NAME", "google.com"),
 			PrivateKey:    getEnv("VPN_PRIVATE_KEY", ""),
 			PublicKey:     getEnv("VPN_PUBLIC_KEY", ""),
 			ShortIDs:      getEnv("VPN_SHORT_IDS", ""),
+			Fingerprint:   getEnv("VPN_FINGERPRINT", "chrome"),
+			TestAccessTTL: getEnvAsDuration("VPN_TEST_ACCESS_TTL", 24*time.Hour),
 			StatsInterval: getEnvAsDuration("VPN_STATS_INTERVAL", 5*time.Minute),
-		},
-		Telegram: TelegramConfig{
-			BotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
-			Debug:    getEnv("TELEGRAM_DEBUG", "false") == "true",
 		},
 		Payment: PaymentConfig{
 			YooKassaShopID:    getEnv("YOOKASSA_SHOP_ID", ""),
@@ -157,10 +158,6 @@ func Load() (*Config, error) {
 			TelegramChatID:   getEnv("LOG_TELEGRAM_CHAT_ID", ""),
 			TelegramThreadID: getEnv("LOG_TELEGRAM_THREAD_ID", ""),
 		},
-	}
-
-	if cfg.Telegram.BotToken == "" {
-		return nil, fmt.Errorf("TELEGRAM_BOT_TOKEN is required")
 	}
 
 	if cfg.Database.Password == "" {

@@ -59,7 +59,7 @@ func NewServer(cfg *config.Config, db *database.DB) (*Server, error) {
 func (s *Server) Start(ctx context.Context) error {
 	s.log.WithField("port", s.config.VPN.Port).Info("Starting VPN server integration")
 
-	client, err := NewXrayClient(s.config.VPN.ApiAddress, s.config.VPN.ApiPort, "vless-inbound")
+	client, err := NewXrayClient(s.config.VPN.ApiAddress, s.config.VPN.ApiPort, s.config.VPN.InboundTag)
 	if err != nil {
 		return fmt.Errorf("failed to connect to xray api: %w", err)
 	}

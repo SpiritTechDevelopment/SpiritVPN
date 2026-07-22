@@ -11,7 +11,6 @@ import (
 )
 
 func main() {
-	// Настройка логгера для VPN Server
 	logConfig := logger.Config{
 		Level:         "info",
 		ConsoleOutput: true,
@@ -29,8 +28,8 @@ func main() {
 	}
 
 	// Добавление Telegram hook'а для критических ошибок → Errors topic (Thread ID: 13)
-	if botToken := os.Getenv("TELEGRAM_BOT_TOKEN"); botToken != "" {
-		chatID := os.Getenv("TELEGRAM_CHAT_ID")
+	if botToken := os.Getenv("LOG_TELEGRAM_BOT_TOKEN"); botToken != "" {
+		chatID := os.Getenv("LOG_TELEGRAM_CHAT_ID")
 		if chatID != "" {
 			hook := logger.NewTelegramHook(
 				botToken,

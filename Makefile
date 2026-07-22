@@ -15,8 +15,6 @@ build: ## Собрать все сервисы
 	go build -o bin/api-server ./cmd/api-server
 	@echo "Building VPN Server..."
 	go build -o bin/vpn-server ./cmd/vpn-server
-	@echo "Building Telegram Bot..."
-	go build -o bin/telegram-bot ./cmd/telegram-bot
 	@echo "Build complete!"
 
 run-api: ## Запустить API сервер
@@ -24,9 +22,6 @@ run-api: ## Запустить API сервер
 
 run-vpn: ## Запустить VPN сервер
 	go run ./cmd/vpn-server/main.go
-
-run-bot: ## Запустить Telegram бота
-	go run ./cmd/telegram-bot/main.go
 
 test: ## Запустить тесты
 	go test -v -race -coverprofile=coverage.out ./...

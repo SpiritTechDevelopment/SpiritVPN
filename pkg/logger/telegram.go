@@ -16,7 +16,7 @@ type TelegramHook struct {
 	BotToken  string
 	ChatID    string
 	ThreadID  string // ID топика (message_thread_id) для отправки в конкретный топик
-	Component string // Название компонента/сервиса (api-server, telegram-bot, vpn-server, infrastructure)
+	Component string // Название компонента/сервиса (api-server, vpn-server, infrastructure)
 	client    *http.Client
 }
 
@@ -26,7 +26,7 @@ type TelegramHook struct {
 //   - botToken: токен Telegram бота
 //   - chatID: ID чата или супергруппы
 //   - threadID: ID топика (опционально, передайте "" если не используется)
-//   - component: название компонента (api-server, telegram-bot, vpn-server, infrastructure)
+//   - component: название компонента (api-server, vpn-server, infrastructure)
 //
 // Для отправки в топик супергруппы:
 //  1. Создайте супергруппу с включенными Topics
@@ -82,8 +82,6 @@ func (hook *TelegramHook) formatMessage(entry *logrus.Entry) string {
 	switch hook.Component {
 	case "api-server":
 		prefix = "API"
-	case "telegram-bot":
-		prefix = "BOT"
 	case "vpn-server":
 		prefix = "VPN"
 	case "infrastructure":
@@ -102,7 +100,7 @@ func (hook *TelegramHook) formatMessage(entry *logrus.Entry) string {
 	fmt.Fprintf(&buf, "<b>Time:</b> %s\n", entry.Time.Format(time.RFC3339))
 
 	if module, ok := entry.Data["module"].(string); ok {
-    	fmt.Fprintf(&buf, "<b>Module:</b> %s\n", module)
+		fmt.Fprintf(&buf, "<b>Module:</b> %s\n", module)
 	}
 
 	if userID, ok := entry.Data["user_id"]; ok {
@@ -147,7 +145,7 @@ func (hook *TelegramHook) sendMessage(text string) error {
 	if err != nil {
 		return err
 	}
-	defer func () { _ = resp.Body.Close() } ()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("telegram api returned status %d", resp.StatusCode)

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -43,6 +44,9 @@ func main() {
 
 	log := logger.GetLogger("api-server.main")
 	log.Info("Starting API Server...")
+	if cfg.API.InternalToken == "" {
+		log.Fatal("INTERNAL_API_TOKEN is required")
+	}
 
 	db, err := database.Connect(cfg)
 	if err != nil {
@@ -58,29 +62,57 @@ func main() {
 		log.WithError(err).Fatal("Failed to run migrations")
 	}
 
-	xrayClient, err := vpn.NewXrayClient(cfg.VPN.ApiAddress, cfg.VPN.ApiPort, "vless-inbound")
-	if err != nil {
-		log.WithError(err).Warn("Could not connect to Xray API (is it running?)")
-	} else {
-		defer func () { _ = xrayClient.Close() } ()
-		log.Info("Connected to Xray API successfully")
+	shortID := strings.TrimSpace(strings.Split(cfg.VPN.ShortIDs, ",")[0])
+	nodeEndpoint := vpn.NodeEndpoint{
+		Reality: vpn.RealityEndpoint{
+			NodeName: cfg.VPN.NodeName, Host: cfg.VPN.Host, Port: cfg.VPN.Port,
+			ServerName: cfg.VPN.ServerName, PublicKey: cfg.VPN.PublicKey,
+			ShortID: shortID, Fingerprint: cfg.VPN.Fingerprint,
+		},
+		APIHost: cfg.VPN.ApiAddress,
+		APIPort: cfg.VPN.ApiPort,
 	}
-	
+	if cfg.VPN.EndpointsFile != "" {
+		nodeEndpoint, err = vpn.LoadNodeEndpoint(cfg.VPN.EndpointsFile, cfg.VPN.NodeName)
+		if err != nil {
+			log.WithError(err).Fatal("Failed to load Infrastructure endpoint manifest")
+		}
+	}
+
+	xrayClient, err := vpn.NewXrayClient(nodeEndpoint.APIHost, nodeEndpoint.APIPort, cfg.VPN.InboundTag)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to create Xray API client")
+	}
+	defer func() { _ = xrayClient.Close() }()
+	log.Info("Xray API client initialized")
+
 	vpnManager := vpn.NewManager(db, xrayClient)
+	accessStore, err := vpn.NewGormAccessStore(db, nodeEndpoint.Reality)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to create VPN access store")
+	}
+	uriBuilder, err := vpn.NewVLESSURIBuilder(nodeEndpoint.Reality)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to create VLESS URI builder")
+	}
+	accessService, err := vpn.NewAccessService(accessStore, xrayClient, uriBuilder, cfg.VPN.TestAccessTTL)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to create VPN access service")
+	}
 
 	// ==========================================
-	// Инициализация CryptoPay 
+	// Инициализация CryptoPay
 	// ==========================================
 	cryptoToken := os.Getenv("CRYPTOPAY_TOKEN")
 	if cryptoToken == "" {
 		log.Warn("CRYPTOPAY_TOKEN is empty! Payments will fail.")
 	}
 	cryptoProvider := payments.NewCryptoPayProvider(cryptoToken, false)
-	
+
 	paymentLog := logger.GetLogger("payments.service")
 	paymentService := payments.NewService(db, cryptoProvider, paymentLog, vpnManager)
 
-	server := api.NewServer(cfg, db, paymentService)
+	server := api.NewServer(cfg, db, paymentService, accessService)
 
 	httpServer := &http.Server{
 		Addr:         cfg.API.Address,
@@ -100,7 +132,7 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	<-sigCh
-	
+
 	log.Info("Shutting down API server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

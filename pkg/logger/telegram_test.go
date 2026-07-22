@@ -55,7 +55,6 @@ func TestTelegramHookFormatMessage(t *testing.T) {
 		wantEmoji string
 	}{
 		{"API Server", "api-server", "🔴 API"},
-		{"Telegram Bot", "telegram-bot", "🤖 BOT"},
 		{"VPN Server", "vpn-server", "🔐 VPN"},
 		{"Infrastructure", "infrastructure", "⚙️ INFRA"},
 		{"Database", "database", "💾 DB"},
