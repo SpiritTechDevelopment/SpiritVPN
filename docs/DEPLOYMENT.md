@@ -9,13 +9,11 @@
 В проект входят следующие исполняемые сервисы:
 
 * `api-server`
-* `telegram-bot`
 * `vpn-server`
 
 Для контейнерного запуска в репозитории предусмотрены:
 
 * `deployments/api.Dockerfile`
-* `deployments/bot.Dockerfile`
 * `deployments/vpn.Dockerfile`
 * `deployments/entrypoint.sh`
 * `docker-compose.yml`
@@ -42,7 +40,6 @@ cp configs/.env.example configs/.env
 
 * параметры подключения к PostgreSQL;
 * параметры подключения к Redis;
-* параметры Telegram Bot;
 * параметры VPN/Xray;
 * параметры логирования.
 
@@ -52,12 +49,6 @@ cp configs/.env.example configs/.env
 
 ```bash
 go run cmd/api-server/main.go
-```
-
-### Telegram Bot
-
-```bash
-go run cmd/telegram-bot/main.go
 ```
 
 ### VPN Server
@@ -115,9 +106,6 @@ VPN_PRIVATE_KEY=
 VPN_PUBLIC_KEY=
 VPN_SHORT_IDS=
 VPN_STATS_INTERVAL=5m
-
-TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
-TELEGRAM_DEBUG=false
 
 YOOKASSA_SHOP_ID=your_shop_id
 YOOKASSA_SECRET_KEY=your_secret_key
@@ -201,14 +189,6 @@ logs/
 * логи API-сервера;
 * доступность порта;
 * подключение к базе данных.
-
-### Telegram Bot не запускается
-
-Проверьте:
-
-* значение `TELEGRAM_BOT_TOKEN`;
-* сетевую доступность Telegram API;
-* логи bot-сервиса.
 
 ### VPN Server не работает корректно
 

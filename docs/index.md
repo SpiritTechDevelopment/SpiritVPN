@@ -4,7 +4,7 @@
 ![Status](https://img.shields.io/badge/Status-In_Development-blueviolet)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-**SpiritVPN** — сервис на Go для управления VPN-инфраструктурой на базе Xray с поддержкой VLESS + Reality, REST API, Telegram-бота и внутренней подсистемы учета пользователей, подписок и статистики трафика.
+**SpiritVPN** — backend-сервис на Go для управления VPN-инфраструктурой на базе Xray с поддержкой VLESS + Reality, REST API и внутренней подсистемы учета пользователей, подписок и статистики трафика.
 
 ## Назначение
 
@@ -12,7 +12,6 @@
 
 * **VPN Server** — взаимодействие с Xray и управление VPN-конфигурациями
 * **API Server** — REST API для служебных и пользовательских операций
-* **Telegram Bot** — пользовательский интерфейс в Telegram
 * **Database Layer** — модели, репозитории и работа с PostgreSQL
 * **Workers** — фоновые задачи, включая сбор статистики трафика
 * **Logger Package** — структурированное логирование с поддержкой файлов, Gin, GORM и Telegram-уведомлений
@@ -38,7 +37,6 @@
 
 1. **VPN Server** — управление Xray и VPN-логикой
 2. **API Server** — HTTP API и служебные эндпоинты
-3. **Telegram Bot** — Telegram-интерфейс сервиса
 
 Дополнительная информация приведена в `docs/ARCHITECTURE.md`.
 
@@ -95,12 +93,6 @@ go run cmd/vpn-server/main.go
 go run cmd/api-server/main.go
 ```
 
-**Telegram Bot**
-
-```bash
-go run cmd/telegram-bot/main.go
-```
-
 ### 6. Запуск через Docker Compose
 
 ```bash
@@ -141,10 +133,6 @@ VPN_PUBLIC_KEY=
 VPN_SHORT_IDS=
 VPN_STATS_INTERVAL=5m
 
-# Telegram Bot
-TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
-TELEGRAM_DEBUG=false
-
 # Payment
 YOOKASSA_SHOP_ID=your_shop_id
 YOOKASSA_SECRET_KEY=your_secret_key
@@ -165,10 +153,6 @@ LOG_TELEGRAM_CHAT_ID=
 LOG_TELEGRAM_THREAD_ID=
 ```
 
-## Важное замечание по конфигурации
-
-Общая загрузка конфигурации выполняется через пакет `pkg/config`. В текущей реализации `TELEGRAM_BOT_TOKEN` является обязательным параметром при вызове `config.Load()`.
-
 ## Миграции базы данных
 
 В текущей структуре проекта отдельная команда `cmd/migrate` отсутствует.
@@ -181,7 +165,6 @@ LOG_TELEGRAM_THREAD_ID=
 SpiritVPN/
 ├── cmd/                    # Точки входа приложений
 │   ├── api-server/         # REST API сервер
-│   ├── telegram-bot/       # Telegram бот
 │   └── vpn-server/         # VPN сервер
 ├── configs/                # Конфигурационные файлы
 ├── deployments/            # Docker-файлы и служебные скрипты запуска
@@ -189,7 +172,6 @@ SpiritVPN/
 ├── examples/               # Примеры использования модулей
 ├── internal/               # Внутренняя бизнес-логика
 │   ├── api/                # API сервер и handlers
-│   ├── bot/                # Логика Telegram бота
 │   ├── database/           # Модели, подключение, репозитории
 │   ├── vpn/                # Интеграция с Xray и VPN-логика
 │   └── workers/            # Фоновые worker'ы
@@ -268,7 +250,6 @@ golangci-lint run
 К основным направлениям развития проекта относятся:
 
 * развитие пользовательских и административных API;
-* завершение Telegram bot flow;
 * интеграция платежных сценариев;
 * развитие логики выдачи VPN-конфигураций;
 * расширение покрытия тестами;

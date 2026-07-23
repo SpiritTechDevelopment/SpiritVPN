@@ -7,17 +7,16 @@ import (
 )
 
 const (
-	testTelegramToken = "test_token_12345"
-	testDBHost        = "localhost"
-	testDBPort        = "5432"
-	testDBUser        = "testuser"
-	testDBPassword    = "testpass"
-	testDBName        = "testdb"
-	testJWTSecret     = "test_secret_key"
-	testCustomHost    = "custom_host"
-	testCustomPort    = 3306
-	testAPIAddress    = ":9090"
-	testVPNHost       = "vpn.example.com"
+	testDBHost     = "localhost"
+	testDBPort     = "5432"
+	testDBUser     = "testuser"
+	testDBPassword = "testpass"
+	testDBName     = "testdb"
+	testJWTSecret  = "test_secret_key"
+	testCustomHost = "custom_host"
+	testCustomPort = 3306
+	testAPIAddress = ":9090"
+	testVPNHost    = "vpn.example.com"
 )
 
 // TestLoad проверяет загрузку конфигурации из переменных окружения.
@@ -31,28 +30,18 @@ func TestLoad(t *testing.T) {
 		{
 			name: "valid configuration",
 			envVars: map[string]string{
-				"DB_HOST":            testDBHost,
-				"DB_PORT":            testDBPort,
-				"DB_USER":            testDBUser,
-				"DB_PASSWORD":        testDBPassword,
-				"DB_NAME":            testDBName,
-				"TELEGRAM_BOT_TOKEN": testTelegramToken,
-				"JWT_SECRET":         testJWTSecret,
+				"DB_HOST":     testDBHost,
+				"DB_PORT":     testDBPort,
+				"DB_USER":     testDBUser,
+				"DB_PASSWORD": testDBPassword,
+				"DB_NAME":     testDBName,
+				"JWT_SECRET":  testJWTSecret,
 			},
 			wantErr: false,
 		},
 		{
-			name: "missing required telegram token",
-			envVars: map[string]string{
-				"DB_HOST": testDBHost,
-			},
-			wantErr: true,
-		},
-		{
-			name: "valid with default values",
-			envVars: map[string]string{
-				"TELEGRAM_BOT_TOKEN": testTelegramToken,
-			},
+			name:    "valid with default values",
+			envVars: map[string]string{},
 			wantErr: false,
 		},
 	}
@@ -92,7 +81,6 @@ func TestLoad(t *testing.T) {
 // при отсутствии переменных окружения.
 func TestLoadDefaults(t *testing.T) {
 	os.Clearenv()
-	_ = os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
 
 	cfg, err := Load()
 	if err != nil {
@@ -113,6 +101,11 @@ func TestLoadDefaults(t *testing.T) {
 		{"Redis DB", cfg.Redis.DB, 0},
 		{"VPN Port", cfg.VPN.Port, 443},
 		{"VPN API Port", cfg.VPN.ApiPort, 10085},
+		{"VPN Inbound Tag", cfg.VPN.InboundTag, "vless-in"},
+		{"VPN Node Name", cfg.VPN.NodeName, "entry-1"},
+		{"VPN Endpoints File", cfg.VPN.EndpointsFile, ""},
+		{"VPN Fingerprint", cfg.VPN.Fingerprint, "chrome"},
+		{"VPN Test Access TTL", cfg.VPN.TestAccessTTL, 24 * time.Hour},
 	}
 
 	for _, tt := range tests {
@@ -128,7 +121,6 @@ func TestLoadDefaults(t *testing.T) {
 // переопределяющих значения по умолчанию.
 func TestLoadCustomValues(t *testing.T) {
 	os.Clearenv()
-	_ = os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
 	_ = os.Setenv("DB_HOST", testCustomHost)
 	_ = os.Setenv("DB_PORT", "3306")
 	_ = os.Setenv("API_ADDRESS", testAPIAddress)
@@ -350,7 +342,6 @@ func TestVPNConfig_StatsInterval(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.Clearenv()
-			_ = os.Setenv("TELEGRAM_BOT_TOKEN", testTelegramToken)
 			if tt.envValue != "" {
 				_ = os.Setenv("VPN_STATS_INTERVAL", tt.envValue)
 			}

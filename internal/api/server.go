@@ -3,19 +3,22 @@ package api
 import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/api/handlers"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/database"
-	"github.com/RomanRyabinkin/SpiritVPN/internal/payments" 
+	"github.com/RomanRyabinkin/SpiritVPN/internal/payments"
 	"github.com/RomanRyabinkin/SpiritVPN/pkg/config"
 	"github.com/gin-gonic/gin"
 )
 
+// Server объединяет HTTP-маршруты API и их прикладные зависимости.
 type Server struct {
 	config         *config.Config
 	db             *database.DB
 	router         *gin.Engine
 	paymentService *payments.Service
+	accessService  testAccessIssuer
 }
 
-func NewServer(cfg *config.Config, db *database.DB, paymentService *payments.Service) *Server {
+// NewServer создаёт HTTP-сервер, настраивает режим Gin и регистрирует маршруты API.
+func NewServer(cfg *config.Config, db *database.DB, paymentService *payments.Service, accessService testAccessIssuer) *Server {
 	if cfg.API.Mode == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -27,6 +30,7 @@ func NewServer(cfg *config.Config, db *database.DB, paymentService *payments.Ser
 		db:             db,
 		router:         router,
 		paymentService: paymentService,
+		accessService:  accessService,
 	}
 
 	server.setupRoutes()
@@ -34,6 +38,7 @@ func NewServer(cfg *config.Config, db *database.DB, paymentService *payments.Ser
 	return server
 }
 
+// Router возвращает настроенный HTTP-обработчик Gin.
 func (s *Server) Router() *gin.Engine {
 	return s.router
 }
@@ -42,7 +47,7 @@ func (s *Server) setupRoutes() {
 	s.router.GET("/health", handlers.HealthCheck)
 	s.router.GET("/health/advanced", handlers.HealthCheckAdvanced(s.db))
 
-	v1 := s.router.Group("/api/v1")
+	v1 := s.router.Group(PublicAPIV1Prefix)
 	{
 		auth := v1.Group("/auth")
 		{
@@ -51,8 +56,10 @@ func (s *Server) setupRoutes() {
 			auth.POST("/refresh", s.refreshToken)
 		}
 
-		payments.SetupRoutes(s.router, s.paymentService)
 	}
+
+	payments.SetupRoutes(s.router, s.paymentService)
+	registerInternalRoutes(s.router, s.config.API.InternalToken, s.accessService)
 }
 
 func (s *Server) register(c *gin.Context) {

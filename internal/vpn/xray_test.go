@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/xtls/xray-core/app/proxyman/command"
 	statsCommand "github.com/xtls/xray-core/app/stats/command"
+	"github.com/xtls/xray-core/proxy/vless"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -16,7 +17,7 @@ import (
 const (
 	testUUID       = "550e8400-e29b-41d4-a716-446655440000"
 	testEmail      = "test@example.com"
-	testInboundTag = "vless-inbound"
+	testInboundTag = "vless-in"
 )
 
 // Мок для HandlerClient.
@@ -89,7 +90,17 @@ func TestAddUser(t *testing.T) {
 			ctx := context.Background()
 
 			mockClient.On("AlterInbound", ctx, mock.MatchedBy(func(req *command.AlterInboundRequest) bool {
-				return req.Tag == testInboundTag && req.Operation != nil
+				if req.Tag != testInboundTag || req.Operation == nil {
+					return false
+				}
+				operationMessage, err := req.Operation.GetInstance()
+				operation, ok := operationMessage.(*command.AddUserOperation)
+				if err != nil || !ok || operation.User == nil || operation.User.Account == nil {
+					return false
+				}
+				accountMessage, err := operation.User.Account.GetInstance()
+				account, ok := accountMessage.(*vless.Account)
+				return err == nil && ok && account.Id == tt.uuid && account.Flow == defaultVLESSFlow && account.Encryption == "none"
 			})).Return(&command.AlterInboundResponse{}, tt.mockError)
 
 			err := xrayClient.AddUser(ctx, tt.uuid, tt.email)

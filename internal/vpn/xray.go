@@ -31,7 +31,7 @@ type StatsClient interface {
 //   - client: HandlerService клиент для управления пользователями (добавление/удаление)
 //   - statsClient: StatsService клиент для получения статистики трафика
 //   - connection: активное gRPC соединение с Xray API
-//   - inboundTag: тег входящего соединения (inbound) в конфиге Xray (обычно "vless-inbound")
+//   - inboundTag: тег входящего соединения (inbound) в конфиге Xray (обычно "vless-in")
 type XrayClient struct {
 	client      HandlerClient
 	connection  *grpc.ClientConn
@@ -45,7 +45,7 @@ type XrayClient struct {
 // Parameters:
 //   - address: адрес Xray API сервера (например, "127.0.0.1" или "localhost")
 //   - port: порт Xray API (обычно 10085, настраивается в xray.json через dokodemo-door)
-//   - inboundTag: тег входящего соединения из конфига Xray (обычно "vless-inbound")
+//   - inboundTag: тег входящего соединения из конфига Xray (обычно "vless-in")
 //
 // Returns:
 //   - *XrayClient: инициализированный клиент для работы с Xray
@@ -53,7 +53,7 @@ type XrayClient struct {
 //
 // Example:
 //
-//	client, err := NewXrayClient("127.0.0.1", 10085, "vless-inbound")
+//	client, err := NewXrayClient("127.0.0.1", 10085, "vless-in")
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
@@ -101,7 +101,9 @@ func (c *XrayClient) Close() error {
 //   - Изменения применяются без перезапуска Xray
 func (c *XrayClient) AddUser(ctx context.Context, uuid string, email string) error {
 	account := &vless.Account{
-		Id: uuid,
+		Id:         uuid,
+		Flow:       defaultVLESSFlow,
+		Encryption: "none",
 	}
 
 	accountAny := serial.ToTypedMessage(account)

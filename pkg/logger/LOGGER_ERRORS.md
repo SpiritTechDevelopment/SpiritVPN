@@ -57,7 +57,6 @@ Hook поддерживает указание имени компонента �
 Поддерживаемые префиксы:
 
 * `api-server` → `API`
-* `telegram-bot` → `BOT`
 * `vpn-server` → `VPN`
 * `infrastructure` → `INFRA`
 * `database` → `DB`

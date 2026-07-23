@@ -4,7 +4,7 @@
 
 ### Что такое SpiritVPN?
 
-SpiritVPN — проект VPN-сервиса на Go с архитектурой из нескольких компонентов: VPN Server, API Server, Telegram Bot, слой работы с базой данных и фоновые worker'ы.
+SpiritVPN — backend VPN-сервиса на Go: VPN Server, API Server, слой работы с базой данных и фоновые worker'ы.
 
 ### Какие технологии используются в проекте?
 
@@ -25,7 +25,6 @@ SpiritVPN — проект VPN-сервиса на Go с архитектуро�
 
 * `cmd/vpn-server` — запуск VPN-сервера;
 * `cmd/api-server` — запуск REST API;
-* `cmd/telegram-bot` — запуск Telegram-бота;
 * `internal/database` — модели, подключение и репозитории;
 * `internal/vpn` — интеграция с Xray;
 * `internal/workers` — фоновые задачи;
@@ -45,10 +44,6 @@ SpiritVPN — проект VPN-сервиса на Go с архитектуро�
 
 Приложение загружает настройки из `configs/.env`.
 
-### Какие переменные обязательны?
-
-Для общей загрузки конфигурации через `pkg/config` обязательным является `TELEGRAM_BOT_TOKEN`.
-
 ### Как запустить API сервер?
 
 ```bash
@@ -59,12 +54,6 @@ go run cmd/api-server/main.go
 
 ```bash
 go run cmd/vpn-server/main.go
-```
-
-### Как запустить Telegram-бота?
-
-```bash
-go run cmd/telegram-bot/main.go
 ```
 
 ### Можно ли использовать Docker Compose?

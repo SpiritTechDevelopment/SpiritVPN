@@ -49,30 +49,13 @@ services:
       - DB_PORT=5432
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - VPN_API_ADDRESS=vpn
     env_file:
       - configs/.env
     depends_on:
       - postgres
       - redis
-    networks:
-      - spiritvpn
-
-  # Telegram Bot
-  bot:
-    build:
-      context: .
-      dockerfile: deployments/bot.Dockerfile
-    container_name: spiritvpn-bot
-    restart: unless-stopped
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - API_ADDRESS=http://api:8080
-    env_file:
-      - configs/.env
-    depends_on:
-      - postgres
-      - api
+      - vpn
     networks:
       - spiritvpn
 

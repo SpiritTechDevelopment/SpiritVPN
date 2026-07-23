@@ -3,6 +3,7 @@ package vpn_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -23,8 +24,8 @@ type ManagerTestSuite struct {
 }
 
 func (s *ManagerTestSuite) SetupSuite() {
-	if testing.Short() {
-		s.T().Skip("skipping PostgreSQL integration tests in local mode")
+	if testing.Short() || os.Getenv("SPIRITVPN_INTEGRATION_TESTS") != "1" {
+		s.T().Skip("set SPIRITVPN_INTEGRATION_TESTS=1 to run PostgreSQL integration tests")
 	}
 
 	_ = logger.Setup(&logger.Config{Enabled: false})

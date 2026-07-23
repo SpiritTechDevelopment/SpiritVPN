@@ -28,7 +28,7 @@
           "shortIds": ["6ba85179e30d4fc2"]
         }
       },
-      "tag": "vless-inbound"
+      "tag": "vless-in"
     },
     {
       "listen": "0.0.0.0",

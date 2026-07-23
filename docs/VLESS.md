@@ -30,11 +30,17 @@ VPN_HOST=localhost
 VPN_PORT=443
 VPN_API_PORT=10085
 VPN_API_ADDRESS=localhost
+VPN_INBOUND_TAG=vless-in
+VPN_NODE_NAME=entry-1
+VPN_ENDPOINTS_FILE=
 VPN_SERVER_NAME=google.com
 VPN_PRIVATE_KEY=
 VPN_PUBLIC_KEY=
 VPN_SHORT_IDS=
+VPN_FINGERPRINT=chrome
+VPN_TEST_ACCESS_TTL=24h
 VPN_STATS_INTERVAL=5m
+INTERNAL_API_TOKEN=
 ```
 
 ### Описание параметров
@@ -43,10 +49,16 @@ VPN_STATS_INTERVAL=5m
 * `VPN_PORT` — внешний порт для клиентских подключений;
 * `VPN_API_PORT` — порт Xray API;
 * `VPN_API_ADDRESS` — адрес Xray API;
+* `VPN_INBOUND_TAG` — клиентский inbound tag Xray;
+* `VPN_NODE_NAME` — стабильное имя entry-ноды;
+* `VPN_ENDPOINTS_FILE` — путь к защищённому `client-endpoints.json` из Infrastructure;
 * `VPN_SERVER_NAME` — SNI/Server Name для Reality;
 * `VPN_PRIVATE_KEY` — приватный X25519-ключ сервера;
 * `VPN_PUBLIC_KEY` — публичный X25519-ключ сервера;
 * `VPN_SHORT_IDS` — short IDs для Reality;
+* `VPN_FINGERPRINT` — TLS fingerprint в клиентской ссылке;
+* `VPN_TEST_ACCESS_TTL` — срок тестового доступа, выдаваемого через internal API;
+* `INTERNAL_API_TOKEN` — Bearer token для service-to-service вызовов backend API;
 * `VPN_STATS_INTERVAL` — интервал сбора статистики трафика.
 
 ## Конфигурация Xray

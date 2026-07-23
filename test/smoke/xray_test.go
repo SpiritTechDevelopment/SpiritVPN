@@ -14,7 +14,7 @@ func main() {
 	fmt.Println()
 
 	fmt.Println("1. Connecting to Xray API at 127.0.0.1:10085...")
-	client, err := vpn.NewXrayClient("127.0.0.1", 10085, "vless-inbound")
+	client, err := vpn.NewXrayClient("127.0.0.1", 10085, "vless-in")
 	if err != nil {
 		log.Fatalf("[ERROR] Failed to connect to Xray API: %v", err)
 	}

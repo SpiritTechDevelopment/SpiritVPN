@@ -43,7 +43,6 @@ func main() {
 	demonstrateVPNLogging()
 	demonstrateDatabaseLogging()
 	demonstrateAPILogging(cfg)
-	demonstrateBotLogging()
 
 	logger.Info("=== Integration example completed ===")
 }
@@ -134,32 +133,4 @@ func demonstrateAPILogging(cfg *config.Config) {
 	log.Info("Simulating HTTP requests...")
 
 	log.Info("API server ready")
-}
-
-// demonstrateBotLogging показывает логирование Telegram бота
-func demonstrateBotLogging() {
-	log := logger.GetLogger("bot.handler")
-
-	log.Info("Starting Telegram bot")
-
-	log.WithFields(logrus.Fields{
-		"user_id":   98765,
-		"username":  "john_doe",
-		"command":   "/start",
-		"chat_id":   123456789,
-		"chat_type": "private",
-	}).Info("Processing bot command")
-
-	time.Sleep(100 * time.Millisecond)
-
-	log.WithFields(logrus.Fields{
-		"user_id":  98765,
-		"response": "Welcome message sent",
-	}).Info("Command processed successfully")
-
-	log.WithFields(logrus.Fields{
-		"user_id": 98765,
-		"command": "/subscribe",
-		"error":   "insufficient balance",
-	}).Warn("Command failed: insufficient balance")
 }

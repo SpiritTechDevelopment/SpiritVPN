@@ -52,6 +52,18 @@ make test-coverage-html
 make test-unit
 ```
 
+### Integration-тесты с PostgreSQL
+
+По умолчанию `go test ./...` не требует внешних сервисов. Для запуска DB-сценариев
+поднимите тестовый PostgreSQL и явно включите integration-профиль:
+
+```bash
+SPIRITVPN_INTEGRATION_TESTS=1 go test ./internal/payments ./internal/vpn
+```
+
+GitHub Actions включает этот профиль автоматически, поскольку test job поднимает
+изолированный PostgreSQL service container.
+
 ## Пакеты, для которых есть тесты
 
 ### `pkg/config`
