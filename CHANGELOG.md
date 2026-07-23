@@ -7,6 +7,7 @@
 ## [Unreleased]
 
 ### Изменено
+- fix: [BillingDeveloping] isoloated VPN API  core logic ([#23](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/23)) by @RomanRyabinkin
 - Feature/billing developing ([#21](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/21)) by @RomanRyabinkin
 
 ### Документация
