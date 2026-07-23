@@ -13,6 +13,7 @@ import (
 // testAccessIssuer описывает прикладной сервис выдачи тестового VPN-доступа.
 type testAccessIssuer interface {
 	IssueTestAccess(ctx context.Context, identity vpn.Identity) (vpn.ClientProfile, error)
+	DesiredUsers(ctx context.Context) ([]vpn.DesiredUser, error)
 }
 
 // testAccessRequest описывает входные данные внутреннего API выдачи доступа.
@@ -55,5 +56,19 @@ func issueTestAccessHandler(issuer testAccessIssuer) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, profile)
+	}
+}
+
+// desiredUsersHandler возвращает актуальный снимок пользователей для
+// node-local восстановления runtime-состояния Xray.
+func desiredUsersHandler(issuer testAccessIssuer) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		users, err := issuer.DesiredUsers(c.Request.Context())
+		if err != nil {
+			c.Error(err) //nolint:errcheck // Ошибка сохраняется в контексте для middleware Gin.
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "desired VPN state unavailable"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"users": users})
 	}
 }

@@ -12,6 +12,10 @@ const (
 	TestAccessPath = "/vpn/test-access"
 	// TestAccessRoute содержит полный путь выдачи тестового VPN-доступа.
 	TestAccessRoute = InternalAPIV1Prefix + TestAccessPath
+	// DesiredUsersPath задаёт относительный путь снимка runtime-пользователей.
+	DesiredUsersPath = "/vpn/desired-users"
+	// DesiredUsersRoute содержит полный путь снимка runtime-пользователей.
+	DesiredUsersRoute = InternalAPIV1Prefix + DesiredUsersPath
 )
 
 // registerInternalRoutes регистрирует внутренние service-to-service маршруты
@@ -23,4 +27,5 @@ func registerInternalRoutes(router gin.IRouter, token string, accessIssuer testA
 // registerAccessRoutes регистрирует маршруты модуля выдачи VPN-доступов.
 func registerAccessRoutes(router gin.IRoutes, issuer testAccessIssuer) {
 	router.POST(TestAccessPath, issueTestAccessHandler(issuer))
+	router.GET(DesiredUsersPath, desiredUsersHandler(issuer))
 }

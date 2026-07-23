@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/database"
@@ -142,4 +143,43 @@ func (s *GormAccessStore) Delete(ctx context.Context, configID uint) error {
 				"load_percent":  gorm.Expr("(current_users - 1) * 100.0 / NULLIF(max_users, 0)"),
 			}).Error
 	})
+}
+
+// ListDesired возвращает неистёкшие активные VPN-доступы текущей ноды.
+func (s *GormAccessStore) ListDesired(ctx context.Context) ([]DesiredUser, error) {
+	type desiredRow struct {
+		UUID       string
+		TelegramID int64
+		Flow       string
+	}
+
+	var rows []desiredRow
+	err := s.db.GetDB().WithContext(ctx).
+		Table("vpn_configs").
+		Select("vpn_configs.uuid, users.telegram_id, vpn_configs.flow").
+		Joins("JOIN users ON users.id = vpn_configs.user_id").
+		Joins("JOIN subscriptions ON subscriptions.id = vpn_configs.subscription_id").
+		Joins("JOIN vpn_servers ON vpn_servers.id = vpn_configs.server_id").
+		Where("vpn_servers.name = ?", s.endpoint.NodeName).
+		Where("subscriptions.is_active = ?", true).
+		Where("subscriptions.end_date > ?", s.now().UTC()).
+		Order("vpn_configs.id ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]DesiredUser, 0, len(rows))
+	for _, row := range rows {
+		flow := row.Flow
+		if flow == "" {
+			flow = defaultVLESSFlow
+		}
+		users = append(users, DesiredUser{
+			UUID:  row.UUID,
+			Email: "tg:" + strconv.FormatInt(row.TelegramID, 10),
+			Flow:  flow,
+		})
+	}
+	return users, nil
 }

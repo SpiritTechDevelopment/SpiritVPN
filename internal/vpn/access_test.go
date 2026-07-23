@@ -13,6 +13,7 @@ import (
 
 type accessStoreStub struct {
 	access  Access
+	desired []DesiredUser
 	err     error
 	deleted []uint
 }
@@ -24,6 +25,10 @@ func (s *accessStoreStub) GetOrCreate(context.Context, Identity, string, string,
 func (s *accessStoreStub) Delete(_ context.Context, id uint) error {
 	s.deleted = append(s.deleted, id)
 	return nil
+}
+
+func (s *accessStoreStub) ListDesired(context.Context) ([]DesiredUser, error) {
+	return s.desired, s.err
 }
 
 type runtimeStub struct {
@@ -96,6 +101,22 @@ func TestAccessServiceRollsBackDesiredStateWhenXrayFails(t *testing.T) {
 
 	assert.ErrorContains(t, err, "add Xray user")
 	assert.Equal(t, []uint{7}, store.deleted)
+}
+
+func TestAccessServiceReturnsDesiredUsers(t *testing.T) {
+	expected := []DesiredUser{{UUID: testUUID, Email: "tg:42", Flow: defaultVLESSFlow}}
+	service, err := NewAccessService(
+		&accessStoreStub{desired: expected},
+		&runtimeStub{},
+		uriBuilderStub{},
+		time.Hour,
+	)
+	require.NoError(t, err)
+
+	users, err := service.DesiredUsers(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, expected, users)
 }
 
 func TestVLESSURIBuilderMatchesInfrastructureContract(t *testing.T) {

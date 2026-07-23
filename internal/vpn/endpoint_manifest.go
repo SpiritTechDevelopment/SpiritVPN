@@ -32,6 +32,8 @@ type endpointManifestEntry struct {
 	Flow            string `json:"flow"`
 	APIHost         string `json:"api_host"`
 	APIPort         int    `json:"api_port"`
+	DefaultExitTag  string `json:"default_exit_tag"`
+	XrayImage       string `json:"xray_image"`
 }
 
 // LoadNodeEndpoint загружает и валидирует параметры указанной entry-ноды

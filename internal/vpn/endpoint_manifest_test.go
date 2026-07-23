@@ -23,7 +23,9 @@ func TestLoadNodeEndpoint(t *testing.T) {
       "fingerprint": "chrome",
       "flow": "xtls-rprx-vision",
       "api_host": "10.20.0.11",
-      "api_port": 10085
+      "api_port": 10085,
+      "default_exit_tag": "fr-exit",
+      "xray_image": "ghcr.io/xtls/xray-core:26.3.27"
     }
   }
 }`

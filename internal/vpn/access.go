@@ -37,12 +37,22 @@ type ClientProfile struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
+// DesiredUser описывает пользователя, который должен присутствовать
+// в runtime-состоянии Xray.
+type DesiredUser struct {
+	UUID  string `json:"uuid"`
+	Email string `json:"email"`
+	Flow  string `json:"flow"`
+}
+
 // AccessStore определяет хранилище целевого состояния VPN-доступов.
 type AccessStore interface {
 	// GetOrCreate возвращает существующий доступ либо сохраняет новый.
 	GetOrCreate(ctx context.Context, identity Identity, clientUUID, accountingID string, ttl time.Duration) (Access, error)
 	// Delete удаляет ранее сохранённый доступ по идентификатору конфигурации.
 	Delete(ctx context.Context, configID uint) error
+	// ListDesired возвращает активных пользователей, назначенных текущей VPN-ноде.
+	ListDesired(ctx context.Context) ([]DesiredUser, error)
 }
 
 // RuntimeUserManager управляет набором пользователей в runtime-состоянии Xray.
@@ -113,6 +123,16 @@ func (s *AccessService) IssueTestAccess(ctx context.Context, identity Identity) 
 	}
 
 	return ClientProfile{URI: uri, UUID: access.UUID, ExpiresAt: access.ExpiresAt}, nil
+}
+
+// DesiredUsers возвращает актуальный снимок пользователей, которые должны
+// присутствовать в Xray. Постоянное хранилище остаётся источником истины.
+func (s *AccessService) DesiredUsers(ctx context.Context) ([]DesiredUser, error) {
+	users, err := s.store.ListDesired(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list desired VPN users: %w", err)
+	}
+	return users, nil
 }
 
 // RealityEndpoint содержит публичные параметры Reality entry-ноды,
