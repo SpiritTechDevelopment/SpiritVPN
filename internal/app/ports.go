@@ -1,0 +1,56 @@
+// Package app содержит use case'ы backend и порты, через которые они дотягиваются
+// до инфраструктуры.
+//
+// Домен (internal/domain) детерминирован: он не читает часы, не генерирует
+// идентификаторы и не ходит в БД. Всё это — работа use case, а конкретные
+// реализации живут в пакетах-адаптерах (crypto, postgres, grpcsvc) и
+// подставляются при сборке процесса.
+package app
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
+)
+
+// Clock — часы процесса.
+//
+// ВНИМАНИЕ: отсюда нельзя брать время, которое потом сравнивается со временем
+// PostgreSQL. Единственный источник времени для доменных решений — now() базы,
+// то есть момент начала транзакции: истечение entitlement, closed_at/started_at
+// периодов и next_attempt_at операций считаются в SQL (решение 2, §11.1).
+// Расхождение часов приложения и базы иначе означало бы, что дельта трафика не
+// попадёт ни в один период.
+//
+// Легальные потребители — таймауты, backoff, интервалы worker'ов и метрики,
+// то есть всё, что живёт внутри процесса и ни с чем в базе не сверяется.
+type Clock interface {
+	Now() time.Time
+}
+
+// IDs — генератор идентификаторов и credentials для новых access.
+//
+// Все методы возвращают ошибку: отказ CSPRNG обязан провалить команду, а не
+// процесс. accounting_id и client_uuid глобально уникальны по построению, их
+// уникальность подтверждается unique-индексами; коллизия — повод упасть, а не
+// ретраить (решение 4).
+type IDs interface {
+	NewAccessID() (uuid.UUID, error)
+	NewQuotaPeriodID() (uuid.UUID, error)
+	NewAccountingID() (string, error)
+	NewClientUUID() (crypto.ClientUUID, error)
+}
+
+// CredentialSealer — application-level шифрование client_uuid (§7).
+//
+// Seal вызывается при создании access, Open — только там, где открытое значение
+// действительно нужно (в v1 это построение VLESS URI на время ответа, §8).
+type CredentialSealer interface {
+	Seal(crypto.ClientUUID) (crypto.SealedCredential, error)
+	Open(crypto.SealedCredential) (crypto.ClientUUID, error)
+
+	// KeyID — идентификатор active key для колонки encryption_key_id.
+	KeyID() string
+}

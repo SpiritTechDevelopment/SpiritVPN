@@ -1,0 +1,43 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    # Схема берётся из тех же versioned-миграций, что накатываются на базу, —
+    # источник истины один. Формат golang-migrate распознаётся, down-файлы
+    # игнорируются.
+    schema: "internal/migrations"
+    queries: "internal/postgres/queries"
+    gen:
+      go:
+        package: "db"
+        out: "internal/postgres/db"
+        sql_package: "pgx/v5"
+        # nullable-колонки как указатели (*string) вместо pgtype-обёрток —
+        # ближе к доменным типам и проще маппинг.
+        emit_pointers_for_null_types: true
+        emit_empty_slices: true
+        overrides:
+          # timestamptz: для NOT NULL берём обычный time.Time (обёртка с флагом
+          # Valid там избыточна — NULL невозможен), для nullable — *time.Time,
+          # где nil означает NULL.
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+          - db_type: "timestamptz"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true
+          # uuid: google/uuid вместо pgtype.UUID ([16]byte без API). Backend сам
+          # генерирует access_id и quota_period_id через uuid.New(), поэтому один
+          # тип на всём пути — без конверсий туда-обратно.
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+          - db_type: "uuid"
+            nullable: true
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+              pointer: true
+          # numeric(20,0) намеренно остаётся pgtype.Numeric: он единственный
+          # вмещает весь диапазон uint64 (int64 обрезал бы верхнюю половину).
+          # Конверсия numeric <-> uint64 живёт в хелперах адаптера postgres.
