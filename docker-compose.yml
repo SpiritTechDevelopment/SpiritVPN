@@ -17,76 +17,6 @@ services:
     networks:
       - spiritvpn
 
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: spiritvpn-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - spiritvpn
-
-  # API Server
-  api:
-    build:
-      context: .
-      dockerfile: deployments/api.Dockerfile
-    container_name: spiritvpn-api
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - VPN_API_ADDRESS=vpn
-    env_file:
-      - configs/.env
-    depends_on:
-      - postgres
-      - redis
-      - vpn
-    networks:
-      - spiritvpn
-
-  # VPN Server
-  vpn:
-    build:
-      context: .
-      dockerfile: deployments/vpn.Dockerfile
-    container_name: spiritvpn-vpn
-    restart: unless-stopped
-    privileged: true
-    cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    ports:
-      - "51820:51820/udp"
-      - "443:443"
-      - "10085:10085"
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-    env_file:
-      - configs/.env
-    depends_on:
-      - postgres
-    volumes:
-      - /lib/modules:/lib/modules:ro
-      - ./configs/xray.json:/etc/xray/xray.json:ro
-    networks:
-      - spiritvpn
-
 # Документация (MkDocs)
   docs:
     image: squidfunk/mkdocs-material:latest
@@ -131,7 +61,6 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
   prometheus_data:
   grafana_data:
 

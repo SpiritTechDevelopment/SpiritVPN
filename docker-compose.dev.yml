@@ -1,0 +1,49 @@
+# Окружение для разработки и интеграционных тестов backend: только PostgreSQL.
+#
+# Отдельный файл, а не сервис в docker-compose.yml, по двум причинам.
+#
+# Во-первых, интеграционные тесты делают TRUNCATE всех таблиц перед каждым тестом.
+# Направить их на базу, где лежит что-то нужное, — потерять её содержимое, поэтому
+# у этой базы отдельный порт (5433), отдельный контейнер и данные в tmpfs: она
+# заведомо пустая и умирает вместе с контейнером.
+#
+# Во-вторых, docker-compose.yml всё ещё описывает снесённое легаси (api, redis,
+# payments) и ссылается на отсутствующий configs/prometheus.yml; трогать его до
+# отдельного среза по деплою смысла нет.
+
+services:
+  postgres:
+    # Та же мажорная версия, что в CI: тесты обязаны идти против того же движка.
+    image: postgres:14-alpine
+    container_name: spiritvpn-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spiritdb
+      POSTGRES_PASSWORD: spiritdb
+      POSTGRES_DB: spiritdb
+    ports:
+      # 5433, чтобы не конфликтовать ни с postgres из docker-compose.yml, ни с
+      # системным на 5432.
+      - "5433:5432"
+    tmpfs:
+      # Данные в памяти: база одноразовая, а тесты гоняют миграции и TRUNCATE на
+      # каждый прогон.
+      - /var/lib/postgresql/data
+    command:
+      - postgres
+      # Долговечность этой базе не нужна, а без fsync прогон заметно быстрее.
+      # Только для dev: в production такие настройки означают потерю данных при
+      # аварийной остановке.
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
+    healthcheck:
+      # Нужен для `docker compose up --wait`: без него make-цель ушла бы дальше
+      # раньше, чем postgres примет соединение.
+      test: ["CMD-SHELL", "pg_isready -U spiritdb -d spiritdb"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
