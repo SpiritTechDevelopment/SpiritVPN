@@ -25,11 +25,18 @@ func TestGeneratorProducesDistinctValues(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewQuotaPeriodID() ошибка: %v", err)
 		}
+		operationID, err := g.NewOperationID()
+		if err != nil {
+			t.Fatalf("NewOperationID() ошибка: %v", err)
+		}
 		clientUUID, err := g.NewClientUUID()
 		if err != nil {
 			t.Fatalf("NewClientUUID() ошибка: %v", err)
 		}
 
+		if operationID.Version() != 4 {
+			t.Fatal("ожидался UUIDv4 для operation_id")
+		}
 		if accessID.Version() != 4 || periodID.Version() != 4 || clientUUID.Reveal().Version() != 4 {
 			t.Fatal("ожидался UUIDv4 (§7)")
 		}
@@ -64,6 +71,9 @@ func TestGeneratorPropagatesRandomError(t *testing.T) {
 	}
 	if _, err := g.NewQuotaPeriodID(); !errors.Is(err, errNoEntropy) {
 		t.Fatalf("NewQuotaPeriodID() = %v, ожидался проброс ошибки источника", err)
+	}
+	if _, err := g.NewOperationID(); !errors.Is(err, errNoEntropy) {
+		t.Fatalf("NewOperationID() = %v, ожидался проброс ошибки источника", err)
 	}
 	if _, err := g.NewAccountingID(); !errors.Is(err, errNoEntropy) {
 		t.Fatalf("NewAccountingID() = %v, ожидался проброс ошибки источника", err)

@@ -47,6 +47,13 @@ func (g *Generator) NewQuotaPeriodID() (uuid.UUID, error) {
 	return g.newUUID("quota_period_id")
 }
 
+// NewOperationID — первичный ключ agent_operations. Колонка объявлена без
+// DEFAULT намеренно: идентификаторы выдаёт backend, чтобы их источник не был
+// размазан между Go и SQL (§9, §11).
+func (g *Generator) NewOperationID() (uuid.UUID, error) {
+	return g.newUUID("operation_id")
+}
+
 // NewAccountingID — см. NewAccountingID пакета.
 func (g *Generator) NewAccountingID() (string, error) {
 	return NewAccountingID(g.reader())

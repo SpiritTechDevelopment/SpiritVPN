@@ -39,6 +39,7 @@ type Clock interface {
 type IDs interface {
 	NewAccessID() (uuid.UUID, error)
 	NewQuotaPeriodID() (uuid.UUID, error)
+	NewOperationID() (uuid.UUID, error)
 	NewAccountingID() (string, error)
 	NewClientUUID() (crypto.ClientUUID, error)
 }
