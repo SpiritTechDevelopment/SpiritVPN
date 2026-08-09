@@ -28,8 +28,9 @@ sql:
               type: "Time"
               pointer: true
           # uuid: google/uuid вместо pgtype.UUID ([16]byte без API). Backend сам
-          # генерирует access_id и quota_period_id через uuid.New(), поэтому один
-          # тип на всём пути — без конверсий туда-обратно.
+          # генерирует access_id, quota_period_id и operation_id через
+          # uuid.NewRandom (crypto.Generator), поэтому один тип на всём пути — без
+          # конверсий туда-обратно.
           - db_type: "uuid"
             go_type: "github.com/google/uuid.UUID"
           - db_type: "uuid"

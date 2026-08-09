@@ -7,7 +7,39 @@ package db
 
 import (
 	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const insertCustomerEntitlement = `-- name: InsertCustomerEntitlement :exec
+INSERT INTO customer_entitlements (
+    customer_id, vpn_fleet_id, expires_at, desired_version, last_command_number
+) VALUES ($1, $2, $3, $4, $5)
+`
+
+type InsertCustomerEntitlementParams struct {
+	CustomerID        string
+	VpnFleetID        int64
+	ExpiresAt         time.Time
+	DesiredVersion    int64
+	LastCommandNumber pgtype.Numeric
+}
+
+// Создаёт корневую строку первым успешным Apply (§5). Вставка, а не upsert:
+// отсутствие строки уже установлено под lock, а конфликт по первичному ключу
+// означал бы, что сериализация на корневой строке не сработала, и такое обязано
+// провалить команду, а не тихо перезаписать чужое состояние.
+func (q *Queries) InsertCustomerEntitlement(ctx context.Context, arg InsertCustomerEntitlementParams) error {
+	_, err := q.db.Exec(ctx, insertCustomerEntitlement,
+		arg.CustomerID,
+		arg.VpnFleetID,
+		arg.ExpiresAt,
+		arg.DesiredVersion,
+		arg.LastCommandNumber,
+	)
+	return err
+}
 
 const lockCustomerEntitlement = `-- name: LockCustomerEntitlement :one
 
@@ -34,4 +66,34 @@ func (q *Queries) LockCustomerEntitlement(ctx context.Context, customerID string
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateCustomerEntitlement = `-- name: UpdateCustomerEntitlement :exec
+UPDATE customer_entitlements
+SET expires_at = $2,
+    desired_version = $3,
+    last_command_number = $4,
+    updated_at = now()
+WHERE customer_id = $1
+`
+
+type UpdateCustomerEntitlementParams struct {
+	CustomerID        string
+	ExpiresAt         time.Time
+	DesiredVersion    int64
+	LastCommandNumber pgtype.Numeric
+}
+
+// Фиксирует принятую команду существующего customer. last_command_number
+// двигается при успешном commit, в том числе на валидном no-op (§5, правило 3);
+// отклонённые команды сюда не доходят. vpn_fleet_id не обновляется: смена fleet в
+// v1 запрещена и отсекается доменом раньше (§5, правило 5).
+func (q *Queries) UpdateCustomerEntitlement(ctx context.Context, arg UpdateCustomerEntitlementParams) error {
+	_, err := q.db.Exec(ctx, updateCustomerEntitlement,
+		arg.CustomerID,
+		arg.ExpiresAt,
+		arg.DesiredVersion,
+		arg.LastCommandNumber,
+	)
+	return err
 }
