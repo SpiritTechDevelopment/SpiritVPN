@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -87,6 +88,8 @@ func run() error {
 	applyUC := app.NewApplyCustomerAccess(repository, crypto.NewGenerator(), cipher)
 	linksUC := app.NewGetCustomerAccessLinks(repository, cipher)
 	manifestUC := app.NewApplyFleetManifest(repository)
+	materializeUC := app.NewMaterializeManifest(
+		repository, crypto.NewGenerator(), cipher, workerOwner(), materializeLeaseTTL)
 
 	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, manifestUC)
 	if err != nil {
@@ -98,7 +101,28 @@ func run() error {
 		return err
 	}
 
-	return serve(ctx, logger, cfg, grpcServer, newHTTPServer(cfg.HTTP.Listen, checks))
+	// Фоновый воркер живёт на собственном контексте: serve может вернуться не
+	// только по сигналу, но и по отказу слушателя, а ждать воркер, которому никто
+	// не сказал остановиться, значило бы повесить процесс навсегда.
+	workerCtx, stopWorkers := context.WithCancel(ctx)
+	defer stopWorkers()
+
+	var workers sync.WaitGroup
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
+		runMaterializeWorker(workerCtx, logger, materializeUC,
+			materializeIdleInterval, materializeErrorBackoff)
+	}()
+
+	err = serve(ctx, logger, cfg, grpcServer, newHTTPServer(cfg.HTTP.Listen, checks))
+
+	// Воркер останавливается ПОСЛЕ поверхностей: его шаг короток, а прогресс
+	// зафиксирован курсором, поэтому ждать его безопасно и быстро.
+	stopWorkers()
+	workers.Wait()
+
+	return err
 }
 
 // serve поднимает обе поверхности и ждёт либо сигнала, либо отказа одной из них.

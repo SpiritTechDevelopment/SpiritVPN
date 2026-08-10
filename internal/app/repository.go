@@ -140,6 +140,76 @@ type ManifestTx interface {
 	AppendAudit(ctx context.Context, event AuditEvent) error
 }
 
+// MaterializationRepository открывает транзакцию одного шага воркера
+// материализации (§13).
+type MaterializationRepository interface {
+	WithinMaterializationTx(ctx context.Context, fn func(MaterializationTx) error) error
+}
+
+// MaterializationJob — взятая в работу джоба (§6, §13).
+type MaterializationJob struct {
+	Revision int64
+	// Cursor — последний обработанный customer_id; пустая строка означает, что
+	// обход ещё не начинался.
+	Cursor string
+}
+
+// MaterializationTx — шаги одного шага воркера.
+//
+// Чтения состояния customer перечислены поимённо, а не свёрнуты в один
+// LoadCustomerState, по той же причине, что и в ApplyTx: их порядок нормативен
+// (§11.1), и спрятав его в SQL-слой, мы сделали бы его непроверяемым без базы.
+// Порядок здесь тот же самый — entitlement, период, расход, затем чтения без
+// locks.
+type MaterializationTx interface {
+	// Now — время начала транзакции (решение 2).
+	Now(ctx context.Context) (time.Time, error)
+
+	// ClaimJob берёт lease самой старой незавершённой джобы. nil означает, что
+	// работы нет. Просроченный чужой lease подбирается как свободный (§13).
+	ClaimJob(ctx context.Context, owner string, leaseTTL time.Duration) (*MaterializationJob, error)
+
+	// NextCustomer возвращает первого customer после курсора в порядке
+	// customer_id. Пустая строка означает, что обход завершён.
+	NextCustomer(ctx context.Context, afterCustomerID string) (string, error)
+
+	// AdvanceCursor фиксирует прогресс в той же транзакции, что и изменения
+	// customer (решение 34).
+	AdvanceCursor(ctx context.Context, revision int64, customerID string) error
+
+	// CompleteJob переводит джобу в DONE.
+	CompleteJob(ctx context.Context, revision int64) error
+
+	LockEntitlement(ctx context.Context, customerID string) (*domain.Entitlement, error)
+	LockOpenQuotaPeriod(ctx context.Context, customerID string) (*domain.QuotaPeriod, error)
+	LockNodeQuotaUsage(ctx context.Context, periodID uuid.UUID) ([]domain.NodeQuotaUsage, error)
+	LoadTopology(ctx context.Context, fleetID int64) (domain.FleetTopology, error)
+	LoadAccesses(ctx context.Context, customerID string) ([]domain.Access, error)
+
+	// LoadLiveNodes — ноды, присутствующие в текущем манифесте глобально. По ним
+	// ретайр разводится на «доставить удаление» и «не доставлять никуда» (§6).
+	LoadLiveNodes(ctx context.Context) ([]domain.NodeID, error)
+
+	// WriteMaterialization записывает план в порядке блокировок §11.1.
+	WriteMaterialization(ctx context.Context, plan MaterializedManifestPlan) error
+}
+
+// MaterializedManifestPlan — доменный план материализации, дополненный
+// идентификаторами, credentials и операциями outbox.
+type MaterializedManifestPlan struct {
+	CustomerID string
+	// PeriodID — текущий открытый период: в него заводятся строки расхода новых
+	// нод (§13).
+	PeriodID uuid.UUID
+
+	Plan domain.MaterializationPlan
+
+	// NewAccesses соответствует Plan.CreateAccesses один к одному и в том же
+	// порядке.
+	NewAccesses []NewAccess
+	Operations  []AgentOperation
+}
+
 // AuditEvent — запись журнала аудита (§15).
 //
 // Metadata обязана быть sanitized: ни секретов, ни client_uuid, ни accounting ID.

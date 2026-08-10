@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"cmp"
 	"slices"
+
+	"github.com/google/uuid"
 )
 
 // Target — одна логическая цель текущей топологии fleet, под которую у
@@ -191,4 +193,11 @@ func compareAccessByTarget(a, b Access) int {
 		cmp.Compare(a.LogicalTargetKey, b.LogicalTargetKey),
 		bytes.Compare(a.ID[:], b.ID[:]),
 	)
+}
+
+// compareUUID упорядочивает по access_id — порядок блокировок vpn_accesses
+// (§11.1). Отдельная функция, потому что сравнение идёт по байтам значения, а не
+// по его строковому представлению.
+func compareUUID(a, b uuid.UUID) int {
+	return bytes.Compare(a[:], b[:])
 }
