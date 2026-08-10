@@ -48,6 +48,7 @@ sqlc-vet: ## Проверить SQL-запросы по схеме без ген
 
 build: ## Собрать бинарники
 	go build -o bin/migrate ./cmd/migrate
+	go build -o bin/spiritvpnd ./cmd/spiritvpnd
 
 # --- Migrations -----------------------------------------------------------
 
@@ -112,3 +113,40 @@ dev-db-down: ## Остановить эфемерный PostgreSQL и удали
 
 dev: dev-db ## Поднять dev-базу и накатить на неё миграции
 	DATABASE_URL='$(DEV_DATABASE_URL)' go run ./cmd/migrate up
+
+# --- mTLS для локальной разработки ----------------------------------------
+#
+# Insecure-режима у сервера нет и не будет (решение 15): вторая ветка исполнения,
+# в которой авторизация не выполняется, означала бы, что вся локальная разработка
+# идёт мимо неё. Поэтому локально поднимается настоящий mTLS с одноразовым CA.
+# Ключи не попадают в git (.gitignore) и живут 10 лет, чтобы не протухали.
+
+CERT_DIR ?= dev/certs
+
+dev-certs: ## Выпустить локальный CA и сертификаты сервера и product-svc для mTLS
+	@mkdir -p $(CERT_DIR)
+	@openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
+		-keyout $(CERT_DIR)/ca.key -out $(CERT_DIR)/ca.crt -days 3650 \
+		-subj '/CN=spiritvpn-dev-ca' 2>/dev/null
+	@printf 'subjectAltName=DNS:localhost,DNS:spiritvpnd,IP:127.0.0.1\nextendedKeyUsage=serverAuth\n' \
+		> $(CERT_DIR)/server.ext
+	@openssl req -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
+		-keyout $(CERT_DIR)/server.key -out $(CERT_DIR)/server.csr \
+		-subj '/CN=spiritvpnd' 2>/dev/null
+	@openssl x509 -req -in $(CERT_DIR)/server.csr -CA $(CERT_DIR)/ca.crt -CAkey $(CERT_DIR)/ca.key \
+		-CAcreateserial -out $(CERT_DIR)/server.crt -days 3650 \
+		-extfile $(CERT_DIR)/server.ext 2>/dev/null
+	@printf 'subjectAltName=DNS:product-svc\nextendedKeyUsage=clientAuth\n' > $(CERT_DIR)/client.ext
+	@openssl req -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
+		-keyout $(CERT_DIR)/product-svc.key -out $(CERT_DIR)/product-svc.csr \
+		-subj '/CN=product-svc' 2>/dev/null
+	@openssl x509 -req -in $(CERT_DIR)/product-svc.csr -CA $(CERT_DIR)/ca.crt -CAkey $(CERT_DIR)/ca.key \
+		-CAcreateserial -out $(CERT_DIR)/product-svc.crt -days 3650 \
+		-extfile $(CERT_DIR)/client.ext 2>/dev/null
+	@rm -f $(CERT_DIR)/*.csr $(CERT_DIR)/*.ext $(CERT_DIR)/*.srl
+	@chmod 600 $(CERT_DIR)/*.key
+	@echo "Готово: $(CERT_DIR)/ca.crt, server.{crt,key}, product-svc.{crt,key}"
+	@echo "Идентичность клиента — DNS SAN 'product-svc' (решение 13)."
+
+dev-certs-clean: ## Удалить локальные сертификаты
+	rm -rf $(CERT_DIR)

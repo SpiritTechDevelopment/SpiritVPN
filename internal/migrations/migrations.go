@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -42,4 +44,47 @@ func New(db *sql.DB) (*migrate.Migrate, error) {
 		return nil, fmt.Errorf("migrations: init migrator: %w", err)
 	}
 	return m, nil
+}
+
+// Latest возвращает версию последней встроенной миграции.
+//
+// Нужна readiness (§15: «readiness требует совместимую schema»). Процесс, чья
+// схема старше его собственных миграций, обязан оставаться not ready: иначе он
+// начнёт принимать команды против схемы, в которой нет нужных ему таблиц и
+// колонок, и упадёт уже на первом запросе вместо того, чтобы просто не попасть в
+// балансировку.
+//
+// Версия берётся из имён файлов, а не задаётся константой: константу забудут
+// поднять вместе с новой миграцией, и readiness начнёт врать.
+func Latest() (uint, error) {
+	entries, err := files.ReadDir(".")
+	if err != nil {
+		return 0, fmt.Errorf("migrations: чтение встроенных миграций: %w", err)
+	}
+
+	var latest uint
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".up.sql") {
+			continue
+		}
+
+		digits, _, found := strings.Cut(name, "_")
+		if !found {
+			return 0, fmt.Errorf("migrations: имя %q не начинается с версии", name)
+		}
+
+		version, err := strconv.ParseUint(digits, 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("migrations: версия в имени %q не разбирается: %w", name, err)
+		}
+		if uint(version) > latest {
+			latest = uint(version)
+		}
+	}
+
+	if latest == 0 {
+		return 0, fmt.Errorf("migrations: не найдено ни одной up-миграции")
+	}
+	return latest, nil
 }

@@ -1,0 +1,136 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/migrations"
+)
+
+// readinessTimeout ограничивает суммарную проверку готовности: probe, который
+// не отвечает, kubelet трактует как отказ, поэтому лучше ответить «не готов»
+// быстро и самому.
+const readinessTimeout = 3 * time.Second
+
+// readinessCheck — одна именованная проверка готовности.
+type readinessCheck struct {
+	name string
+	run  func(context.Context) error
+}
+
+// newHTTPServer собирает служебную поверхность (§15).
+//
+// Метода /metrics здесь пока нет — это осознанное расхождение со спекой. Он
+// требует отдельной зависимости, а перечисленные в §15 метрики почти целиком
+// относятся к воркерам (agent operations, materialization lag, usage cursor),
+// которых ещё не существует. Пустой endpoint создавал бы видимость покрытия.
+func newHTTPServer(addr string, checks []readinessCheck) *http.Server {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health/live", handleLive)
+	mux.HandleFunc("GET /health/ready", handleReady(checks))
+
+	return &http.Server{
+		Addr:    addr,
+		Handler: mux,
+
+		// Соединение, не приславшее заголовки, не должно держать воркер вечно.
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+}
+
+// handleLive отвечает всегда.
+//
+// §15: liveness не зависит ни от PostgreSQL, ни от нод. Проверка базы здесь
+// означала бы, что кратковременная недоступность БД приводит к перезапуску всех
+// подов сразу — то есть превращает деградацию в полный отказ.
+func handleLive(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("ok\n"))
+}
+
+// handleReady требует доступную БД, совместимую схему и валидный ключ (§15).
+func handleReady(checks []readinessCheck) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), readinessTimeout)
+		defer cancel()
+
+		for _, check := range checks {
+			if err := check.run(ctx); err != nil {
+				w.WriteHeader(http.StatusServiceUnavailable)
+
+				// Наружу уходит только имя проверки. Текст ошибки pgx содержит
+				// параметры подключения, а этот endpoint по определению доступен
+				// всему, что дотянулось до служебного порта.
+				_, _ = fmt.Fprintf(w, "not ready: %s\n", check.name)
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ready\n"))
+	}
+}
+
+// readinessChecks собирает проверки в порядке возрастания стоимости: смысла
+// спрашивать схему у недоступной базы нет.
+func readinessChecks(pool *pgxpool.Pool, cipher *crypto.Cipher) ([]readinessCheck, error) {
+	// Версия вычисляется один раз на старте: она зашита в бинарь и меняться в
+	// рантайме не может, а ошибка разбора имён миграций обязана валить старт, а
+	// не всплывать на первом probe.
+	latest, err := migrations.Latest()
+	if err != nil {
+		return nil, err
+	}
+
+	return []readinessCheck{
+		{
+			name: "postgres",
+			run:  pool.Ping,
+		},
+		{
+			name: "schema",
+			run:  schemaCheck(pool, latest),
+		},
+		{
+			name: "encryption_key",
+			run:  func(context.Context) error { return cipher.SelfTest() },
+		},
+	}, nil
+}
+
+// schemaCheck сверяет версию схемы с миграциями, встроенными в этот бинарь.
+//
+// Условие «не ниже», а не «равно», намеренно: при rollout миграции накатываются
+// до выкатки новых подов, и старый бинарь какое-то время живёт с более новой
+// схемой. Требование точного равенства сделало бы его not ready и остановило бы
+// обслуживание ровно в момент деплоя.
+func schemaCheck(pool *pgxpool.Pool, latest uint) func(context.Context) error {
+	return func(ctx context.Context) error {
+		var (
+			version int64
+			dirty   bool
+		)
+
+		err := pool.QueryRow(ctx, "SELECT version, dirty FROM schema_migrations").Scan(&version, &dirty)
+		if err != nil {
+			return fmt.Errorf("версия схемы: %w", err)
+		}
+
+		// dirty означает прерванную миграцию: схема в неизвестном состоянии, и
+		// принимать на ней команды нельзя (§11).
+		if dirty {
+			return fmt.Errorf("схема dirty на версии %d", version)
+		}
+
+		if version < int64(latest) {
+			return fmt.Errorf("схема версии %d, бинарю нужна не ниже %d", version, latest)
+		}
+
+		return nil
+	}
+}

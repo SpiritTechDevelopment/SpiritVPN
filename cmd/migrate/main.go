@@ -11,7 +11,7 @@
 //	migrate force <v>       выставить версию <v> без выполнения (починить dirty-состояние)
 //
 // Параметры подключения берутся из DATABASE_URL либо из DB_HOST/DB_PORT/DB_USER/
-// DB_PASSWORD/DB_NAME/DB_SSLMODE (те же имена, что в pkg/config).
+// DB_PASSWORD/DB_NAME/DB_SSLMODE.
 package main
 
 import (

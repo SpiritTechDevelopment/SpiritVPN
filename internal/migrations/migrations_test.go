@@ -74,3 +74,35 @@ func readMigration(t *testing.T, open func() (io.ReadCloser, string, error)) str
 	}
 	return string(b)
 }
+
+// TestLatestMatchesEmbeddedMigrations проверяет версию, на которую опирается
+// readiness (§15). Константы для неё нет намеренно: её забыли бы поднять вместе
+// с новой миграцией, и readiness начала бы врать. Тест ловит обратное — что
+// вычисление разошлось с реальным набором файлов.
+func TestLatestMatchesEmbeddedMigrations(t *testing.T) {
+	latest, err := Latest()
+	if err != nil {
+		t.Fatalf("Latest: %v", err)
+	}
+	if latest == 0 {
+		t.Fatal("версия 0: встроенные миграции не найдены")
+	}
+
+	entries, err := files.ReadDir(".")
+	if err != nil {
+		t.Fatalf("чтение встроенных миграций: %v", err)
+	}
+
+	var ups int
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".up.sql") {
+			ups++
+		}
+	}
+
+	// Версии идут подряд с 0001, поэтому номер последней равен числу up-файлов.
+	// Расхождение означает пропущенный или задублированный номер.
+	if int(latest) != ups {
+		t.Errorf("последняя версия %d при %d up-миграциях: номера идут не подряд", latest, ups)
+	}
+}

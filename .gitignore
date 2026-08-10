@@ -81,3 +81,6 @@ grafana_data/
 # Docker volumes data
 postgres_data/
 redis_data/
+
+# Локальные сертификаты mTLS (make dev-certs) — приватные ключи в git не попадают
+dev/certs/
