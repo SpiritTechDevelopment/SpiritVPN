@@ -81,9 +81,13 @@ func run() error {
 	}
 	defer pool.Close()
 
-	useCase := app.NewApplyCustomerAccess(postgres.New(pool), crypto.NewGenerator(), cipher)
+	// Один адаптер на оба use case: репозиторий владеет пулом, а командный и
+	// read-путь отличаются только транзакцией, которую каждый открывает сам.
+	repository := postgres.New(pool)
+	applyUC := app.NewApplyCustomerAccess(repository, crypto.NewGenerator(), cipher)
+	linksUC := app.NewGetCustomerAccessLinks(repository, cipher)
 
-	grpcServer, err := newGRPCServer(cfg.GRPC, logger, useCase)
+	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC)
 	if err != nil {
 		return err
 	}

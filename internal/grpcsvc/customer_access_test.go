@@ -8,9 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 	customerv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1"
 )
@@ -97,7 +100,7 @@ func TestApplyCustomerAccessMapsDomainErrors(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			stub := &stubApply{err: tc.err}
-			srv := NewCustomerAccessServer(stub)
+			srv := NewCustomerAccessServer(stub, &stubLinks{})
 
 			resp, err := srv.ApplyCustomerAccess(context.Background(), validRequest())
 			if resp != nil {
@@ -114,7 +117,7 @@ func TestApplyCustomerAccessHidesInfrastructureDetails(t *testing.T) {
 	const driverDetail = `pq: relation "vpn_accesses" does not exist (host=db.internal user=spirit)`
 
 	stub := &stubApply{err: fmt.Errorf("чтение access: %w", errors.New(driverDetail))}
-	srv := NewCustomerAccessServer(stub)
+	srv := NewCustomerAccessServer(stub, &stubLinks{})
 
 	_, err := srv.ApplyCustomerAccess(context.Background(), validRequest())
 	st := requireCode(t, err, codes.Internal)
@@ -137,7 +140,7 @@ func TestApplyCustomerAccessHidesInfrastructureDetails(t *testing.T) {
 // как renewal со сбросом счётчиков трафика (§5, правило 8).
 func TestApplyCustomerAccessPinsExpiresAtPrecision(t *testing.T) {
 	stub := &stubApply{}
-	srv := NewCustomerAccessServer(stub)
+	srv := NewCustomerAccessServer(stub, &stubLinks{})
 
 	if _, err := srv.ApplyCustomerAccess(context.Background(), validRequest()); err != nil {
 		t.Fatalf("неожиданная ошибка: %v", err)
@@ -159,7 +162,7 @@ func TestApplyCustomerAccessPinsExpiresAtPrecision(t *testing.T) {
 // команды без искажений.
 func TestApplyCustomerAccessMapsRequestFields(t *testing.T) {
 	stub := &stubApply{}
-	srv := NewCustomerAccessServer(stub)
+	srv := NewCustomerAccessServer(stub, &stubLinks{})
 
 	req := validRequest()
 	if _, err := srv.ApplyCustomerAccess(context.Background(), req); err != nil {
@@ -185,7 +188,7 @@ func TestApplyCustomerAccessMapsRequestFields(t *testing.T) {
 // TestApplyCustomerAccessSuccessReturnsEmptyResponse — успех отвечает пустым
 // сообщением, а не nil-указателем (§5).
 func TestApplyCustomerAccessSuccessReturnsEmptyResponse(t *testing.T) {
-	srv := NewCustomerAccessServer(&stubApply{})
+	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{})
 
 	resp, err := srv.ApplyCustomerAccess(context.Background(), validRequest())
 	if err != nil {
@@ -231,7 +234,7 @@ func TestApplyCustomerAccessMapsCallerContext(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			stub := &stubApply{err: fmt.Errorf("блокировка entitlement: %w", tc.cause)}
-			srv := NewCustomerAccessServer(stub)
+			srv := NewCustomerAccessServer(stub, &stubLinks{})
 
 			_, err := srv.ApplyCustomerAccess(tc.ctx(t), validRequest())
 			requireCode(t, err, tc.want)
@@ -250,7 +253,7 @@ func TestApplyCustomerAccessInternalCancellationStaysInternal(t *testing.T) {
 	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
 		t.Run(cause.Error(), func(t *testing.T) {
 			stub := &stubApply{err: fmt.Errorf("блокировка entitlement: %w", cause)}
-			srv := NewCustomerAccessServer(stub)
+			srv := NewCustomerAccessServer(stub, &stubLinks{})
 
 			_, err := srv.ApplyCustomerAccess(context.Background(), validRequest())
 			requireCode(t, err, codes.Internal)
@@ -267,17 +270,290 @@ func TestApplyCustomerAccessDomainErrorBeatsClosedContext(t *testing.T) {
 	cancel()
 
 	stub := &stubApply{err: fmt.Errorf("классификация: %w", domain.ErrExpiryRegression)}
-	srv := NewCustomerAccessServer(stub)
+	srv := NewCustomerAccessServer(stub, &stubLinks{})
 
 	_, err := srv.ApplyCustomerAccess(ctx, validRequest())
 	requireCode(t, err, codes.FailedPrecondition)
 }
 
-// TestGetCustomerAccessLinksUnimplemented — метод придёт следующим срезом вместе
-// с VLESS URI (§8); до тех пор он обязан честно отвечать Unimplemented.
-func TestGetCustomerAccessLinksUnimplemented(t *testing.T) {
-	srv := NewCustomerAccessServer(&stubApply{})
+// --- GetCustomerAccessLinks -------------------------------------------------
 
-	_, err := srv.GetCustomerAccessLinks(context.Background(), &customerv1.GetCustomerAccessLinksRequest{})
-	requireCode(t, err, codes.Unimplemented)
+// stubLinks — фейковый read-use case.
+type stubLinks struct {
+	calls      int
+	customerID string
+	links      []app.CustomerAccessLink
+	err        error
+}
+
+func (s *stubLinks) Execute(_ context.Context, customerID string) ([]app.CustomerAccessLink, error) {
+	s.calls++
+	s.customerID = customerID
+	return s.links, s.err
+}
+
+// serverStream — минимальная реализация grpc.ServerTransportStream.
+//
+// Без неё grpc.SetHeader падает: вне настоящего сервера в контексте нет потока.
+// Заодно это единственный способ увидеть заголовок ответа в юнит-тесте.
+type serverStream struct {
+	method    string
+	header    metadata.MD
+	headerErr error
+}
+
+func (s *serverStream) Method() string { return s.method }
+
+func (s *serverStream) SetHeader(md metadata.MD) error {
+	if s.headerErr != nil {
+		return s.headerErr
+	}
+	if s.header == nil {
+		s.header = metadata.MD{}
+	}
+	for key, values := range md {
+		s.header[key] = append(s.header[key], values...)
+	}
+	return nil
+}
+
+func (s *serverStream) SendHeader(md metadata.MD) error { return s.SetHeader(md) }
+func (s *serverStream) SetTrailer(metadata.MD) error    { return nil }
+
+// linksContext подделывает окружение серверного вызова, чтобы хендлер мог
+// выставить метадату ответа.
+func linksContext() (context.Context, *serverStream) {
+	stream := &serverStream{method: customerv1.CustomerAccessService_GetCustomerAccessLinks_FullMethodName}
+	return grpc.NewContextWithServerTransportStream(context.Background(), stream), stream
+}
+
+// TestGetCustomerAccessLinksMapsStates — таблица «доменное состояние → protobuf».
+// Здесь же проверяется контракт optional-полей: причина есть только у BLOCKED,
+// URI — только у READY (§5).
+func TestGetCustomerAccessLinksMapsStates(t *testing.T) {
+	uri := "vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443?security=reality#NL"
+
+	tests := []struct {
+		name       string
+		link       app.CustomerAccessLink
+		wantKind   customerv1.AccessKind
+		wantState  customerv1.AccessLinkState
+		wantReason *customerv1.AccessBlockReason
+		wantURI    *string
+	}{
+		{
+			name: "READY несёт URI и не несёт причины",
+			link: app.CustomerAccessLink{
+				Kind:   domain.AccessKindFreedom,
+				Status: domain.LinkStatus{State: domain.LinkStateReady},
+				URI:    uri,
+			},
+			wantKind:  customerv1.AccessKind_ACCESS_KIND_FREEDOM,
+			wantState: customerv1.AccessLinkState_ACCESS_LINK_STATE_READY,
+			wantURI:   &uri,
+		},
+		{
+			name: "BLOCKED по сроку несёт причину и не несёт URI",
+			link: app.CustomerAccessLink{
+				Kind: domain.AccessKindBridge,
+				Status: domain.LinkStatus{
+					State:  domain.LinkStateBlocked,
+					Reason: domain.BlockReasonTimeExpired,
+				},
+			},
+			wantKind:   customerv1.AccessKind_ACCESS_KIND_BRIDGE,
+			wantState:  customerv1.AccessLinkState_ACCESS_LINK_STATE_BLOCKED,
+			wantReason: customerv1.AccessBlockReason_ACCESS_BLOCK_REASON_TIME_EXPIRED.Enum(),
+		},
+		{
+			name: "BLOCKED по квоте",
+			link: app.CustomerAccessLink{
+				Kind: domain.AccessKindFreedom,
+				Status: domain.LinkStatus{
+					State:  domain.LinkStateBlocked,
+					Reason: domain.BlockReasonTrafficQuotaExhausted,
+				},
+			},
+			wantKind:   customerv1.AccessKind_ACCESS_KIND_FREEDOM,
+			wantState:  customerv1.AccessLinkState_ACCESS_LINK_STATE_BLOCKED,
+			wantReason: customerv1.AccessBlockReason_ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED.Enum(),
+		},
+		{
+			name: "PENDING",
+			link: app.CustomerAccessLink{
+				Kind:   domain.AccessKindFreedom,
+				Status: domain.LinkStatus{State: domain.LinkStatePending},
+			},
+			wantKind:  customerv1.AccessKind_ACCESS_KIND_FREEDOM,
+			wantState: customerv1.AccessLinkState_ACCESS_LINK_STATE_PENDING,
+		},
+		{
+			name: "FAILED",
+			link: app.CustomerAccessLink{
+				Kind:   domain.AccessKindBridge,
+				Status: domain.LinkStatus{State: domain.LinkStateFailed},
+			},
+			wantKind:  customerv1.AccessKind_ACCESS_KIND_BRIDGE,
+			wantState: customerv1.AccessLinkState_ACCESS_LINK_STATE_FAILED,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{links: []app.CustomerAccessLink{tc.link}})
+
+			ctx, _ := linksContext()
+			resp, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"})
+			if err != nil {
+				t.Fatalf("неожиданная ошибка: %v", err)
+			}
+			if len(resp.GetLinks()) != 1 {
+				t.Fatalf("ссылок %d, ожидалась 1", len(resp.GetLinks()))
+			}
+
+			got := resp.GetLinks()[0]
+			if got.GetKind() != tc.wantKind {
+				t.Errorf("kind %v, ожидался %v", got.GetKind(), tc.wantKind)
+			}
+			if got.GetState() != tc.wantState {
+				t.Errorf("state %v, ожидался %v", got.GetState(), tc.wantState)
+			}
+
+			switch {
+			case tc.wantReason == nil && got.BlockReason != nil:
+				t.Errorf("причина %v при состоянии %v, ожидалось отсутствие", got.GetBlockReason(), tc.wantState)
+			case tc.wantReason != nil && got.BlockReason == nil:
+				t.Errorf("причина отсутствует, ожидалась %v", *tc.wantReason)
+			case tc.wantReason != nil && got.GetBlockReason() != *tc.wantReason:
+				t.Errorf("причина %v, ожидалась %v", got.GetBlockReason(), *tc.wantReason)
+			}
+
+			switch {
+			case tc.wantURI == nil && got.Uri != nil:
+				t.Errorf("URI %q при состоянии %v, ожидалось отсутствие", got.GetUri(), tc.wantState)
+			case tc.wantURI != nil && got.GetUri() != *tc.wantURI:
+				t.Errorf("URI %q, ожидался %q", got.GetUri(), *tc.wantURI)
+			}
+		})
+	}
+}
+
+// TestGetCustomerAccessLinksSetsNoStore — §5: ответ с URI не кешируется.
+func TestGetCustomerAccessLinksSetsNoStore(t *testing.T) {
+	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{})
+
+	ctx, stream := linksContext()
+	if _, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"}); err != nil {
+		t.Fatalf("неожиданная ошибка: %v", err)
+	}
+
+	got := stream.header.Get(headerCacheControl)
+	if len(got) != 1 || got[0] != cacheControlNoStore {
+		t.Fatalf("заголовок %s = %v, ожидалось [%s]", headerCacheControl, got, cacheControlNoStore)
+	}
+}
+
+// TestGetCustomerAccessLinksFailsWithoutNoStore — если запрет кеширования
+// выставить не удалось, запрос отклоняется, а не отдаёт URI без него: §5 требует
+// заголовок на любом ответе с credentials. До use case дело при этом не доходит.
+func TestGetCustomerAccessLinksFailsWithoutNoStore(t *testing.T) {
+	stub := &stubLinks{}
+	srv := NewCustomerAccessServer(&stubApply{}, stub)
+
+	stream := &serverStream{headerErr: errors.New("поток закрыт")}
+	ctx := grpc.NewContextWithServerTransportStream(context.Background(), stream)
+
+	_, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"})
+	requireCode(t, err, codes.Internal)
+
+	if stub.calls != 0 {
+		t.Fatalf("use case вызван %d раз, ожидалось 0", stub.calls)
+	}
+}
+
+// TestGetCustomerAccessLinksPassesCustomerID — идентичность доезжает до use case
+// без искажений; своей валидации транспорт не делает (она в домене).
+func TestGetCustomerAccessLinksPassesCustomerID(t *testing.T) {
+	stub := &stubLinks{}
+	srv := NewCustomerAccessServer(&stubApply{}, stub)
+
+	ctx, _ := linksContext()
+	if _, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-42"}); err != nil {
+		t.Fatalf("неожиданная ошибка: %v", err)
+	}
+
+	if stub.calls != 1 {
+		t.Fatalf("use case вызван %d раз, ожидался 1", stub.calls)
+	}
+	if stub.customerID != "cust-42" {
+		t.Fatalf("customer_id %q, ожидался cust-42", stub.customerID)
+	}
+}
+
+// TestGetCustomerAccessLinksMapsErrors — §5: неизвестный customer даёт NOT_FOUND,
+// пустой — INVALID_ARGUMENT, всё остальное обезличивается.
+func TestGetCustomerAccessLinksMapsErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want codes.Code
+	}{
+		{"неизвестный customer", domain.ErrCustomerNotFound, codes.NotFound},
+		{"обёрнутый неизвестный customer", fmt.Errorf("чтение entitlement: %w", domain.ErrCustomerNotFound), codes.NotFound},
+		{"пустой customer_id", domain.ErrCustomerIDInvalid, codes.InvalidArgument},
+		{"отказ базы", errors.New(`pq: connection refused (host=db.internal)`), codes.Internal},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{err: tc.err})
+
+			ctx, _ := linksContext()
+			resp, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{})
+			if resp != nil {
+				t.Fatalf("при ошибке ответ обязан быть nil, получен %v", resp)
+			}
+			st := requireCode(t, err, tc.want)
+
+			if tc.want == codes.Internal && st.Message() != msgInternal {
+				t.Fatalf("сообщение %q, ожидалось обезличенное %q", st.Message(), msgInternal)
+			}
+		})
+	}
+}
+
+// TestGetCustomerAccessLinksEmptyList — customer без ссылок отвечает пустым
+// списком, а не NOT_FOUND: NOT_FOUND означает отсутствие самого customer (§5).
+func TestGetCustomerAccessLinksEmptyList(t *testing.T) {
+	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{})
+
+	ctx, _ := linksContext()
+	resp, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"})
+	if err != nil {
+		t.Fatalf("неожиданная ошибка: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("ответ nil, ожидалось сообщение с пустым списком")
+	}
+	if len(resp.GetLinks()) != 0 {
+		t.Fatalf("ссылок %d, ожидалось 0", len(resp.GetLinks()))
+	}
+}
+
+// TestGetCustomerAccessLinksRejectsUnknownEnum — расхождение домена и proto
+// обязано стать ошибкой, а не уехать клиенту как UNSPECIFIED.
+func TestGetCustomerAccessLinksRejectsUnknownEnum(t *testing.T) {
+	links := []app.CustomerAccessLink{
+		{Kind: "SOMETHING_NEW", Status: domain.LinkStatus{State: domain.LinkStateReady}},
+		{Kind: domain.AccessKindFreedom, Status: domain.LinkStatus{State: "SOMETHING_NEW"}},
+		{Kind: domain.AccessKindFreedom, Status: domain.LinkStatus{State: domain.LinkStateBlocked}},
+	}
+
+	for _, link := range links {
+		srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{links: []app.CustomerAccessLink{link}})
+
+		ctx, _ := linksContext()
+		_, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"})
+		requireCode(t, err, codes.Internal)
+	}
 }

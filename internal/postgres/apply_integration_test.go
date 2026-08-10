@@ -124,6 +124,14 @@ func newFixture(t *testing.T) (*app.ApplyCustomerAccess, *pgxpool.Pool) {
 
 	// Настоящие crypto-адаптеры, а не заглушки: тест проверяет и то, что
 	// зашифрованный client_uuid укладывается в bytea-колонку.
+	return app.NewApplyCustomerAccess(New(pool), crypto.NewGenerator(), testCipher(t)), pool
+}
+
+// testCipher собирает шифр на детерминированном ключе. Ключ один и тот же во всех
+// вызовах, поэтому read-путь читает ровно то, что запечатал командный.
+func testCipher(t *testing.T) *crypto.Cipher {
+	t.Helper()
+
 	key, err := crypto.NewKey("test-key", make([]byte, crypto.KeySize))
 	if err != nil {
 		t.Fatalf("crypto.NewKey: %v", err)
@@ -132,8 +140,7 @@ func newFixture(t *testing.T) (*app.ApplyCustomerAccess, *pgxpool.Pool) {
 	if err != nil {
 		t.Fatalf("crypto.NewCipher: %v", err)
 	}
-
-	return app.NewApplyCustomerAccess(New(pool), crypto.NewGenerator(), cipher), pool
+	return cipher
 }
 
 // seedTopology создаёт проекцию manifest: revision, fleet, ноды и bridge-связи.

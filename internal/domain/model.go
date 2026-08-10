@@ -43,6 +43,21 @@ const (
 	DesiredStateAbsent  DesiredState = "ABSENT"
 )
 
+// ApplyState — состояние доставки желаемого состояния на входную ноду (§9).
+//
+// При планировании Apply домен его намеренно не читает: apply_state — результат
+// доставки, а не желаемое состояние, и версию desired он не двигает (см. Access).
+// Read-путь §5 без него, наоборот, не выражается: READY означает именно
+// подтверждённую доставку, а не намерение.
+type ApplyState string
+
+const (
+	ApplyStatePending  ApplyState = "PENDING"
+	ApplyStateApplied  ApplyState = "APPLIED"
+	ApplyStateRetrying ApplyState = "RETRYING"
+	ApplyStateFailed   ApplyState = "FAILED"
+)
+
 // FreedomEgressKey — зарезервированное значение egress_key для FREEDOM: пустая
 // строка означает локальный выход самой ноды (direct) (§6, §7).
 const FreedomEgressKey = ""

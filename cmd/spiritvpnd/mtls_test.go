@@ -24,8 +24,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/config"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 	customerv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1"
@@ -66,6 +68,29 @@ func (s *stubUseCase) state() (int, domain.ApplyCommand) {
 	defer s.mu.Unlock()
 
 	return s.calls, s.cmd
+}
+
+// stubLinksUseCase подменяет GetCustomerAccessLinks.
+type stubLinksUseCase struct {
+	mu     sync.Mutex
+	calls  int
+	links  []app.CustomerAccessLink
+	result error
+}
+
+func (s *stubLinksUseCase) Execute(_ context.Context, _ string) ([]app.CustomerAccessLink, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.calls++
+	return s.links, s.result
+}
+
+func (s *stubLinksUseCase) callCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.calls
 }
 
 // certAuthority — одноразовый CA теста.
@@ -200,6 +225,7 @@ type testServer struct {
 	addr  string
 	ca    *certAuthority
 	stub  *stubUseCase
+	links *stubLinksUseCase
 	logs  *bytes.Buffer
 	logMu *sync.Mutex
 }
@@ -231,13 +257,14 @@ func startServer(t *testing.T, writers, readers []string) *testServer {
 		&slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	stub := &stubUseCase{}
+	links := &stubLinksUseCase{}
 	server, err := newGRPCServer(config.GRPC{
 		CertFile:              certPath,
 		KeyFile:               keyPath,
 		ClientCAFile:          filepath.Join(ca.dir, "ca.crt"),
 		CustomerAccessWriters: writers,
 		CustomerAccessReaders: readers,
-	}, logger, stub)
+	}, logger, stub, links)
 	if err != nil {
 		t.Fatalf("сборка сервера: %v", err)
 	}
@@ -250,7 +277,14 @@ func startServer(t *testing.T, writers, readers []string) *testServer {
 	go func() { _ = server.Serve(listener) }()
 	t.Cleanup(server.Stop)
 
-	return &testServer{addr: listener.Addr().String(), ca: ca, stub: stub, logs: logs, logMu: logMu}
+	return &testServer{
+		addr:  listener.Addr().String(),
+		ca:    ca,
+		stub:  stub,
+		links: links,
+		logs:  logs,
+		logMu: logMu,
+	}
 }
 
 // client дозванивается до сервера. Пустой identity означает вызов вовсе без
@@ -369,6 +403,69 @@ func TestMTLSWriterCannotRead(t *testing.T) {
 
 	if got := status.Code(err); got != codes.PermissionDenied {
 		t.Fatalf("код %v, ожидался PermissionDenied: writer получил права reader", got)
+	}
+}
+
+// TestMTLSReaderGetsLinksWithNoStore — read-путь целиком на настоящем
+// соединении: identity с ролью reader доходит до хендлера, ответ несёт URI и
+// запрет кеширования (§5).
+func TestMTLSReaderGetsLinksWithNoStore(t *testing.T) {
+	const uri = "vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443?security=reality#NL"
+
+	server := startServer(t, nil, []string{"product-svc"})
+	server.links.links = []app.CustomerAccessLink{{
+		Kind:   domain.AccessKindFreedom,
+		Status: domain.LinkStatus{State: domain.LinkStateReady},
+		URI:    uri,
+	}}
+
+	var header metadata.MD
+	resp, err := server.client(t, "product-svc").GetCustomerAccessLinks(
+		callContext(t),
+		&customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"},
+		grpc.Header(&header),
+	)
+	if err != nil {
+		t.Fatalf("неожиданная ошибка: %v", err)
+	}
+
+	if server.links.callCount() != 1 {
+		t.Fatalf("use case вызван %d раз, ожидался 1", server.links.callCount())
+	}
+	if got := resp.GetLinks(); len(got) != 1 || got[0].GetUri() != uri {
+		t.Fatalf("ссылки %v, ожидалась одна с URI %q", got, uri)
+	}
+	if got := header.Get("cache-control"); len(got) != 1 || got[0] != "no-store" {
+		t.Fatalf("cache-control %v, ожидалось [no-store]", got)
+	}
+}
+
+// TestMTLSNeverLogsIssuedURI — §8 на настоящем соединении: ответ с credentials не
+// попадает в лог сервера ни через interceptor, ни через сам gRPC.
+func TestMTLSNeverLogsIssuedURI(t *testing.T) {
+	const secretUUID = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+
+	server := startServer(t, nil, []string{"product-svc"})
+	server.links.links = []app.CustomerAccessLink{{
+		Kind:   domain.AccessKindFreedom,
+		Status: domain.LinkStatus{State: domain.LinkStateReady},
+		URI:    "vless://" + secretUUID + "@nl.example.com:443?security=reality#NL",
+	}}
+
+	if _, err := server.client(t, "product-svc").GetCustomerAccessLinks(
+		callContext(t),
+		&customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-секретный"},
+	); err != nil {
+		t.Fatalf("неожиданная ошибка: %v", err)
+	}
+
+	server.logMu.Lock()
+	defer server.logMu.Unlock()
+
+	for _, leaked := range []string{secretUUID, "vless://", "cust-секретный"} {
+		if strings.Contains(server.logs.String(), leaked) {
+			t.Errorf("в лог сервера попало %q: %s", leaked, server.logs.String())
+		}
 	}
 }
 

@@ -61,6 +61,58 @@ type ApplyTx interface {
 	WritePlan(ctx context.Context, plan MaterializedPlan) error
 }
 
+// LinksRepository читает всё, из чего строится ответ GetCustomerAccessLinks (§5).
+//
+// Порт из одного метода, а не набор шагов транзакции как у ApplyRepository:
+// нормативного порядка блокировок у read-пути нет (он их вовсе не берёт), и
+// согласованность нескольких операторов — забота адаптера, а не use case.
+type LinksRepository interface {
+	// LoadCustomerLinks возвращает один согласованный снимок состояния customer.
+	// Отсутствие корневой строки — domain.ErrCustomerNotFound.
+	LoadCustomerLinks(ctx context.Context, customerID string) (CustomerLinks, error)
+}
+
+// CustomerLinks — снимок, из которого выводятся состояния всех ссылок customer.
+//
+// Now и ExpiresAt лежат здесь, а не в каждой строке: срок действия применяется ко
+// всему customer сразу (§4), и раздать его по строкам значило бы допустить снимок,
+// в котором одна ссылка истекла, а другая нет.
+type CustomerLinks struct {
+	// Now — время PostgreSQL того же снимка, что и остальные поля (решение 2).
+	Now       time.Time
+	ExpiresAt time.Time
+
+	// Accesses отсортированы по (kind, logical_target_key, access_id) — порядок
+	// ответа задаёт §5, и он же порядок строк запроса. Ретайрнутые access и цели,
+	// отсутствующие в текущем manifest, сюда не попадают (§5, решение 17).
+	Accesses []AccessLinkSource
+}
+
+// AccessLinkSource — сырые факты об одном access, из которых выводится ссылка.
+//
+// Готового состояния здесь нет намеренно: §5 фиксирует, что отдельный
+// effective/block state не хранится, и выводить его обязан домен, а не SQL.
+type AccessLinkSource struct {
+	Kind         domain.AccessKind
+	DesiredState domain.DesiredState
+	ApplyState   domain.ApplyState
+
+	// QuotaExhausted — exhausted_at IS NOT NULL у входной ноды в текущем периоде.
+	QuotaExhausted bool
+
+	// Entry — публичные параметры входной ноды. Для FREEDOM это сама цель, для
+	// BRIDGE — entry_node_id связи: на EXIT credential customer не ставится (§4).
+	Entry NodePublic
+
+	// BridgeDisplayName — display_name связи; у FREEDOM пусто. Какое из двух имён
+	// уходит во фрагмент URI, решает §8, поэтому решает Go, а не запрос.
+	BridgeDisplayName string
+
+	// Credential — зашифрованный client_uuid. Расшифровывается только для готовой
+	// ссылки и только на время сборки ответа (§7, §8).
+	Credential crypto.SealedCredential
+}
+
 // MaterializedPlan — доменный план, дополненный тем, что домен принципиально не
 // производит: идентификаторами, accounting ID и зашифрованными credentials.
 //

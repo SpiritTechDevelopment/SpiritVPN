@@ -391,6 +391,44 @@ func TestLoggingNeverRecordsRequestBody(t *testing.T) {
 	}
 }
 
+// TestLoggingNeverRecordsResponseBody — §8: ответ с URI не логируется.
+//
+// Регрессионный guard, а не проверка текущего поведения: interceptor тела ответа
+// сейчас не пишет вовсе. Стоит кому-нибудь добавить в запись resp «для удобства
+// отладки» — и открытый client_uuid каждого READY-access окажется в логах,
+// откуда его уже не отозвать. Защита типа crypto.ClientUUID на готовой URI не
+// работает: внутри неё обычная строка.
+func TestLoggingNeverRecordsResponseBody(t *testing.T) {
+	const secretUUID = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+	uri := "vless://" + secretUUID + "@nl.example.com:443" +
+		"?security=reality&encryption=none&pbk=pub&fp=chrome&type=tcp" +
+		"&flow=xtls-rprx-vision&sni=www.example.org&sid=ab#Netherlands"
+
+	resp := &customerv1.GetCustomerAccessLinksResponse{
+		Links: []*customerv1.CustomerAccessLink{{
+			Kind:  customerv1.AccessKind_ACCESS_KIND_FREEDOM,
+			State: customerv1.AccessLinkState_ACCESS_LINK_STATE_READY,
+			Uri:   &uri,
+		}},
+	}
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	_, _ = LoggingUnaryInterceptor(logger)(
+		contextWithRequestID(tlsContext(certDNS("product-svc")), "req-1"),
+		&customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"},
+		&grpc.UnaryServerInfo{FullMethod: linksMethod},
+		func(context.Context, any) (any, error) { return resp, nil },
+	)
+
+	for _, leaked := range []string{secretUUID, "vless://", "nl.example.com", "cust-1"} {
+		if strings.Contains(buf.String(), leaked) {
+			t.Errorf("в лог попало %q: %s", leaked, buf.String())
+		}
+	}
+}
+
 func TestLevelForSeparatesServerFaultsFromClientErrors(t *testing.T) {
 	tests := []struct {
 		code codes.Code

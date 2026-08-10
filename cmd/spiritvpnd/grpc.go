@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/config"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 	customerv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1"
@@ -27,8 +28,18 @@ type applyUseCase interface {
 	Execute(ctx context.Context, cmd domain.ApplyCommand) error
 }
 
+// linksUseCase — то же самое для read-пути §5.
+type linksUseCase interface {
+	Execute(ctx context.Context, customerID string) ([]app.CustomerAccessLink, error)
+}
+
 // newGRPCServer собирает внешнюю поверхность §5 поверх mTLS §14.
-func newGRPCServer(cfg config.GRPC, logger *slog.Logger, useCase applyUseCase) (*grpc.Server, error) {
+func newGRPCServer(
+	cfg config.GRPC,
+	logger *slog.Logger,
+	apply applyUseCase,
+	links linksUseCase,
+) (*grpc.Server, error) {
 	creds, err := transportCredentials(cfg)
 	if err != nil {
 		return nil, err
@@ -57,7 +68,7 @@ func newGRPCServer(cfg config.GRPC, logger *slog.Logger, useCase applyUseCase) (
 		),
 	)
 
-	customerv1.RegisterCustomerAccessServiceServer(server, grpcsvc.NewCustomerAccessServer(useCase))
+	customerv1.RegisterCustomerAccessServiceServer(server, grpcsvc.NewCustomerAccessServer(apply, links))
 
 	return server, nil
 }

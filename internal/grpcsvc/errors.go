@@ -28,6 +28,7 @@ const (
 	codeInvalidQuota         = "INVALID_QUOTA"
 	codeInvalidCommandNumber = "INVALID_COMMAND_NUMBER"
 	codeExpiryNotInFuture    = "EXPIRY_NOT_IN_FUTURE"
+	codeCustomerNotFound     = "CUSTOMER_NOT_FOUND"
 	codeFleetNotFound        = "FLEET_NOT_FOUND"
 	codeFleetMismatch        = "FLEET_MISMATCH"
 	codeExpiryRegression     = "EXPIRY_REGRESSION"
@@ -95,6 +96,7 @@ var errorMapping = []struct {
 	{domain.ErrQuotaInvalid, codes.InvalidArgument, codeInvalidQuota, "usage_quota_bytes должен быть > 0"},
 	{domain.ErrCommandNumberInvalid, codes.InvalidArgument, codeInvalidCommandNumber, "command_number должен быть > 0"},
 	{domain.ErrExpiryNotInFuture, codes.InvalidArgument, codeExpiryNotInFuture, "expires_at должен быть в будущем"},
+	{domain.ErrCustomerNotFound, codes.NotFound, codeCustomerNotFound, "customer не найден"},
 	{domain.ErrFleetNotFound, codes.NotFound, codeFleetNotFound, "fleet не найден"},
 	{domain.ErrFleetMismatch, codes.FailedPrecondition, codeFleetMismatch, "customer уже привязан к другому fleet"},
 	{domain.ErrExpiryRegression, codes.FailedPrecondition, codeExpiryRegression, "сокращение expires_at не поддерживается"},

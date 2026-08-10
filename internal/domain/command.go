@@ -33,14 +33,25 @@ func (d ApplyDecision) String() string {
 	}
 }
 
+// ValidateCustomerID проверяет непрозрачную product-идентичность (§3: 1..256
+// байт). Правило общее для обоих методов §5, поэтому вынесено отдельно:
+// GetCustomerAccessLinks обязан отличать пустой customer_id (INVALID_ARGUMENT)
+// от неизвестного (NOT_FOUND), а не искать пустую строку в базе.
+func ValidateCustomerID(customerID string) error {
+	if customerID == "" || len(customerID) > maxCustomerIDBytes {
+		return ErrCustomerIDInvalid
+	}
+	return nil
+}
+
 // ValidateApplyCommand проверяет форму запроса (§5: все поля обязательны,
 // vpn_fleet_id > 0, usage_quota_bytes > 0, command_number > 0).
 //
 // Вызывается ДО обращения к БД: невалидный запрос не должен ни блокировать
 // корневую строку, ни двигать last_command_number.
 func ValidateApplyCommand(cmd ApplyCommand) error {
-	if cmd.CustomerID == "" || len(cmd.CustomerID) > maxCustomerIDBytes {
-		return ErrCustomerIDInvalid
+	if err := ValidateCustomerID(cmd.CustomerID); err != nil {
+		return err
 	}
 	if cmd.FleetID <= 0 {
 		return ErrFleetIDInvalid

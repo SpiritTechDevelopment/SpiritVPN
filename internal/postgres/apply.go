@@ -15,14 +15,12 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/postgres/db"
 )
 
-// Значения enum-подобных колонок. Словарь живёт здесь, а не в домене: домен
+// Значения колонки operation_type. Словарь живёт здесь, а не в домене: домен
 // оперирует desired state, а тип операции однозначно из него выводится (§9).
+// Значения apply_state, наоборот, домену известны — их читает read-путь §5.
 const (
 	operationTypePresent = "ENSURE_PRESENT"
 	operationTypeAbsent  = "ENSURE_ABSENT"
-
-	applyStatePending = "PENDING"
-	applyStateApplied = "APPLIED"
 )
 
 // Repository — адаптер app.ApplyRepository поверх пула соединений.
@@ -356,7 +354,7 @@ func operationTypeFor(state domain.DesiredState) (string, error) {
 // недоставленную операцию в метрике §15.
 func applyStateForNewAccess(state domain.DesiredState) string {
 	if state == domain.DesiredStatePresent {
-		return applyStatePending
+		return string(domain.ApplyStatePending)
 	}
-	return applyStateApplied
+	return string(domain.ApplyStateApplied)
 }

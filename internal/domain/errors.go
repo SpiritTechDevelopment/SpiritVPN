@@ -8,7 +8,7 @@ import "errors"
 // Ожидаемое сопоставление (§5):
 //
 //	INVALID_ARGUMENT     — все ошибки валидации запроса и ErrExpiryNotInFuture
-//	NOT_FOUND            — ErrFleetNotFound (правило 6)
+//	NOT_FOUND            — ErrFleetNotFound (правило 6), ErrCustomerNotFound
 //	FAILED_PRECONDITION  — ErrFleetMismatch (правило 5), ErrExpiryRegression (правило 9)
 //	INTERNAL             — ErrOpenPeriodMissing
 var (
@@ -28,6 +28,11 @@ var (
 	// обязан быть в будущем (§5). Повтор с тем же expiry под это правило не
 	// подпадает: он не является renewal и для уже истёкшего customer допустим.
 	ErrExpiryNotInFuture = errors.New("domain: expires_at должен быть в будущем")
+
+	// ErrCustomerNotFound — у customer нет корневой строки, то есть ни одного
+	// успешного ApplyCustomerAccess (§5: неизвестный customer_id возвращает
+	// NOT_FOUND). Это исход read-пути; командный путь такого customer создаёт.
+	ErrCustomerNotFound = errors.New("domain: customer не найден")
 
 	// ErrFleetNotFound — fleet отсутствует в текущем manifest (§5, правило 6).
 	// Проверяется вызывающим слоем и только ПОСЛЕ отсечения устаревшей команды по
