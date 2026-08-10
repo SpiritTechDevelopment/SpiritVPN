@@ -40,6 +40,7 @@ const (
 	EnvGRPCClientCA  = "SPIRIT_GRPC_TLS_CLIENT_CA_FILE"
 	EnvRoleWriter    = "SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER"
 	EnvRoleReader    = "SPIRIT_ROLE_CUSTOMER_ACCESS_READER"
+	EnvRoleManifest  = "SPIRIT_ROLE_MANIFEST_WRITER"
 	EnvHTTPListen    = "SPIRIT_HTTP_LISTEN"
 	EnvClientUUIDKey = "SPIRIT_CLIENT_UUID_KEY"
 )
@@ -109,6 +110,11 @@ type GRPC struct {
 	// в обоих списках явно (решение 14).
 	CustomerAccessWriters []string
 	CustomerAccessReaders []string
+
+	// ManifestWriters — identity infrastructure CI/CD (§14). Роль отдельная от
+	// customer-ролей: манифест переписывает топологию целиком, и продуктовому
+	// сервису она не нужна ни в каком виде.
+	ManifestWriters []string
 }
 
 // HTTP — служебная поверхность: health, readiness и метрики (§15). Отдельный
@@ -153,13 +159,16 @@ func Load(getenv func(string) string) (Config, error) {
 	cfg.GRPC.ClientCAFile = required(getenv, EnvGRPCClientCA, &errs)
 	cfg.GRPC.CustomerAccessWriters = identities(getenv(EnvRoleWriter))
 	cfg.GRPC.CustomerAccessReaders = identities(getenv(EnvRoleReader))
+	cfg.GRPC.ManifestWriters = identities(getenv(EnvRoleManifest))
 
 	// Конфигурация без единой идентичности поднимает сервер, который отвечает
 	// PERMISSION_DENIED на каждый вызов. Формально это безопасно, но заметить
 	// такое можно только по жалобам вызывающего, поэтому падаем на старте.
-	if len(cfg.GRPC.CustomerAccessWriters) == 0 && len(cfg.GRPC.CustomerAccessReaders) == 0 {
-		errs = append(errs, fmt.Errorf("%w: %s и %s пусты, ни один клиент не сможет вызвать ни один метод",
-			ErrMissing, EnvRoleWriter, EnvRoleReader))
+	if len(cfg.GRPC.CustomerAccessWriters) == 0 &&
+		len(cfg.GRPC.CustomerAccessReaders) == 0 &&
+		len(cfg.GRPC.ManifestWriters) == 0 {
+		errs = append(errs, fmt.Errorf("%w: %s, %s и %s пусты, ни один клиент не сможет вызвать ни один метод",
+			ErrMissing, EnvRoleWriter, EnvRoleReader, EnvRoleManifest))
 	}
 
 	cfg.HTTP.Listen = listenAddr(value(getenv, EnvHTTPListen, defaultHTTPListen), EnvHTTPListen, &errs)
@@ -267,6 +276,7 @@ func (c Config) LogValue() slog.Value {
 		slog.String("grpc_client_ca_file", c.GRPC.ClientCAFile),
 		slog.Int("customer_access_writers", len(c.GRPC.CustomerAccessWriters)),
 		slog.Int("customer_access_readers", len(c.GRPC.CustomerAccessReaders)),
+		slog.Int("manifest_writers", len(c.GRPC.ManifestWriters)),
 		slog.String("http_listen", c.HTTP.Listen),
 		slog.String("encryption_key_id", c.ClientUUIDKey.ID()),
 	)

@@ -75,8 +75,7 @@ CREATE TABLE vpn_bridge_routes (
     manifest_revision bigint      NOT NULL REFERENCES manifest_revisions (revision),
     current           boolean     NOT NULL DEFAULT true,
     PRIMARY KEY (vpn_fleet_id, routing_key),
-    CONSTRAINT vpn_bridge_routes_entry_exit_distinct CHECK (entry_node_id <> exit_node_id),
-    CONSTRAINT vpn_bridge_routes_pair_unique UNIQUE (vpn_fleet_id, entry_node_id, exit_node_id)
+    CONSTRAINT vpn_bridge_routes_entry_exit_distinct CHECK (entry_node_id <> exit_node_id)
 );
 
 -- ---------------------------------------------------------------------------
@@ -256,6 +255,17 @@ CREATE UNIQUE INDEX quota_periods_one_open_per_customer
 -- Выбор периода по collected_at (event-time), сначала последние.
 CREATE INDEX quota_periods_customer_started_at
     ON quota_periods (customer_id, started_at DESC);
+
+-- Пара (entry_node_id, exit_node_id) уникальна среди ТЕКУЩИХ связей fleet (§6).
+--
+-- Частичный индекс, а не табличное ограничение UNIQUE: удалённая связь физически
+-- остаётся строкой с current = false (§6, история не удаляется), и полное
+-- ограничение навсегда закрепило бы за ней её пару. Перенос route, который §6
+-- разрешает («удаление старого и добавление нового routing_key»), стал бы тогда
+-- невыполним — новый routing_key с той же парой упёрся бы в мёртвую строку.
+CREATE UNIQUE INDEX vpn_bridge_routes_current_pair
+    ON vpn_bridge_routes (vpn_fleet_id, entry_node_id, exit_node_id)
+    WHERE current;
 
 -- Единственный текущий (не retired) access на logical target; он же путь поиска
 -- для Customer API.

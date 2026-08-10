@@ -102,7 +102,7 @@ type AccessLinkSource struct {
 
 	// Entry — публичные параметры входной ноды. Для FREEDOM это сама цель, для
 	// BRIDGE — entry_node_id связи: на EXIT credential customer не ставится (§4).
-	Entry NodePublic
+	Entry domain.NodePublic
 
 	// BridgeDisplayName — display_name связи; у FREEDOM пусто. Какое из двух имён
 	// уходит во фрагмент URI, решает §8, поэтому решает Go, а не запрос.
@@ -111,6 +111,49 @@ type AccessLinkSource struct {
 	// Credential — зашифрованный client_uuid. Расшифровывается только для готовой
 	// ссылки и только на время сборки ответа (§7, §8).
 	Credential crypto.SealedCredential
+}
+
+// ManifestRepository открывает транзакцию приёма манифеста (§6).
+type ManifestRepository interface {
+	// WithinManifestTx выполняет fn в одной транзакции, предварительно
+	// сериализовав приём: одновременно применяется не более одного снапшота
+	// (решение 28). nil коммитит, ошибка откатывает.
+	WithinManifestTx(ctx context.Context, fn func(ManifestTx) error) error
+}
+
+// ManifestTx — шаги приёма манифеста.
+//
+// Порядок записи внутри WritePlan нормативным списком §11.1 не описан: тот
+// перечисляет строки состояния customer, а приём манифеста их не трогает вовсе.
+// Поэтому шагов здесь три, а не по одному на таблицу: разделять их значило бы
+// изобретать порядок, которого спека не требует.
+type ManifestTx interface {
+	// LoadProjection читает принятое состояние целиком: ≤100 нод и ≤900 связей
+	// (§13) читаются одним заходом дешевле, чем выборочно.
+	LoadProjection(ctx context.Context) (domain.ManifestProjection, error)
+
+	// WritePlan проецирует снапшот и ставит джобу материализации. На
+	// идемпотентном повторе не вызывается вовсе (решение 21).
+	WritePlan(ctx context.Context, plan domain.ManifestPlan) error
+
+	// AppendAudit добавляет запись в audit_events (§15).
+	AppendAudit(ctx context.Context, event AuditEvent) error
+}
+
+// AuditEvent — запись журнала аудита (§15).
+//
+// Metadata обязана быть sanitized: ни секретов, ни client_uuid, ни accounting ID.
+// Тип не проверяет это за вызывающего — проверять содержимое map он не может, —
+// но фиксирует требование в одном месте.
+type AuditEvent struct {
+	ActorType  string
+	ActorID    string
+	Action     string
+	TargetType string
+	TargetID   string
+	RequestID  string
+	Outcome    string
+	Metadata   map[string]any
 }
 
 // MaterializedPlan — доменный план, дополненный тем, что домен принципиально не

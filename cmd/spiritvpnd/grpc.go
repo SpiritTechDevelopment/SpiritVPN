@@ -16,6 +16,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/config"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 	customerv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1"
+	manifestv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/manifest/v1"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/grpcsvc"
 )
 
@@ -33,12 +34,18 @@ type linksUseCase interface {
 	Execute(ctx context.Context, customerID string) ([]app.CustomerAccessLink, error)
 }
 
+// manifestUseCase — приём infrastructure manifest (§6).
+type manifestUseCase interface {
+	Execute(ctx context.Context, cmd app.ApplyManifestCommand) (app.ApplyManifestResult, error)
+}
+
 // newGRPCServer собирает внешнюю поверхность §5 поверх mTLS §14.
 func newGRPCServer(
 	cfg config.GRPC,
 	logger *slog.Logger,
 	apply applyUseCase,
 	links linksUseCase,
+	manifest manifestUseCase,
 ) (*grpc.Server, error) {
 	creds, err := transportCredentials(cfg)
 	if err != nil {
@@ -48,6 +55,7 @@ func newGRPCServer(
 	authorizer := grpcsvc.NewAuthorizer(map[grpcsvc.Role][]string{
 		grpcsvc.RoleCustomerAccessWriter: cfg.CustomerAccessWriters,
 		grpcsvc.RoleCustomerAccessReader: cfg.CustomerAccessReaders,
+		grpcsvc.RoleManifestWriter:       cfg.ManifestWriters,
 	})
 
 	// Порядок цепочки существенен и держится здесь:
@@ -69,6 +77,7 @@ func newGRPCServer(
 	)
 
 	customerv1.RegisterCustomerAccessServiceServer(server, grpcsvc.NewCustomerAccessServer(apply, links))
+	manifestv1.RegisterManifestServiceServer(server, grpcsvc.NewManifestServer(manifest))
 
 	return server, nil
 }

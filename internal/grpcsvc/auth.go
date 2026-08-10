@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/peer"
 
 	customerv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1"
+	manifestv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/manifest/v1"
 )
 
 // Role — роль вызывающего сервиса (§14).
@@ -17,6 +18,10 @@ type Role string
 const (
 	RoleCustomerAccessWriter Role = "customer-access-writer"
 	RoleCustomerAccessReader Role = "customer-access-reader"
+
+	// RoleManifestWriter — infrastructure CI/CD (§14). Отдельная identity: она
+	// переписывает топологию целиком и продуктовому сервису не выдаётся.
+	RoleManifestWriter Role = "manifest-writer"
 )
 
 // methodRoles — роль, требуемая каждым методом (решение 14).
@@ -33,6 +38,8 @@ const (
 var methodRoles = map[string]Role{
 	customerv1.CustomerAccessService_ApplyCustomerAccess_FullMethodName:    RoleCustomerAccessWriter,
 	customerv1.CustomerAccessService_GetCustomerAccessLinks_FullMethodName: RoleCustomerAccessReader,
+
+	manifestv1.ManifestService_ApplyFleetManifest_FullMethodName: RoleManifestWriter,
 }
 
 // Authorizer решает, что позволено идентичности из клиентского сертификата.

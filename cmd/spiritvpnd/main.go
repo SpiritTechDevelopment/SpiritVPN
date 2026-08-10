@@ -86,8 +86,9 @@ func run() error {
 	repository := postgres.New(pool)
 	applyUC := app.NewApplyCustomerAccess(repository, crypto.NewGenerator(), cipher)
 	linksUC := app.NewGetCustomerAccessLinks(repository, cipher)
+	manifestUC := app.NewApplyFleetManifest(repository)
 
-	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC)
+	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, manifestUC)
 	if err != nil {
 		return err
 	}

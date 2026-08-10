@@ -3,7 +3,7 @@ package postgres
 import (
 	"encoding/json"
 
-	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
 // nodePublicConfig — раскладка jsonb-колонки vpn_nodes.public_config.
@@ -29,19 +29,57 @@ type nodePublicConfig struct {
 	DisplayName      string `json:"display_name"`
 }
 
+// nodeAgentConfig — раскладка jsonb-колонки vpn_nodes.agent_config: блок
+// node.agent манифеста дословно (§6). Клиенту эти значения не показываются
+// никогда, и в VLESS URI они не попадают.
+type nodeAgentConfig struct {
+	Endpoint            string `json:"endpoint"`
+	TLSServerName       string `json:"tls_server_name"`
+	CertificateIdentity string `json:"certificate_identity"`
+}
+
+// nodeConfigJSON — writer, парный к nodePublicFrom (решение 19).
+//
+// Стоит рядом с reader'ом намеренно: формат колонок известен ровно этому файлу,
+// и разъехаться тому, кто пишет, с тем, кто читает, физически негде.
+//
+// Ошибка сериализации не возвращается и возникнуть не может: обе структуры
+// состоят только из строк и чисел (см. довод у CanonicalizeManifest).
+func nodeConfigJSON(node domain.ManifestNode) (agent, public []byte) {
+	agent, _ = json.Marshal(nodeAgentConfig{
+		Endpoint:            node.Agent.Endpoint,
+		TLSServerName:       node.Agent.TLSServerName,
+		CertificateIdentity: node.Agent.CertificateIdentity,
+	})
+
+	public, _ = json.Marshal(nodePublicConfig{
+		Address:          node.Public.Address,
+		Port:             node.Public.Port,
+		RealityPublicKey: node.Public.RealityPublicKey,
+		ServerName:       node.Public.ServerName,
+		ShortID:          node.Public.ShortID,
+		Fingerprint:      node.Public.Fingerprint,
+		Transport:        node.Public.Transport,
+		Flow:             node.Public.Flow,
+		DisplayName:      node.Public.DisplayName,
+	})
+
+	return agent, public
+}
+
 // nodePublicFrom разбирает колонку в доменную форму.
 //
 // Ошибка разбора не возвращается: нераспознанный jsonb даёт нулевую структуру,
-// которая не проходит app.NodePublic.Usable, и ссылка на этой ноде уходит наружу
+// которая не проходит domain.NodePublic.Usable, и ссылка на этой ноде уходит наружу
 // как FAILED (решение 18). Отдельный канал для причины не заводится — исход у
 // «json битый» и «поля пустые» один и тот же, а различать их будет метрика §15.
-func nodePublicFrom(raw []byte) app.NodePublic {
+func nodePublicFrom(raw []byte) domain.NodePublic {
 	var config nodePublicConfig
 	if err := json.Unmarshal(raw, &config); err != nil {
-		return app.NodePublic{}
+		return domain.NodePublic{}
 	}
 
-	return app.NodePublic{
+	return domain.NodePublic{
 		Address:          config.Address,
 		Port:             config.Port,
 		RealityPublicKey: config.RealityPublicKey,

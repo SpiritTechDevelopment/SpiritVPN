@@ -34,6 +34,19 @@ const (
 	codeExpiryRegression     = "EXPIRY_REGRESSION"
 	codeOpenPeriodMissing    = "OPEN_PERIOD_MISSING"
 
+	codeManifestSchemaVersion      = "MANIFEST_SCHEMA_VERSION"
+	codeManifestRevisionInvalid    = "MANIFEST_REVISION_INVALID"
+	codeManifestTooLarge           = "MANIFEST_TOO_LARGE"
+	codeManifestDuplicate          = "MANIFEST_DUPLICATE"
+	codeManifestUnknownNode        = "MANIFEST_UNKNOWN_NODE"
+	codeManifestNodeInvalid        = "MANIFEST_NODE_INVALID"
+	codeManifestBridgeInvalid      = "MANIFEST_BRIDGE_INVALID"
+	codeManifestRevisionRegression = "MANIFEST_REVISION_REGRESSION"
+	codeManifestDigestConflict     = "MANIFEST_DIGEST_CONFLICT"
+	codeManifestFleetMissing       = "MANIFEST_FLEET_MISSING"
+	codeManifestDestructive        = "MANIFEST_DESTRUCTIVE"
+	codeManifestBridgePair         = "MANIFEST_BRIDGE_PAIR_IMMUTABLE"
+
 	codeCanceled         = "CANCELED"
 	codeDeadlineExceeded = "DEADLINE_EXCEEDED"
 	codeUnauthenticated  = "UNAUTHENTICATED"
@@ -107,6 +120,58 @@ var errorMapping = []struct {
 	{domain.ErrOpenPeriodMissing, codes.Internal, codeOpenPeriodMissing, msgInternal},
 }
 
+// manifestErrorMapping — правила §6 и их коды.
+//
+// Сообщение здесь не задаётся: в отличие от таблицы выше, наружу уходит текст
+// самой ошибки вместе с деталью (какая нода, какая связь, какое значение).
+// Так можно ровно потому, что domain.ManifestValidationError рождается только в
+// чистых функциях над payload вызывающего: ничего, кроме значений из его же
+// запроса, в нём нет, а обёрнутая ошибка драйвера этим типом не является и сюда
+// не попадёт. Вызывающий — infrastructure CI/CD (§14), и деталь экономит ему
+// разбор целого снапшота вручную.
+//
+// Коды разведены по тому, от чего зависит исход: форма снапшота —
+// INVALID_ARGUMENT, конфликт с уже принятым состоянием — FAILED_PRECONDITION.
+var manifestErrorMapping = []struct {
+	sentinel error
+	code     codes.Code
+	stable   string
+}{
+	{domain.ErrManifestSchemaVersion, codes.InvalidArgument, codeManifestSchemaVersion},
+	{domain.ErrManifestRevisionInvalid, codes.InvalidArgument, codeManifestRevisionInvalid},
+	{domain.ErrManifestTooLarge, codes.InvalidArgument, codeManifestTooLarge},
+	{domain.ErrManifestDuplicate, codes.InvalidArgument, codeManifestDuplicate},
+	{domain.ErrManifestUnknownNode, codes.InvalidArgument, codeManifestUnknownNode},
+	{domain.ErrManifestNodeInvalid, codes.InvalidArgument, codeManifestNodeInvalid},
+	{domain.ErrManifestBridgeInvalid, codes.InvalidArgument, codeManifestBridgeInvalid},
+
+	{domain.ErrManifestRevisionRegression, codes.FailedPrecondition, codeManifestRevisionRegression},
+	{domain.ErrManifestDigestConflict, codes.FailedPrecondition, codeManifestDigestConflict},
+	{domain.ErrManifestFleetMissing, codes.FailedPrecondition, codeManifestFleetMissing},
+	{domain.ErrManifestDestructive, codes.FailedPrecondition, codeManifestDestructive},
+	{domain.ErrManifestBridgePairImmutable, codes.FailedPrecondition, codeManifestBridgePair},
+}
+
+// statusFromManifestError отображает нарушение правил §6. Возвращает nil, если
+// ошибка к манифесту не относится.
+func statusFromManifestError(err error) error {
+	var validation *domain.ManifestValidationError
+	if !errors.As(err, &validation) {
+		return nil
+	}
+
+	for _, mapping := range manifestErrorMapping {
+		if errors.Is(validation.Rule, mapping.sentinel) {
+			return newStatusError(mapping.code, mapping.stable, validation.Error())
+		}
+	}
+
+	// Сентинел есть, а строки в таблице нет: правило добавили, а код забыли.
+	// Наружу уходит обезличенное сообщение, но в логе исход не сливается с
+	// прочими INTERNAL.
+	return newStatusError(codes.Internal, codeInternal, msgInternal)
+}
+
 // statusFromError отображает ошибку use case в gRPC-статус.
 //
 // Порядок проверок существенен:
@@ -127,6 +192,12 @@ var errorMapping = []struct {
 // §15: штатный рестарт вызывающего с полусотней вызовов в полёте не должен
 // выглядеть в метриках как полсотни отказов backend.
 func statusFromError(ctx context.Context, err error) error {
+	// Правила §6 идут первыми и по тем же соображениям, что и доменные сентинелы
+	// ниже: исход точный, и отмена вызова не должна его подменять.
+	if manifestErr := statusFromManifestError(err); manifestErr != nil {
+		return manifestErr
+	}
+
 	for _, mapping := range errorMapping {
 		if errors.Is(err, mapping.sentinel) {
 			return newStatusError(mapping.code, mapping.stable, mapping.message)

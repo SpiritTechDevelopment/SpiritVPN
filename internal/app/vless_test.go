@@ -9,14 +9,15 @@ import (
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
 // testClientUUID — фиксированное значение, чтобы ожидаемая URI была буквальной.
 var testClientUUID = crypto.NewClientUUID(uuid.MustParse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6"))
 
 // testNode — нода из примера manifest §6.
-func testNode() app.NodePublic {
-	return app.NodePublic{
+func testNode() domain.NodePublic {
+	return domain.NodePublic{
 		Address:          "nl.example.com",
 		Port:             443,
 		RealityPublicKey: "pub-key",
@@ -127,25 +128,25 @@ func TestBuildVLESSURICarriesCredential(t *testing.T) {
 func TestNodePublicUsable(t *testing.T) {
 	tests := []struct {
 		name   string
-		mutate func(*app.NodePublic)
+		mutate func(*domain.NodePublic)
 		want   bool
 	}{
-		{"полный набор", func(*app.NodePublic) {}, true},
+		{"полный набор", func(*domain.NodePublic) {}, true},
 
-		{"пустой sid допустим", func(n *app.NodePublic) { n.ShortID = "" }, true},
-		{"пустое display_name допустимо", func(n *app.NodePublic) { n.DisplayName = "" }, true},
+		{"пустой sid допустим", func(n *domain.NodePublic) { n.ShortID = "" }, true},
+		{"пустое display_name допустимо", func(n *domain.NodePublic) { n.DisplayName = "" }, true},
 
-		{"нет адреса", func(n *app.NodePublic) { n.Address = "" }, false},
-		{"нулевой порт", func(n *app.NodePublic) { n.Port = 0 }, false},
-		{"отрицательный порт", func(n *app.NodePublic) { n.Port = -1 }, false},
-		{"порт за границей диапазона", func(n *app.NodePublic) { n.Port = 65536 }, false},
-		{"нет reality public key", func(n *app.NodePublic) { n.RealityPublicKey = "" }, false},
-		{"нет server name", func(n *app.NodePublic) { n.ServerName = "" }, false},
-		{"нет fingerprint", func(n *app.NodePublic) { n.Fingerprint = "" }, false},
-		{"нет transport", func(n *app.NodePublic) { n.Transport = "" }, false},
-		{"нет flow", func(n *app.NodePublic) { n.Flow = "" }, false},
+		{"нет адреса", func(n *domain.NodePublic) { n.Address = "" }, false},
+		{"нулевой порт", func(n *domain.NodePublic) { n.Port = 0 }, false},
+		{"отрицательный порт", func(n *domain.NodePublic) { n.Port = -1 }, false},
+		{"порт за границей диапазона", func(n *domain.NodePublic) { n.Port = 65536 }, false},
+		{"нет reality public key", func(n *domain.NodePublic) { n.RealityPublicKey = "" }, false},
+		{"нет server name", func(n *domain.NodePublic) { n.ServerName = "" }, false},
+		{"нет fingerprint", func(n *domain.NodePublic) { n.Fingerprint = "" }, false},
+		{"нет transport", func(n *domain.NodePublic) { n.Transport = "" }, false},
+		{"нет flow", func(n *domain.NodePublic) { n.Flow = "" }, false},
 
-		{"пустая структура", func(n *app.NodePublic) { *n = app.NodePublic{} }, false},
+		{"пустая структура", func(n *domain.NodePublic) { *n = domain.NodePublic{} }, false},
 	}
 
 	for _, tt := range tests {

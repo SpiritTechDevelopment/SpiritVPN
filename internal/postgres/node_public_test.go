@@ -3,7 +3,7 @@ package postgres
 import (
 	"testing"
 
-	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
 // TestNodePublicFromPinsColumnFormat пиннит раскладку public_config (решение 19).
@@ -25,7 +25,7 @@ func TestNodePublicFromPinsColumnFormat(t *testing.T) {
 	  "display_name": "Netherlands"
 	}`
 
-	want := app.NodePublic{
+	want := domain.NodePublic{
 		Address:          "nl.example.com",
 		Port:             443,
 		RealityPublicKey: "pub-key",

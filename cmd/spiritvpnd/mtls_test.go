@@ -31,6 +31,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/config"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 	customerv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1"
+	manifestv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/manifest/v1"
 )
 
 // Этот файл проверяет границу безопасности целиком: настоящее TLS-рукопожатие,
@@ -84,6 +85,34 @@ func (s *stubLinksUseCase) Execute(_ context.Context, _ string) ([]app.CustomerA
 
 	s.calls++
 	return s.links, s.result
+}
+
+// stubManifestUseCase подменяет ApplyFleetManifest.
+type stubManifestUseCase struct {
+	mu     sync.Mutex
+	calls  int
+	cmd    app.ApplyManifestCommand
+	result app.ApplyManifestResult
+	err    error
+}
+
+func (s *stubManifestUseCase) Execute(
+	_ context.Context,
+	cmd app.ApplyManifestCommand,
+) (app.ApplyManifestResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.calls++
+	s.cmd = cmd
+	return s.result, s.err
+}
+
+func (s *stubManifestUseCase) state() (int, app.ApplyManifestCommand) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.calls, s.cmd
 }
 
 func (s *stubLinksUseCase) callCount() int {
@@ -222,12 +251,13 @@ func (ca *certAuthority) writeFile(t *testing.T, name string, content []byte) {
 
 // testServer — поднятый сервер и всё, что нужно тестам вокруг него.
 type testServer struct {
-	addr  string
-	ca    *certAuthority
-	stub  *stubUseCase
-	links *stubLinksUseCase
-	logs  *bytes.Buffer
-	logMu *sync.Mutex
+	addr     string
+	ca       *certAuthority
+	stub     *stubUseCase
+	links    *stubLinksUseCase
+	manifest *stubManifestUseCase
+	logs     *bytes.Buffer
+	logMu    *sync.Mutex
 }
 
 // syncBuffer сериализует запись: логгер вызывается из горутин gRPC.
@@ -244,6 +274,10 @@ func (s syncBuffer) Write(p []byte) (int, error) {
 }
 
 func startServer(t *testing.T, writers, readers []string) *testServer {
+	return startServerWithManifest(t, writers, readers, nil)
+}
+
+func startServerWithManifest(t *testing.T, writers, readers, manifestWriters []string) *testServer {
 	t.Helper()
 
 	ca := newCertAuthority(t)
@@ -258,13 +292,15 @@ func startServer(t *testing.T, writers, readers []string) *testServer {
 
 	stub := &stubUseCase{}
 	links := &stubLinksUseCase{}
+	manifest := &stubManifestUseCase{}
 	server, err := newGRPCServer(config.GRPC{
 		CertFile:              certPath,
 		KeyFile:               keyPath,
 		ClientCAFile:          filepath.Join(ca.dir, "ca.crt"),
 		CustomerAccessWriters: writers,
 		CustomerAccessReaders: readers,
-	}, logger, stub, links)
+		ManifestWriters:       manifestWriters,
+	}, logger, stub, links, manifest)
 	if err != nil {
 		t.Fatalf("сборка сервера: %v", err)
 	}
@@ -278,18 +314,33 @@ func startServer(t *testing.T, writers, readers []string) *testServer {
 	t.Cleanup(server.Stop)
 
 	return &testServer{
-		addr:  listener.Addr().String(),
-		ca:    ca,
-		stub:  stub,
-		links: links,
-		logs:  logs,
-		logMu: logMu,
+		addr:     listener.Addr().String(),
+		ca:       ca,
+		stub:     stub,
+		links:    links,
+		manifest: manifest,
+		logs:     logs,
+		logMu:    logMu,
 	}
 }
 
-// client дозванивается до сервера. Пустой identity означает вызов вовсе без
-// клиентского сертификата.
+// client дозванивается до сервера как customer-сервис.
 func (s *testServer) client(t *testing.T, identity string) customerv1.CustomerAccessServiceClient {
+	t.Helper()
+
+	return customerv1.NewCustomerAccessServiceClient(s.conn(t, identity))
+}
+
+// manifestClient дозванивается до сервера как infrastructure CI/CD (§14).
+func (s *testServer) manifestClient(t *testing.T, identity string) manifestv1.ManifestServiceClient {
+	t.Helper()
+
+	return manifestv1.NewManifestServiceClient(s.conn(t, identity))
+}
+
+// conn поднимает соединение с указанной идентичностью. Пустой identity означает
+// вызов вовсе без клиентского сертификата.
+func (s *testServer) conn(t *testing.T, identity string) *grpc.ClientConn {
 	t.Helper()
 
 	roots := x509.NewCertPool()
@@ -314,7 +365,7 @@ func (s *testServer) client(t *testing.T, identity string) customerv1.CustomerAc
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 
-	return customerv1.NewCustomerAccessServiceClient(conn)
+	return conn
 }
 
 func (s *testServer) logLines() []map[string]any {
@@ -466,6 +517,62 @@ func TestMTLSNeverLogsIssuedURI(t *testing.T) {
 		if strings.Contains(server.logs.String(), leaked) {
 			t.Errorf("в лог сервера попало %q: %s", leaked, server.logs.String())
 		}
+	}
+}
+
+// TestMTLSManifestWriterIsSeparateRole — решение 14 и §14 на настоящем
+// соединении: манифест переписывает топологию целиком, и права продуктового
+// сервиса на него не распространяются ни в какую сторону.
+func TestMTLSManifestWriterIsSeparateRole(t *testing.T) {
+	server := startServerWithManifest(t,
+		[]string{"product-svc"}, []string{"product-svc"}, []string{"infra-ci"})
+
+	// Полноправный customer-сервис манифест применить не может.
+	_, err := server.manifestClient(t, "product-svc").
+		ApplyFleetManifest(callContext(t), &manifestv1.ApplyFleetManifestRequest{})
+	if got := status.Code(err); got != codes.PermissionDenied {
+		t.Fatalf("код %v, ожидался PermissionDenied: product-svc получил права manifest-writer", got)
+	}
+	if calls, _ := server.manifest.state(); calls != 0 {
+		t.Errorf("use case вызван %d раз при отказе авторизации", calls)
+	}
+
+	// И наоборот: infra-ci не имеет доступа к customer-методам.
+	_, err = server.client(t, "infra-ci").ApplyCustomerAccess(callContext(t), validApply())
+	if got := status.Code(err); got != codes.PermissionDenied {
+		t.Fatalf("код %v, ожидался PermissionDenied: infra-ci получил права customer-writer", got)
+	}
+}
+
+// TestMTLSManifestWriterApplies — путь приёма манифеста целиком: identity с
+// ролью manifest-writer доходит до хендлера, и она же уезжает в аудит (§15).
+func TestMTLSManifestWriterApplies(t *testing.T) {
+	server := startServerWithManifest(t, nil, nil, []string{"infra-ci"})
+	server.manifest.result = app.ApplyManifestResult{Revision: 42}
+
+	resp, err := server.manifestClient(t, "infra-ci").ApplyFleetManifest(
+		callContext(t),
+		&manifestv1.ApplyFleetManifestRequest{
+			SchemaVersion: domain.ManifestSchemaVersion,
+			Revision:      42,
+		},
+	)
+	if err != nil {
+		t.Fatalf("неожиданная ошибка: %v", err)
+	}
+	if resp.GetAppliedRevision() != 42 {
+		t.Errorf("applied_revision %d, ожидалась 42", resp.GetAppliedRevision())
+	}
+
+	calls, cmd := server.manifest.state()
+	if calls != 1 {
+		t.Fatalf("use case вызван %d раз, ожидался 1", calls)
+	}
+	if cmd.Actor != "infra-ci" {
+		t.Errorf("actor %q, ожидался infra-ci: аудит §15 получит не ту идентичность", cmd.Actor)
+	}
+	if cmd.RequestID == "" {
+		t.Error("request_id пуст: запись аудита нечем будет скоррелировать с логом")
 	}
 }
 
