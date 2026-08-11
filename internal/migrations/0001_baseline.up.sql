@@ -287,3 +287,18 @@ CREATE INDEX agent_operations_retryable
 CREATE INDEX agent_operations_in_flight_lease
     ON agent_operations (lease_expires_at)
     WHERE status = 'IN_FLIGHT';
+
+-- §9: одновременно на одну ноду отправляется не более одной mutating operation.
+--
+-- Индекс, а не проверка в запросе dispatcher'а: гейт «на этой ноде нет IN_FLIGHT»
+-- читает committed-снимок, поэтому два воркера, взявшие в один момент РАЗНЫЕ
+-- операции одной ноды, оба его проходят и оба коммитятся. Инвариант держится
+-- только структурно; проигравший получает unique violation и просто пробует
+-- позже.
+--
+-- Гейт по протухшему lease здесь не выражен намеренно: слот освобождает сборщик,
+-- переводя операцию в RETRY_WAIT или SUPERSEDED, и он выполняется первым
+-- оператором того же шага dispatcher'а.
+CREATE UNIQUE INDEX agent_operations_single_in_flight_per_node
+    ON agent_operations (node_id)
+    WHERE status = 'IN_FLIGHT';

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 )
 
 // nodePublicConfig — раскладка jsonb-колонки vpn_nodes.public_config.
@@ -65,6 +66,29 @@ func nodeConfigJSON(node domain.ManifestNode) (agent, public []byte) {
 	})
 
 	return agent, public
+}
+
+// nodeAgentFrom разбирает agent_config в endpoint вызова агента (§9).
+//
+// Стоит рядом с writer'ом по той же причине, что и nodePublicFrom: формат колонки
+// известен ровно этому файлу.
+//
+// Ошибка разбора не возвращается: нераспознанный jsonb даёт нулевую структуру,
+// которую отвергнет клиент агента — с исходом retryable и alert (решение 50).
+// Второй канал для той же причины не нужен, исход у «json битый» и «поля пустые»
+// один и тот же.
+func nodeAgentFrom(nodeID string, raw []byte) nodeagent.Endpoint {
+	var config nodeAgentConfig
+	if err := json.Unmarshal(raw, &config); err != nil {
+		return nodeagent.Endpoint{NodeID: nodeID}
+	}
+
+	return nodeagent.Endpoint{
+		NodeID:              nodeID,
+		Address:             config.Endpoint,
+		TLSServerName:       config.TLSServerName,
+		CertificateIdentity: config.CertificateIdentity,
+	}
 }
 
 // nodePublicFrom разбирает колонку в доменную форму.

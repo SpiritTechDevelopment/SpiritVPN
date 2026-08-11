@@ -27,6 +27,16 @@ import (
 // которая ретраится.
 var ErrIdentityMismatch = errors.New("nodeagent: идентичность агента не совпала с манифестом")
 
+// ErrEndpointIncomplete — agent_config ноды не даёт достаточно данных для вызова.
+//
+// Манифест такое не пропускает (§6 проверяет endpoint, tls_server_name и
+// certificate_identity до записи), поэтому наступить на это можно только через
+// испорченный jsonb колонки. Ошибка своя, а не общая transport, потому что исход
+// у неё особый: retryable с alert (решение 50). Permanent здесь был бы вечным —
+// починка манифеста не меняет desired_version access и новой операции не
+// порождает, так что ретраить было бы уже некому.
+var ErrEndpointIncomplete = errors.New("nodeagent: неполный agent_config ноды")
+
 // identityCheck хранит результат последней сверки идентичности на соединении.
 //
 // Нужен потому, что gRPC не сохраняет цепочку ошибок рукопожатия: наружу

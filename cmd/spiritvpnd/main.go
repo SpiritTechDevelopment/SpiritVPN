@@ -31,6 +31,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/config"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/postgres"
 )
 
@@ -88,8 +89,26 @@ func run() error {
 	applyUC := app.NewApplyCustomerAccess(repository, crypto.NewGenerator(), cipher)
 	linksUC := app.NewGetCustomerAccessLinks(repository, cipher)
 	manifestUC := app.NewApplyFleetManifest(repository)
+
+	owner := workerOwner()
 	materializeUC := app.NewMaterializeManifest(
-		repository, crypto.NewGenerator(), cipher, workerOwner(), materializeLeaseTTL)
+		repository, crypto.NewGenerator(), cipher, owner, materializeLeaseTTL)
+
+	// Клиент агентов собирается здесь, потому что владеет соединениями: их надо
+	// закрыть на выходе, а больше некому. TLS-материал читается сразу, поэтому
+	// неверные пути к сертификатам валят старт, а не первую операцию.
+	agentClient, err := nodeagent.New(nodeagent.Config{
+		CertFile: cfg.Agent.CertFile,
+		KeyFile:  cfg.Agent.KeyFile,
+		CAFile:   cfg.Agent.CAFile,
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = agentClient.Close() }()
+
+	dispatchUC := app.NewDispatchOperations(
+		repository, agentClient, cipher, processJitter{}, owner, dispatchLeaseTTL)
 
 	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, manifestUC)
 	if err != nil {
@@ -101,24 +120,37 @@ func run() error {
 		return err
 	}
 
-	// Фоновый воркер живёт на собственном контексте: serve может вернуться не
+	// Фоновые воркеры живут на собственном контексте: serve может вернуться не
 	// только по сигналу, но и по отказу слушателя, а ждать воркер, которому никто
 	// не сказал остановиться, значило бы повесить процесс навсегда.
 	workerCtx, stopWorkers := context.WithCancel(ctx)
 	defer stopWorkers()
 
 	var workers sync.WaitGroup
-	workers.Add(1)
-	go func() {
-		defer workers.Done()
-		runMaterializeWorker(workerCtx, logger, materializeUC,
-			materializeIdleInterval, materializeErrorBackoff)
-	}()
+	start := func(name string, uc stepWorker, idle, backoff time.Duration) {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			runWorker(workerCtx, logger, name, uc, idle, backoff)
+		}()
+	}
+
+	start("materialize", materializeUC, materializeIdleInterval, materializeErrorBackoff)
+
+	// Диспетчер параллелен, воркер материализации — нет: там шаг двигает общий
+	// курсор одной джобы, здесь каждый шаг берёт свою операцию под SKIP LOCKED
+	// (решения 35 и 39). Все восемь горутин делят один use case: состояния он не
+	// держит, всё живёт в БД.
+	for range dispatchConcurrency {
+		start("dispatch", dispatchUC, dispatchIdleInterval, dispatchErrorBackoff)
+	}
 
 	err = serve(ctx, logger, cfg, grpcServer, newHTTPServer(cfg.HTTP.Listen, checks))
 
-	// Воркер останавливается ПОСЛЕ поверхностей: его шаг короток, а прогресс
-	// зафиксирован курсором, поэтому ждать его безопасно и быстро.
+	// Воркеры останавливаются ПОСЛЕ поверхностей: их шаги коротки, а прогресс
+	// зафиксирован в БД, поэтому ждать их безопасно и быстро. Операция, чей RPC
+	// оборвала отмена, останется IN_FLIGHT и достанется сборщику протухших lease
+	// (решение 51).
 	stopWorkers()
 	workers.Wait()
 

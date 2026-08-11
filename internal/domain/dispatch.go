@@ -54,6 +54,28 @@ type OperationResultPlan struct {
 	Completed bool
 }
 
+// Superseded корректирует план под access, чья desired_version уже ушла вперёд
+// (§9, решение 47).
+//
+// Терминальные исходы сохраняются как есть: agent_operations является ещё и
+// журналом исполнения, и запись «эта операция доехала» правдива независимо от
+// того, что desired state с тех пор сменился. Меняется только RETRY_WAIT —
+// повторять операцию устаревшей версии значило бы толкать на ноду заведомо
+// неверное состояние, поэтому она становится терминальной SUPERSEDED.
+//
+// ApplyState в возвращённом плане не обнуляется и не используется: применить его
+// к строке access всё равно нельзя, и записывающий слой обязан это знать сам.
+func (p OperationResultPlan) Superseded() OperationResultPlan {
+	if p.Status != OperationStatusRetryWait {
+		return p
+	}
+
+	p.Status = OperationStatusSuperseded
+	p.NextAttemptAt = nil
+	p.Completed = true
+	return p
+}
+
 // PlanOperationResult раскладывает исход попытки в состояние операции и access
 // (§9, решение 41).
 //

@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net"
 	"net/url"
@@ -432,20 +433,54 @@ func TestIdentityMismatchIsPermanent(t *testing.T) {
 	}
 }
 
-// TestEmptyExpectedIdentityIsRejected — пустая ожидаемая идентичность совпала бы
-// с любой нодой. Манифест её не пропускает, но полагаться на это здесь нельзя.
-func TestEmptyExpectedIdentityIsRejected(t *testing.T) {
-	agent := &fakeAgent{result: applied()}
-	client, endpoint := newHarness(t, agent)
-	endpoint.CertificateIdentity = ""
-
-	outcome := client.EnsureUserPresent(context.Background(), endpoint, "op", testUser())
-
-	if outcome.Code != CodeIdentityMismatch {
-		t.Fatalf("код %q, ожидался %q", outcome.Code, CodeIdentityMismatch)
+// TestIncompleteEndpointIsRejectedBeforeDialing — неполный agent_config отсекается
+// до соединения и называется своим именем (решение 50).
+//
+// Пустой certificate_identity проверяется отдельным случаем: без гарды он дошёл бы
+// до сверки идентичности и приехал бы наружу как IDENTITY_MISMATCH, то есть
+// испорченная колонка выглядела бы в логах атакой — и, что хуже, permanent'ом.
+func TestIncompleteEndpointIsRejectedBeforeDialing(t *testing.T) {
+	cases := map[string]func(*Endpoint){
+		"пустой node_id":              func(e *Endpoint) { e.NodeID = "" },
+		"пустой endpoint":             func(e *Endpoint) { e.Address = "" },
+		"пустой tls_server_name":      func(e *Endpoint) { e.TLSServerName = "" },
+		"пустой certificate_identity": func(e *Endpoint) { e.CertificateIdentity = "" },
 	}
-	if agent.calls != 0 {
-		t.Errorf("агент получил %d вызовов при пустой ожидаемой идентичности", agent.calls)
+
+	for name, breakEndpoint := range cases {
+		t.Run(name, func(t *testing.T) {
+			agent := &fakeAgent{result: applied()}
+			client, endpoint := newHarness(t, agent)
+			breakEndpoint(&endpoint)
+
+			outcome := client.EnsureUserPresent(context.Background(), endpoint, "op", testUser())
+
+			if outcome.Code != CodeNodeConfigInvalid {
+				t.Fatalf("код %q, ожидался %q", outcome.Code, CodeNodeConfigInvalid)
+			}
+			// Retryable, а не permanent: чинится следующим манифестом, который
+			// новой операции не создаёт, — permanent некому было бы повторить.
+			if outcome.Result != domain.AttemptRetryable {
+				t.Errorf("исход %q, ожидался retryable", outcome.Result)
+			}
+			if !outcome.Alert {
+				t.Error("непригодный agent_config обязан поднимать alert")
+			}
+			if agent.calls != 0 {
+				t.Errorf("агент получил %d вызовов по неполному endpoint", agent.calls)
+			}
+		})
+	}
+}
+
+// TestEmptyExpectedIdentityNeverMatches — пустая ожидаемая идентичность совпала бы
+// с любой нодой. Гарда endpoint до сверки её уже не допускает, но проверка второго
+// эшелона обязана держать это сама: цена ошибки — принятая чужая нода.
+func TestEmptyExpectedIdentityNeverMatches(t *testing.T) {
+	chains := [][]*x509.Certificate{{{DNSNames: []string{"agent.example"}}}}
+
+	if err := matchAgentIdentity("", chains); !errors.Is(err, ErrIdentityMismatch) {
+		t.Fatalf("ошибка %v, ожидалась ErrIdentityMismatch", err)
 	}
 }
 

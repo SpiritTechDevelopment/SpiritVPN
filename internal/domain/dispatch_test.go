@@ -64,6 +64,31 @@ func TestPlanOperationResult(t *testing.T) {
 	}
 }
 
+// TestSupersededStopsRetriesOnly — решение 47: устаревшая desired_version
+// прекращает повторы, но не переписывает уже состоявшийся терминальный исход.
+func TestSupersededStopsRetriesOnly(t *testing.T) {
+	retry := PlanOperationResult(AttemptRetryable, 0, tNow, 0.5).Superseded()
+
+	if retry.Status != OperationStatusSuperseded {
+		t.Errorf("статус %s, ожидался %s", retry.Status, OperationStatusSuperseded)
+	}
+	if retry.NextAttemptAt != nil {
+		t.Errorf("устаревшая операция запланирована на %v: её никто не должен повторять", retry.NextAttemptAt)
+	}
+	if !retry.Completed {
+		t.Error("SUPERSEDED терминален и обязан проставлять completed_at")
+	}
+
+	// Журнал исполнения остаётся правдивым: операция действительно доехала, и
+	// смена desired state задним числом этого не отменяет.
+	for _, outcome := range []AttemptOutcome{AttemptSucceeded, AttemptPermanent} {
+		plan := PlanOperationResult(outcome, 0, tNow, 0.5)
+		if got := plan.Superseded(); got != plan {
+			t.Errorf("исход %s переписан: %+v", outcome, got)
+		}
+	}
+}
+
 // TestBackoffDelayGrowsAndCaps — §9: от 1 секунды экспоненциально до потолка в
 // 5 минут.
 func TestBackoffDelayGrowsAndCaps(t *testing.T) {

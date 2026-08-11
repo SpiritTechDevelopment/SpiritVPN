@@ -73,7 +73,7 @@ func runWorkerUntilDone(t *testing.T, steps []workerStep) (*scriptedWorker, stri
 		defer close(done)
 		// Паузы околонулевые: тест проверяет ветвление цикла, а не длительность
 		// сна. Отдельно её проверяет TestWorkerStopsOnCancelDuringIdle.
-		runMaterializeWorker(ctx, logger, worker, time.Millisecond, time.Millisecond)
+		runWorker(ctx, logger, "test", worker, time.Millisecond, time.Millisecond)
 	}()
 
 	select {
@@ -120,7 +120,7 @@ func TestWorkerStopsOnCancelDuringIdle(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		runMaterializeWorker(ctx, logger, worker, materializeIdleInterval, materializeErrorBackoff)
+		runWorker(ctx, logger, "test", worker, materializeIdleInterval, materializeErrorBackoff)
 	}()
 
 	// Первый шаг вернёт «работы нет», цикл уснёт на materializeIdleInterval;

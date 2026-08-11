@@ -17,21 +17,22 @@ import (
 // её версией. По этим кодам строятся alert'ы, поэтому переименование любого —
 // изменение контракта наблюдаемости.
 const (
-	CodeApplied          = "APPLIED"
-	CodeAlreadyApplied   = "ALREADY_APPLIED"
-	CodeAgentRetryable   = "AGENT_RETRYABLE"
-	CodeAgentPermanent   = "AGENT_PERMANENT"
-	CodeAgentUnknown     = "AGENT_UNKNOWN_STATUS"
-	CodeUnavailable      = "UNAVAILABLE"
-	CodeDeadline         = "DEADLINE_EXCEEDED"
-	CodeAborted          = "ABORTED"
-	CodeInvalidArgument  = "INVALID_ARGUMENT"
-	CodePrecondition     = "FAILED_PRECONDITION"
-	CodeUnauthenticated  = "UNAUTHENTICATED"
-	CodePermissionDenied = "PERMISSION_DENIED"
-	CodeUnimplemented    = "UNIMPLEMENTED"
-	CodeIdentityMismatch = "IDENTITY_MISMATCH"
-	CodeTransport        = "TRANSPORT"
+	CodeApplied           = "APPLIED"
+	CodeAlreadyApplied    = "ALREADY_APPLIED"
+	CodeAgentRetryable    = "AGENT_RETRYABLE"
+	CodeAgentPermanent    = "AGENT_PERMANENT"
+	CodeAgentUnknown      = "AGENT_UNKNOWN_STATUS"
+	CodeUnavailable       = "UNAVAILABLE"
+	CodeDeadline          = "DEADLINE_EXCEEDED"
+	CodeAborted           = "ABORTED"
+	CodeInvalidArgument   = "INVALID_ARGUMENT"
+	CodePrecondition      = "FAILED_PRECONDITION"
+	CodeUnauthenticated   = "UNAUTHENTICATED"
+	CodePermissionDenied  = "PERMISSION_DENIED"
+	CodeUnimplemented     = "UNIMPLEMENTED"
+	CodeIdentityMismatch  = "IDENTITY_MISMATCH"
+	CodeNodeConfigInvalid = "NODE_CONFIG_INVALID"
+	CodeTransport         = "TRANSPORT"
 )
 
 // Outcome — исход одной попытки доставки.
@@ -99,6 +100,18 @@ func classifyTransport(err error) Outcome {
 		return Outcome{
 			Result:  domain.AttemptPermanent,
 			Code:    CodeIdentityMismatch,
+			Message: err.Error(),
+			Alert:   true,
+		}
+	}
+
+	// Непригодный agent_config — retryable, а не permanent (решение 50): чинится
+	// он следующим манифестом, который desired_version access не двигает и новой
+	// операции не создаёт. Permanent означал бы, что чинить уже нечего.
+	if errors.Is(err, ErrEndpointIncomplete) {
+		return Outcome{
+			Result:  domain.AttemptRetryable,
+			Code:    CodeNodeConfigInvalid,
 			Message: err.Error(),
 			Alert:   true,
 		}

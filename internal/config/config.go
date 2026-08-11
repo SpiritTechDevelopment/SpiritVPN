@@ -43,6 +43,11 @@ const (
 	EnvRoleManifest  = "SPIRIT_ROLE_MANIFEST_WRITER"
 	EnvHTTPListen    = "SPIRIT_HTTP_LISTEN"
 	EnvClientUUIDKey = "SPIRIT_CLIENT_UUID_KEY"
+
+	// Клиентская пара для походов к агентам — отдельная от серверной (решение 44).
+	EnvAgentCertFile = "SPIRIT_AGENT_TLS_CERT_FILE"
+	EnvAgentKeyFile  = "SPIRIT_AGENT_TLS_KEY_FILE"
+	EnvAgentCAFile   = "SPIRIT_AGENT_TLS_CA_FILE"
 )
 
 // Значения по умолчанию для не-секретов.
@@ -70,6 +75,7 @@ type Config struct {
 	Postgres Postgres
 	GRPC     GRPC
 	HTTP     HTTP
+	Agent    Agent
 
 	// ClientUUIDKey — единственный active encryption key (§7, §14). Ротация и
 	// decrypt-only ключи в v1 не поддерживаются.
@@ -124,6 +130,19 @@ type HTTP struct {
 	Listen string
 }
 
+// Agent — mTLS до node-agent'ов поверх management WireGuard overlay (§9, §14).
+//
+// Пара отдельная от GRPC намеренно (решение 44): там backend принимает
+// product-сервис и предъявляет себя ему, здесь — сам приходит клиентом к агенту.
+// Общий сертификат смешал бы две роли, и компрометация одной автоматически
+// означала бы компрометацию другой. CAFile — CA инфраструктуры, которым подписаны
+// сертификаты агентов; серверному ClientCAFile он не равен.
+type Agent struct {
+	CertFile string
+	KeyFile  string
+	CAFile   string
+}
+
 // Load собирает конфигурацию, читая окружение через getenv.
 //
 // getenv параметром, а не os.Getenv напрямую: тесты обязаны проверять разбор без
@@ -170,6 +189,10 @@ func Load(getenv func(string) string) (Config, error) {
 		errs = append(errs, fmt.Errorf("%w: %s, %s и %s пусты, ни один клиент не сможет вызвать ни один метод",
 			ErrMissing, EnvRoleWriter, EnvRoleReader, EnvRoleManifest))
 	}
+
+	cfg.Agent.CertFile = required(getenv, EnvAgentCertFile, &errs)
+	cfg.Agent.KeyFile = required(getenv, EnvAgentKeyFile, &errs)
+	cfg.Agent.CAFile = required(getenv, EnvAgentCAFile, &errs)
 
 	cfg.HTTP.Listen = listenAddr(value(getenv, EnvHTTPListen, defaultHTTPListen), EnvHTTPListen, &errs)
 

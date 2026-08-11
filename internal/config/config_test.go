@@ -33,6 +33,9 @@ func validEnv() map[string]string {
 		config.EnvGRPCCertFile:  "/tls/server.crt",
 		config.EnvGRPCKeyFile:   "/tls/server.key",
 		config.EnvGRPCClientCA:  "/tls/ca.crt",
+		config.EnvAgentCertFile: "/tls/agent-client.crt",
+		config.EnvAgentKeyFile:  "/tls/agent-client.key",
+		config.EnvAgentCAFile:   "/tls/agent-ca.crt",
 		config.EnvRoleWriter:    "product-svc",
 		config.EnvClientUUIDKey: testKey,
 	}
@@ -126,6 +129,9 @@ func TestLoadReportsEveryMissingVariable(t *testing.T) {
 		config.EnvGRPCCertFile,
 		config.EnvGRPCKeyFile,
 		config.EnvGRPCClientCA,
+		config.EnvAgentCertFile,
+		config.EnvAgentKeyFile,
+		config.EnvAgentCAFile,
 		config.EnvClientUUIDKey,
 	} {
 		if !strings.Contains(err.Error(), name) {

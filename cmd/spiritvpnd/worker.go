@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"os"
 	"time"
 )
@@ -28,8 +29,33 @@ const (
 	materializeLeaseTTL = 60 * time.Second
 )
 
-// materializeUseCase — то, что цикл требует от воркера.
-type materializeUseCase interface {
+// Темп и параллелизм диспетчера операций (§9, §13).
+const (
+	// dispatchConcurrency — число горутин доставки. Дефолт §13; на одну ноду
+	// по-прежнему уходит не более одной операции, и этот гейт держится в SQL, а
+	// не числом горутин (решение 39).
+	dispatchConcurrency = 8
+
+	// dispatchIdleInterval — пауза, когда очередь пуста. Заметно короче
+	// материализации: операция появляется на каждую команду customer, и лишняя
+	// секунда ожидания здесь — это секунда неработающей ссылки.
+	dispatchIdleInterval = time.Second
+
+	// dispatchErrorBackoff — пауза после отказа БАЗЫ. Отказ агента сюда не
+	// доходит: он не ошибка шага, а записанный исход операции со своим backoff
+	// (§9).
+	dispatchErrorBackoff = 15 * time.Second
+
+	// dispatchLeaseTTL — на сколько берётся операция. С запасом перекрывает
+	// deadline вызова (nodeagent.DefaultCallTimeout, 5 секунд): lease, истёкший
+	// раньше ответа агента, дал бы вторую параллельную операцию на ту же ноду
+	// вопреки §9.
+	dispatchLeaseTTL = 30 * time.Second
+)
+
+// stepWorker — то, что цикл требует от воркера: один шаг, сообщающий, была ли
+// работа. Такую форму имеют оба фоновых воркера, поэтому цикл у них общий.
+type stepWorker interface {
 	ProcessNext(ctx context.Context) (bool, error)
 }
 
@@ -43,19 +69,23 @@ func workerOwner() string {
 	return fmt.Sprintf("%s/%d", host, os.Getpid())
 }
 
-// runMaterializeWorker крутит шаги материализации до отмены контекста (§13).
+// runWorker крутит шаги фонового воркера до отмены контекста (§9, §13).
 //
-// Шаг маленький (один customer), поэтому цикл сам решает, когда спать: пока есть
-// прогресс — идёт без пауз, на пустом проходе ждёт. Такая форма делает
-// остановку мгновенной в любой момент: между шагами нет незавершённого
-// состояния, весь прогресс уже зафиксирован курсором в БД.
+// Шаг маленький (один customer у материализации, одна операция у диспетчера),
+// поэтому цикл сам решает, когда спать: пока есть прогресс — идёт без пауз, на
+// пустом проходе ждёт. Такая форма делает остановку мгновенной в любой момент:
+// между шагами нет незавершённого состояния, весь прогресс уже зафиксирован в БД.
 //
 // Паузы приходят параметрами, а не берутся из констант напрямую: иначе тест
 // поведения цикла пришлось бы ждать реальные секунды, и его бы просто не было.
-func runMaterializeWorker(
+//
+// name попадает в лог отказа: горутин у диспетчера восемь, и без имени в записи
+// невозможно понять, какой воркер отказал.
+func runWorker(
 	ctx context.Context,
 	logger *slog.Logger,
-	uc materializeUseCase,
+	name string,
+	uc stepWorker,
 	idleInterval, errorBackoff time.Duration,
 ) {
 	for {
@@ -68,7 +98,8 @@ func runMaterializeWorker(
 			return
 
 		case err != nil:
-			logger.LogAttrs(ctx, slog.LevelError, "шаг материализации манифеста отказал",
+			logger.LogAttrs(ctx, slog.LevelError, "шаг воркера отказал",
+				slog.String("worker", name),
 				slog.Any("error", err))
 			if !sleepOrDone(ctx, errorBackoff) {
 				return
@@ -88,6 +119,15 @@ func runMaterializeWorker(
 		}
 	}
 }
+
+// processJitter — источник случайности для backoff повторов (§9).
+//
+// math/rand/v2, а не crypto/rand: значение разводит попытки во времени и никакой
+// секретности не несёт, а отказ CSPRNG не должен уметь провалить доставку.
+// Собственного пакета не заводит — это одна функция.
+type processJitter struct{}
+
+func (processJitter) Unit() float64 { return rand.Float64() }
 
 // sleepOrDone ждёт либо истечения паузы, либо отмены. false означает отмену.
 func sleepOrDone(ctx context.Context, d time.Duration) bool {

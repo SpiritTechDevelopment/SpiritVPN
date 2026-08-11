@@ -8,11 +8,13 @@
 package app
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 )
 
 // Clock — часы процесса.
@@ -42,6 +44,31 @@ type IDs interface {
 	NewOperationID() (uuid.UUID, error)
 	NewAccountingID() (string, error)
 	NewClientUUID() (crypto.ClientUUID, error)
+}
+
+// AgentDispatcher — исходящая сетевая поверхность backend (§9).
+//
+// Типы приходят из пакета nodeagent, а не дублируются здесь (решение 45):
+// Endpoint, User и Outcome — плоские данные без инфраструктуры внутри, и
+// *nodeagent.Client удовлетворяет этому порту без единой строки переходника.
+// Прецедент тот же, по которому границу порта уже пересекают crypto.ClientUUID и
+// crypto.SealedCredential; своя копия трёх структур означала бы синхронизацию их
+// полей руками при каждом изменении контракта агента.
+//
+// Ошибок методы не возвращают: любой отказ уже классифицирован в Outcome, и
+// диспетчеру всегда есть что записать в agent_operations.
+type AgentDispatcher interface {
+	EnsureUserPresent(ctx context.Context, endpoint nodeagent.Endpoint, operationID string, user nodeagent.User) nodeagent.Outcome
+	EnsureUserAbsent(ctx context.Context, endpoint nodeagent.Endpoint, operationID, accountingID string) nodeagent.Outcome
+}
+
+// Jitter — источник случайности для backoff (§9).
+//
+// Отдельный порт, а не math/rand напрямую: домен случайности не производит
+// (см. domain.BackoffDelay), а тест задержки повтора должен быть детерминирован.
+type Jitter interface {
+	// Unit возвращает значение в [0,1).
+	Unit() float64
 }
 
 // CredentialSealer — application-level шифрование client_uuid (§7).

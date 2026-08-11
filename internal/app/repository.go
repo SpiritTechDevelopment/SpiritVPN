@@ -8,6 +8,7 @@ import (
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 )
 
 // ApplyRepository открывает короткую транзакцию под одну команду customer.
@@ -208,6 +209,95 @@ type MaterializedManifestPlan struct {
 	// порядке.
 	NewAccesses []NewAccess
 	Operations  []AgentOperation
+}
+
+// DispatchRepository — состояние outbox для диспетчера операций (§9, §11.1).
+//
+// Форма отличается от остальных репозиториев, потому что шаг диспетчера состоит из
+// ДВУХ транзакций с сетевым вызовом между ними: §11.1 запрещает держать транзакцию
+// открытой во время обращения к node-agent. Единый WithinTx выразить это не может.
+type DispatchRepository interface {
+	// ReapExpiredLeases возвращает в оборот операции умерших воркеров и сообщает,
+	// сколько собрал. Устаревшая desired_version переводится в SUPERSEDED,
+	// актуальная — обратно в очередь (§9, решение 49).
+	ReapExpiredLeases(ctx context.Context, maxReaped int32) (int64, error)
+
+	// LeaseNext берёт lease готовой операции и собирает payload из актуальных строк
+	// access и ноды. nil означает, что отправлять нечего.
+	//
+	// Метод один, а не набор шагов транзакции как у ApplyTx: выбора порядка тут нет
+	// — это один оператор, трогающий одну таблицу.
+	LeaseNext(ctx context.Context, owner string, leaseTTL time.Duration) (*LeasedOperation, error)
+
+	// WithinResultTx выполняет fn в транзакции записи результата. Шагов два, и их
+	// порядок нормативен (§11.1): сначала vpn_accesses, потом agent_operations.
+	WithinResultTx(ctx context.Context, fn func(ResultTx) error) error
+}
+
+// ResultTx — шаги транзакции записи исхода доставки в порядке блокировок §11.1.
+type ResultTx interface {
+	// Now — время начала транзакции. Первый оператор, как и в остальных путях:
+	// next_attempt_at сравнивается с now() базы, и считать его от часов процесса
+	// значило бы разъехаться с тем, кто его читает (решение 2).
+	Now(ctx context.Context) (time.Time, error)
+
+	// SetAccessApplyState проецирует исход на строку access и возвращает false,
+	// если desired_version уже ушла вперёд: тогда строка не тронута, и результат
+	// устаревшей операции не переписал состояние актуальной (§11.1).
+	SetAccessApplyState(
+		ctx context.Context,
+		accessID uuid.UUID,
+		desiredVersion int64,
+		state domain.ApplyState,
+	) (fresh bool, err error)
+
+	// CompleteOperation записывает статус самой операции и снимает lease.
+	CompleteOperation(ctx context.Context, result OperationResult) error
+}
+
+// LeasedOperation — взятая в работу операция вместе с payload (§9).
+//
+// Payload не хранится в agent_operations и собран здесь из актуальных строк
+// access и ноды непосредственно перед RPC — это прямое требование §9.
+type LeasedOperation struct {
+	OperationID    uuid.UUID
+	AccessID       uuid.UUID
+	DesiredVersion int64
+	// AttemptCount уже увеличен взятием lease (решение 48).
+	AttemptCount int32
+	// DesiredState выведено адаптером из operation_type: словарь значений колонки
+	// остаётся внутри postgres, как и при записи (§9).
+	DesiredState domain.DesiredState
+
+	// AccessDesiredVersion — версия строки access на момент взятия lease. Больше
+	// DesiredVersion означает, что звонить агенту уже незачем (§11.1).
+	AccessDesiredVersion int64
+
+	Endpoint     nodeagent.Endpoint
+	AccountingID string
+	EgressKey    string
+	// Flow — параметр входной ноды из её public_config (§8, §9).
+	Flow string
+
+	// Credential заполнен только для PRESENT: удаление матчится по accounting_id, и
+	// расшифровывать ради него секрет незачем (§7, §9).
+	Credential crypto.SealedCredential
+}
+
+// OperationResult — что записать в строку операции по итогу попытки.
+type OperationResult struct {
+	OperationID uuid.UUID
+	Status      domain.OperationStatus
+	// NextAttemptAt непусто только у RETRY_WAIT.
+	NextAttemptAt *time.Time
+	Completed     bool
+
+	// ErrorCode — стабильный код исхода для наблюдаемости (§15). Заполняется и на
+	// успехе: по нему видно, применил агент изменение или подтвердил уже точное
+	// состояние.
+	ErrorCode string
+	// ErrorMessage — санитизированная диагностика агента. Секретов не содержит.
+	ErrorMessage string
 }
 
 // AuditEvent — запись журнала аудита (§15).

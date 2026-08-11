@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"sync"
 	"time"
 
@@ -34,6 +35,26 @@ type Endpoint struct {
 // перестаёт запрашиваться и закрывается.
 func (e Endpoint) key() string {
 	return e.NodeID + "|" + e.Address + "|" + e.TLSServerName + "|" + e.CertificateIdentity
+}
+
+// validate отсекает endpoint, по которому вызов заведомо не состоится.
+//
+// Пустой CertificateIdentity особенно опасен: сверка идентичности его отвергнет
+// как подмену (§9, security failure), то есть испорченная колонка выглядела бы в
+// логах атакой. Здесь она называется своим именем.
+func (e Endpoint) validate() error {
+	switch {
+	case e.NodeID == "":
+		return fmt.Errorf("%w: пустой node_id", ErrEndpointIncomplete)
+	case e.Address == "":
+		return fmt.Errorf("%w: нода %s не имеет endpoint", ErrEndpointIncomplete, e.NodeID)
+	case e.TLSServerName == "":
+		return fmt.Errorf("%w: нода %s не имеет tls_server_name", ErrEndpointIncomplete, e.NodeID)
+	case e.CertificateIdentity == "":
+		return fmt.Errorf("%w: нода %s не имеет certificate_identity", ErrEndpointIncomplete, e.NodeID)
+	default:
+		return nil
+	}
 }
 
 // User — payload EnsureUserPresent (§9).
@@ -177,6 +198,10 @@ func classifyWithIdentity(agent *agentConn, result *nodeagentv1.OperationResult,
 // рукопожатие (и проверка идентичности) происходит на первом RPC — и приезжает
 // сюда обычной transport-ошибкой, которую классифицирует classifyTransport.
 func (c *Client) connFor(endpoint Endpoint) (*agentConn, error) {
+	if err := endpoint.validate(); err != nil {
+		return nil, err
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
