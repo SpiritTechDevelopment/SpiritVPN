@@ -211,6 +211,121 @@ type MaterializedManifestPlan struct {
 	Operations  []AgentOperation
 }
 
+// UsageRepository — состояние учёта трафика для pull worker (§12).
+//
+// Форма как у DispatchRepository и по той же причине: шаг состоит из нескольких
+// транзакций с сетевым вызовом между первой и остальными (§11.1). Batch
+// обрабатывается не одной транзакцией, а группами.
+type UsageRepository interface {
+	// ClaimNode берёт lease ноды, которую пора опросить. nil означает, что
+	// опрашивать сейчас нечего: либо все заняты, либо ни одна не «созрела».
+	ClaimNode(ctx context.Context, owner string, leaseTTL, minInterval time.Duration) (*ClaimedUsageNode, error)
+
+	// ReleaseNode снимает собственный lease. Без него нода простаивала бы до
+	// истечения TTL, который с запасом перекрывает весь шаг вместе с RPC.
+	ReleaseNode(ctx context.Context, nodeID domain.NodeID, owner string) error
+
+	// ResolveAccounting сопоставляет accounting_id с владельцами по историческому
+	// маппингу: ретайрнутые и погашенные access тоже находятся (§12).
+	// Отсутствующие в результате accounting_id неизвестны системе.
+	ResolveAccounting(ctx context.Context, accountingIDs []string) (map[string]UsageOwner, error)
+
+	// QuarantineItems кладёт items в карантин и отмечает их обработанными, чтобы
+	// один плохой item не блокировал batch навсегда (§12, шаг 6).
+	QuarantineItems(ctx context.Context, batch UsageBatchRef, reason string, items []domain.UsageItem) error
+
+	// WithinUsageGroupTx выполняет fn в транзакции одной группы
+	// (customer_id, node_id, quota_period_id).
+	WithinUsageGroupTx(ctx context.Context, fn func(UsageGroupTx) error) error
+
+	// AdvanceCursor подтверждает позицию спула. Вызывается только после durable
+	// commit всех групп batch (решение 63).
+	AdvanceCursor(ctx context.Context, nodeID domain.NodeID, cursor nodeagent.UsageCursor) error
+}
+
+// UsageGroupTx — шаги транзакции одной группы в порядке блокировок §11.1:
+// entitlement → quota_periods → node_quota_usage → traffic_usage_items_processed
+// → vpn_nodes → vpn_accesses → agent_operations.
+type UsageGroupTx interface {
+	// Now — время начала транзакции (решение 2). Им отмечается exhausted_at.
+	Now(ctx context.Context) (time.Time, error)
+
+	// LockEntitlement берёт FOR UPDATE корневой строки customer (§11.1, шаг 1).
+	LockEntitlement(ctx context.Context, customerID string) (*domain.Entitlement, error)
+
+	// LockPeriodAt берёт FOR UPDATE период, в который попадает момент сбора batch
+	// (шаг 2). nil означает, что подходящего периода нет вовсе.
+	LockPeriodAt(ctx context.Context, customerID string, collectedAt time.Time) (*UsagePeriod, error)
+
+	// LockNodeUsage берёт FOR UPDATE строку расхода ноды, заводя её при
+	// отсутствии (шаг 3). Именно этот lock сериализует несколько access одного
+	// customer на одной ноде, поэтому порог активируется один раз (§12).
+	LockNodeUsage(ctx context.Context, periodID uuid.UUID, nodeID domain.NodeID) (domain.NodeQuotaUsage, error)
+
+	// RegisterProcessed идемпотентно регистрирует items и возвращает только НОВЫЕ
+	// (шаг 4). Уже зарегистрированные не возвращаются и не начисляются.
+	RegisterProcessed(
+		ctx context.Context,
+		batch UsageBatchRef,
+		periodID uuid.UUID,
+		result domain.UsageItemResult,
+		items []domain.UsageItem,
+	) ([]domain.UsageItem, error)
+
+	// LoadNodeAccesses читает ВСЕ нератайрнутые access customer на этой ноде.
+	// Row locks не берёт: корневая строка уже заблокирована (§11.1).
+	LoadNodeAccesses(ctx context.Context, customerID string, nodeID domain.NodeID) ([]domain.Access, error)
+
+	// WriteUsageGroup записывает начисление, отметку исчерпания и снятие access
+	// (шаги 3, 5–7).
+	WriteUsageGroup(ctx context.Context, plan MaterializedUsageGroup) error
+}
+
+// ClaimedUsageNode — взятая в опрос нода.
+type ClaimedUsageNode struct {
+	NodeID   domain.NodeID
+	Endpoint nodeagent.Endpoint
+	// Cursor — подтверждённая позиция; она уходит агенту как
+	// acknowledged_usage_through.
+	Cursor nodeagent.UsageCursor
+}
+
+// UsageBatchRef — координаты batch для реестра идемпотентности и карантина.
+type UsageBatchRef struct {
+	NodeID   domain.NodeID
+	SpoolID  string
+	Sequence uint64
+}
+
+// UsagePeriod — период вместе с признаком закрытости.
+//
+// Признак отдельным полем, а не выведенным из closed_at в домене: домену нужен
+// только факт, а момент закрытия ни на что не влияет (§11.1).
+type UsagePeriod struct {
+	Period domain.QuotaPeriod
+	Closed bool
+}
+
+// UsageOwner — владелец accounting_id по историческому маппингу.
+type UsageOwner struct {
+	AccessID    uuid.UUID
+	CustomerID  string
+	EntryNodeID domain.NodeID
+}
+
+// MaterializedUsageGroup — доменный план группы, дополненный операциями outbox.
+type MaterializedUsageGroup struct {
+	CustomerID string
+	NodeID     domain.NodeID
+	PeriodID   uuid.UUID
+
+	Plan domain.UsageGroupPlan
+
+	// Operations соответствует Plan.DesiredChanges один к одному: каждый
+	// погашенный квотой access получает EnsureUserAbsent (§12, шаг 5).
+	Operations []AgentOperation
+}
+
 // ExpiryRepository открывает транзакцию одного шага expiry worker (§13).
 type ExpiryRepository interface {
 	WithinExpiryTx(ctx context.Context, fn func(ExpiryTx) error) error

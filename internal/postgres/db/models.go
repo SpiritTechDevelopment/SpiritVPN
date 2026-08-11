@@ -78,10 +78,12 @@ type NodeQuotaUsage struct {
 }
 
 type NodeUsageCursor struct {
-	NodeID        string
-	SpoolID       string
-	AckedSequence pgtype.Numeric
-	UpdatedAt     time.Time
+	NodeID         string
+	SpoolID        string
+	AckedSequence  pgtype.Numeric
+	LeaseOwner     *string
+	LeaseExpiresAt *time.Time
+	UpdatedAt      time.Time
 }
 
 type QuotaPeriod struct {

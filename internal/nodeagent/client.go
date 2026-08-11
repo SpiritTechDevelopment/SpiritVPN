@@ -73,8 +73,10 @@ type Config struct {
 	CertFile string
 	KeyFile  string
 	CAFile   string
-	// CallTimeout ограничивает один RPC; ноль означает DefaultCallTimeout.
+	// CallTimeout ограничивает один mutating RPC; ноль означает DefaultCallTimeout.
 	CallTimeout time.Duration
+	// PullTimeout ограничивает GetNodeState; ноль означает DefaultPullTimeout.
+	PullTimeout time.Duration
 }
 
 // Client вызывает агентов, переиспользуя по одному соединению на ноду (§9).
@@ -82,6 +84,7 @@ type Client struct {
 	cert        tls.Certificate
 	roots       *x509.CertPool
 	callTimeout time.Duration
+	pullTimeout time.Duration
 
 	mu    sync.Mutex
 	conns map[string]*agentConn
@@ -108,11 +111,16 @@ func New(cfg Config) (*Client, error) {
 	if timeout <= 0 {
 		timeout = DefaultCallTimeout
 	}
+	pullTimeout := cfg.PullTimeout
+	if pullTimeout <= 0 {
+		pullTimeout = DefaultPullTimeout
+	}
 
 	return &Client{
 		cert:        cert,
 		roots:       roots,
 		callTimeout: timeout,
+		pullTimeout: pullTimeout,
 		conns:       make(map[string]*agentConn),
 	}, nil
 }

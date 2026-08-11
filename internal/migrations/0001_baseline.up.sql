@@ -191,11 +191,20 @@ CREATE TABLE manifest_materialization_jobs (
 
 -- Подтверждённая позиция usage-спула по ноде. Агент удаляет только подтверждённые
 -- batches; новый spool_id сбрасывает sequence в ноль (§12).
+--
+-- Она же lease-таблица pull worker'а: §12 требует, чтобы на ноду одновременно был
+-- активен один worker, а отдельная таблица ради двух колонок избыточна. Строка
+-- заводится лениво при первом claim, до всякого успешного pull (решение 60).
+--
+-- updated_at означает «последняя ПОПЫТКА pull», а не «последний сдвиг курсора»:
+-- иначе нода без трафика опрашивалась бы циклом без пауз (решение 61).
 CREATE TABLE node_usage_cursors (
-    node_id        text          PRIMARY KEY REFERENCES vpn_nodes (node_id),
-    spool_id       text          NOT NULL,
-    acked_sequence numeric(20,0) NOT NULL DEFAULT 0 CHECK (acked_sequence >= 0),
-    updated_at     timestamptz   NOT NULL DEFAULT now()
+    node_id          text          PRIMARY KEY REFERENCES vpn_nodes (node_id),
+    spool_id         text          NOT NULL,
+    acked_sequence   numeric(20,0) NOT NULL DEFAULT 0 CHECK (acked_sequence >= 0),
+    lease_owner      text,
+    lease_expires_at timestamptz,
+    updated_at       timestamptz   NOT NULL DEFAULT now()
 );
 
 -- Реестр идемпотентности: один usage-item начисляется ровно один раз, пока жива его

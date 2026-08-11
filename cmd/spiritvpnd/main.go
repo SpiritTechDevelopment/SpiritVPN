@@ -110,6 +110,8 @@ func run() error {
 
 	dispatchUC := app.NewDispatchOperations(
 		repository, agentClient, cipher, processJitter{}, owner, dispatchLeaseTTL)
+	usageUC := app.NewPullUsage(
+		repository, agentClient, crypto.NewGenerator(), logger, owner, usageLeaseTTL, usagePullInterval)
 
 	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, manifestUC)
 	if err != nil {
@@ -138,6 +140,11 @@ func run() error {
 
 	start("materialize", materializeUC, materializeIdleInterval, materializeErrorBackoff)
 
+	// Expiry тоже в одном экземпляре, но по другой причине, чем материализация:
+	// там курсор одной джобы, здесь параллелить просто нечего — шаг занимает
+	// миллисекунды, а истекающих customer единицы в секунду (§13).
+	start("expiry", expiryUC, expiryIdleInterval, expiryErrorBackoff)
+
 	// Диспетчер параллелен, воркер материализации — нет: там шаг двигает общий
 	// курсор одной джобы, здесь каждый шаг берёт свою операцию под SKIP LOCKED
 	// (решения 35 и 39). Все восемь горутин делят один use case: состояния он не
@@ -145,10 +152,12 @@ func run() error {
 	for range dispatchConcurrency {
 		start("dispatch", dispatchUC, dispatchIdleInterval, dispatchErrorBackoff)
 	}
-	// Expiry тоже в одном экземпляре, но по другой причине, чем материализация:
-	// там курсор одной джобы, здесь параллелить просто нечего — шаг занимает
-	// миллисекунды, а истекающих customer единицы в секунду (§13).
-	start("expiry", expiryUC, expiryIdleInterval, expiryErrorBackoff)
+
+	// Опрос нод параллелен по той же причине, что и доставка: шаг упирается в
+	// сетевой вызов, а на ноду гейт держит lease (§12, §13).
+	for range dispatchConcurrency {
+		start("usage", usageUC, usageIdleInterval, usageErrorBackoff)
+	}
 
 	err = serve(ctx, logger, cfg, grpcServer, newHTTPServer(cfg.HTTP.Listen, checks))
 
