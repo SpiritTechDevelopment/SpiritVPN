@@ -27,6 +27,16 @@ proto: ## Сгенерировать Go-код из proto (buf, managed mode -> 
 proto-lint: ## Проверить proto линтером buf
 	go tool buf lint
 
+# Гейта в CI пока НЕТ намеренно: на main нет ни одного .proto (весь backend —
+# greenfield на feat/backend), поэтому цель сегодня падает с «Module had no
+# .proto files». Она станет содержательной в момент мержа v1 в main — тогда же
+# шаг и добавляется в build-job, рядом с buf lint и buf generate. §18 до тех пор
+# в этой части не закрыт.
+#
+# При добавлении в CI учесть, что ссылка на baseline будет другой: actions/checkout
+# не создаёт локальный refs/heads/main, только refs/remotes/origin/main, а buf
+# резолвит ref через git clone --branch из локального .git. То есть нужен
+# fetch-depth: 0 и '.git#branch=origin/main'; форма ниже работает только локально.
 proto-breaking: ## Проверить proto на несовместимые изменения относительно main
 	go tool buf breaking --against '.git#branch=main'
 

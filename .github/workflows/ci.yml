@@ -70,16 +70,6 @@ jobs:
     - name: Run tests
       run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
-    - name: Check coverage threshold
-      run: |
-        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-        echo "Current coverage: $COVERAGE%"
-        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-          echo "Warning: Coverage $COVERAGE% is below 80% threshold"
-        else
-          echo "Great! Coverage $COVERAGE% meets the 80% threshold"
-        fi
-
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -97,6 +87,29 @@ jobs:
       with:
         name: coverage-report
         path: coverage.html
+
+    # Гейт, а не предупреждение. Стоит ПОСЛЕ выгрузки отчёта намеренно: падение
+    # шага пропускает все последующие без `if: always()`, и отчёт исчезал бы
+    # ровно тогда, когда по нему надо разбираться, почему покрытие просело.
+    #
+    # Порог 80 при фактических 83.7% (интеграционные в этой job включены, иначе
+    # postgres даёт 3.6% и общая цифра не имеет смысла). Запас в три пункта —
+    # чтобы гейт ловил снятые тесты, а не шум от пары новых строк.
+    - name: Check coverage threshold
+      run: |
+        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+        # Пустая строка здесь означала бы, что профиль не разобрался; без этой
+        # проверки `bc` получает пустое выражение, и гейт молча пропускает.
+        if [ -z "$COVERAGE" ]; then
+          echo "Failed to parse total coverage from coverage.out"
+          exit 1
+        fi
+        echo "Current coverage: $COVERAGE%"
+        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+          echo "Coverage $COVERAGE% is below the 80% threshold"
+          exit 1
+        fi
+        echo "Great! Coverage $COVERAGE% meets the 80% threshold"
 
     - name: Send coverage report to Telegram
       if: always()
