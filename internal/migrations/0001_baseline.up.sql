@@ -267,6 +267,14 @@ CREATE UNIQUE INDEX vpn_bridge_routes_current_pair
     ON vpn_bridge_routes (vpn_fleet_id, entry_node_id, exit_node_id)
     WHERE current;
 
+-- Путь выборки due customer для expiry worker (§13).
+--
+-- Порядок колонок совпадает с ORDER BY запроса, поэтому сортировка не нужна и
+-- сканирование останавливается на первом подходящем customer. Partial index с
+-- условием на now() построить нельзя — оно не immutable.
+CREATE INDEX customer_entitlements_expiry
+    ON customer_entitlements (expires_at, customer_id);
+
 -- Единственный текущий (не retired) access на logical target; он же путь поиска
 -- для Customer API.
 CREATE UNIQUE INDEX vpn_accesses_current_target

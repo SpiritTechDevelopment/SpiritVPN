@@ -53,6 +53,16 @@ const (
 	dispatchLeaseTTL = 30 * time.Second
 )
 
+// Темп воркера истечения (§13).
+const (
+	// expiryIdleInterval — пауза, когда гасить некого. §13 требует запускать
+	// воркер не реже раза в 10 секунд; пять оставляют запас на затянувшийся шаг.
+	expiryIdleInterval = 5 * time.Second
+
+	// expiryErrorBackoff — пауза после отказа базы, как и у остальных воркеров.
+	expiryErrorBackoff = 15 * time.Second
+)
+
 // stepWorker — то, что цикл требует от воркера: один шаг, сообщающий, была ли
 // работа. Такую форму имеют оба фоновых воркера, поэтому цикл у них общий.
 type stepWorker interface {

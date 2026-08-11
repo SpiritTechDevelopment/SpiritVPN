@@ -259,12 +259,19 @@ func (t *manifestTx) retireBridges(ctx context.Context, plan domain.ManifestPlan
 
 // AppendAudit добавляет запись в append-only журнал (§15).
 func (t *manifestTx) AppendAudit(ctx context.Context, event app.AuditEvent) error {
+	return appendAudit(ctx, t.queries, event)
+}
+
+// appendAudit — общая запись журнала для всех путей, которые его ведут (§15:
+// customer Apply/renewal/expiry, destructive manifest, смена ключа). Отображение
+// AuditEvent в колонки живёт в одном месте, иначе оно разъехалось бы между ними.
+func appendAudit(ctx context.Context, queries *db.Queries, event app.AuditEvent) error {
 	metadata, err := json.Marshal(event.Metadata)
 	if err != nil {
 		return fmt.Errorf("сериализация metadata аудита: %w", err)
 	}
 
-	return t.queries.InsertAuditEvent(ctx, db.InsertAuditEventParams{
+	return queries.InsertAuditEvent(ctx, db.InsertAuditEventParams{
 		ActorType:         event.ActorType,
 		ActorID:           optionalText(event.ActorID),
 		Action:            event.Action,

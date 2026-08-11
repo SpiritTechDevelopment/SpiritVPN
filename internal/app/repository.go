@@ -211,6 +211,55 @@ type MaterializedManifestPlan struct {
 	Operations  []AgentOperation
 }
 
+// ExpiryRepository открывает транзакцию одного шага expiry worker (§13).
+type ExpiryRepository interface {
+	WithinExpiryTx(ctx context.Context, fn func(ExpiryTx) error) error
+}
+
+// ExpiryTx — шаги одного шага expiry worker в порядке блокировок §11.1.
+//
+// Шагов меньше, чем у остальных путей: истечение не читает ни топологию, ни
+// квоту. Для истёкшего customer desired state равен ABSENT при любом состоянии
+// квоты, поэтому шаг 3 нормативного порядка пропускается целиком (решение 56).
+type ExpiryTx interface {
+	// Now — время начала транзакции (решение 2). Тот же момент, что и now() в
+	// выборке due customer: оба берутся из одной транзакции.
+	Now(ctx context.Context) (time.Time, error)
+
+	// LockNextDueCustomer берёт FOR UPDATE SKIP LOCKED одного истёкшего customer,
+	// у которого ещё остались PRESENT access. nil означает, что работы нет.
+	//
+	// Джобы и lease у воркера нет: row lock — вся его координация (решение 54).
+	LockNextDueCustomer(ctx context.Context) (*ExpiredCustomer, error)
+
+	// LoadAccesses читает ВСЕ access customer. Row locks не берёт: конкурирующий
+	// writer невозможен под lock корневой строки (§11.1).
+	LoadAccesses(ctx context.Context, customerID string) ([]domain.Access, error)
+
+	// WriteExpiry записывает план в порядке блокировок §11.1: vpn_nodes,
+	// vpn_accesses, agent_operations.
+	WriteExpiry(ctx context.Context, plan MaterializedExpiryPlan) error
+
+	// AppendAudit добавляет запись в audit_events. §15 требует аудит customer
+	// expiry наравне с Apply и renewal.
+	AppendAudit(ctx context.Context, event AuditEvent) error
+}
+
+// ExpiredCustomer — корневая строка истёкшего customer под locком.
+type ExpiredCustomer struct {
+	CustomerID  string
+	Entitlement domain.Entitlement
+}
+
+// MaterializedExpiryPlan — доменный план, дополненный операциями outbox.
+type MaterializedExpiryPlan struct {
+	CustomerID string
+	Plan       domain.ExpiryPlan
+	// Operations соответствует Plan.DesiredChanges один к одному и в том же
+	// порядке: каждый погашенный access получает EnsureUserAbsent (§9).
+	Operations []AgentOperation
+}
+
 // DispatchRepository — состояние outbox для диспетчера операций (§9, §11.1).
 //
 // Форма отличается от остальных репозиториев, потому что шаг диспетчера состоит из

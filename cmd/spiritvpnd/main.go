@@ -93,6 +93,7 @@ func run() error {
 	owner := workerOwner()
 	materializeUC := app.NewMaterializeManifest(
 		repository, crypto.NewGenerator(), cipher, owner, materializeLeaseTTL)
+	expiryUC := app.NewExpireCustomers(repository, crypto.NewGenerator())
 
 	// Клиент агентов собирается здесь, потому что владеет соединениями: их надо
 	// закрыть на выходе, а больше некому. TLS-материал читается сразу, поэтому
@@ -144,6 +145,10 @@ func run() error {
 	for range dispatchConcurrency {
 		start("dispatch", dispatchUC, dispatchIdleInterval, dispatchErrorBackoff)
 	}
+	// Expiry тоже в одном экземпляре, но по другой причине, чем материализация:
+	// там курсор одной джобы, здесь параллелить просто нечего — шаг занимает
+	// миллисекунды, а истекающих customer единицы в секунду (§13).
+	start("expiry", expiryUC, expiryIdleInterval, expiryErrorBackoff)
 
 	err = serve(ctx, logger, cfg, grpcServer, newHTTPServer(cfg.HTTP.Listen, checks))
 
