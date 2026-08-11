@@ -309,6 +309,71 @@ func (q *Queries) LockQuotaPeriodAt(ctx context.Context, arg LockQuotaPeriodAtPa
 	return i, err
 }
 
+const pruneProcessedUsageItems = `-- name: PruneProcessedUsageItems :execrows
+DELETE FROM traffic_usage_items_processed
+WHERE ctid IN (
+    SELECT p.ctid
+    FROM traffic_usage_items_processed p
+    JOIN node_usage_cursors c ON c.node_id = p.node_id
+    -- make_interval, а не умножение на interval '1 second': из выражения с
+    -- умножением sqlc выводит имя параметра по всей его записи и тип interface{}.
+    WHERE p.processed_at < now() - make_interval(secs => $1::double precision)
+      AND (p.spool_id <> c.spool_id OR p.sequence <= c.acked_sequence)
+    ORDER BY p.processed_at
+    LIMIT $2::bigint
+)
+`
+
+type PruneProcessedUsageItemsParams struct {
+	RetentionSeconds float64
+	MaxRows          int64
+}
+
+// Удаляет дедуп-записи, которые больше не могут понадобиться (§12, ретенция).
+//
+// Строка реестра нужна ровно до тех пор, пока агент способен прислать тот же
+// batch повторно. Способен он на это, пока не получил наше подтверждение:
+// acknowledged_usage_through уезжает следующим GetNodeState, и до тех пор batch
+// лежит у него в спуле. Отсюда два условия, любого из которых достаточно:
+//
+//   - spool_id не тот, что у ноды сейчас, — прежнего спула физически нет, и
+//     прислать из него уже нечего;
+//   - sequence не выше подтверждённого — этот batch агенту уже подтверждён.
+//
+// Возраст — третье условие, и оно про НАС, а не про агента: подтверждение может
+// быть записано у нас, но ещё не доехать до ноды, если backend в этот момент
+// лежит. Окно должно перекрывать такой простой. Повтор, приехавший позже окна,
+// начислится второй раз — §12 называет это принятой положительной погрешностью.
+//
+// Пачками, а не одним оператором: таблица растёт на активного пользователя
+// каждые 15 секунд, и накопленное за сутки одним DELETE означало бы длинную
+// транзакцию и раздутую таблицу.
+//
+// Строки ноды, у которой нет строки курсора, не удаляются никогда: без курсора
+// нечем доказать подтверждение. Появиться такие не могут — курсор заводится при
+// первом claim ноды, то есть заведомо раньше обработки любого её batch.
+//
+// Адресация по ctid, а не по первичному ключу, и это не микрооптимизация. С
+// ключом планировщик сводит внешний DELETE с подзапросом в hash semi join и
+// читает ВСЮ таблицу, чтобы найти в ней найденные же строки: 305 тысяч строк и
+// 2851 буфер против 55 у самого подзапроса (проверено EXPLAIN ANALYZE). То есть
+// стоимость уборки осталась бы пропорциональна тому, что она убирает, и индекс
+// по processed_at не дал бы ничего. С ctid остаётся Tid Scan — обращение к
+// странице на строку, ровно размер пачки, независимо от размера таблицы.
+//
+// Физический адрес безопасен здесь по трём причинам: подзапрос и удаление
+// выполняются одним оператором под одним снимком; строки этой таблицы никогда не
+// обновляются, поэтому ctid не может съехать под нами; переиспользованный после
+// VACUUM адрес указывал бы на строку новее снимка, а такая невидима и не
+// удаляется.
+func (q *Queries) PruneProcessedUsageItems(ctx context.Context, arg PruneProcessedUsageItemsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneProcessedUsageItems, arg.RetentionSeconds, arg.MaxRows)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const quarantineUsageItems = `-- name: QuarantineUsageItems :exec
 INSERT INTO traffic_batch_quarantine (
     node_id, spool_id, sequence, accounting_id, reason, sanitized_payload

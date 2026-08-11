@@ -250,6 +250,22 @@ type UsageRepository interface {
 	AdvanceCursor(ctx context.Context, nodeID domain.NodeID, cursor nodeagent.UsageCursor) error
 }
 
+// UsageRetentionRepository — ретенция реестра дедупа (§12).
+//
+// Отдельный порт от UsageRepository, хотя адаптер у них один: у ретенции нет
+// ничего общего с опросом ноды, кроме таблицы. Прунеру незачем уметь брать
+// lease и разрешать accounting_id, а расширять UsageRepository седьмым методом
+// значило бы дать ему всё это.
+type UsageRetentionRepository interface {
+	// PruneProcessedUsageItems удаляет до limit записей, которые агент заведомо
+	// не пришлёт повторно, и возвращает число удалённых.
+	//
+	// Граница возраста приходит длительностью, а не моментом времени: считает её
+	// SQL от now(), потому что часы — это база (решение 2). Так же устроен
+	// minInterval у ClaimNode.
+	PruneProcessedUsageItems(ctx context.Context, retention time.Duration, limit int) (int, error)
+}
+
 // UsageGroupTx — шаги транзакции одной группы в порядке блокировок §11.1:
 // entitlement → quota_periods → node_quota_usage → traffic_usage_items_processed
 // → vpn_nodes → vpn_accesses → agent_operations.

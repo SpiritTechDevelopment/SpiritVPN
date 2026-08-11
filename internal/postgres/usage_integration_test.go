@@ -586,3 +586,157 @@ func TestIntegrationUsageUnavailableNodeChangesNothing(t *testing.T) {
 		t.Error("lease не снят после неудачного опроса")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Ретенция реестра дедупа (§12)
+// ---------------------------------------------------------------------------
+
+// testRetentionWindow — окно, с которым гоняется прунер в тестах. Значение
+// произвольное: важно только, что «свежая» и «состаренная» строки лежат по разные
+// стороны от него.
+const testRetentionWindow = time.Hour
+
+// pruneDedup выполняет один шаг ретенции и возвращает, осталась ли работа.
+func pruneDedup(t *testing.T, stack usageStack, retention time.Duration) bool {
+	t.Helper()
+
+	progressed, err := app.NewPruneUsageDedup(New(stack.pool), retention, 1000).
+		ProcessNext(context.Background())
+	if err != nil {
+		t.Fatalf("шаг ретенции: %v", err)
+	}
+	return progressed
+}
+
+func dedupRows(t *testing.T, stack usageStack) int64 {
+	t.Helper()
+	return scalar[int64](t, stack.pool, `SELECT count(*) FROM traffic_usage_items_processed`)
+}
+
+// ageDedupRows состаривает весь реестр: processed_at по умолчанию now(), а
+// проверять надо поведение на границе окна.
+func ageDedupRows(t *testing.T, stack usageStack, by time.Duration) {
+	t.Helper()
+	exec(t, stack.pool,
+		`UPDATE traffic_usage_items_processed SET processed_at = processed_at - $1::interval`,
+		by.String())
+}
+
+// seedProcessedItem доводит одну дельту до реестра дедупа.
+func seedProcessedItem(t *testing.T, stack usageStack) {
+	t.Helper()
+
+	accountingID := seedUsageCustomer(t, stack, 1<<30)
+	stack.agent.set("NL-1",
+		batchOf(1, time.Now().UTC(), nodeagent.UserUsage{
+			AccountingID: accountingID, UplinkBytes: 100, DownlinkBytes: 200,
+		}),
+	)
+	pullRound(t, stack.usage)
+
+	if got := dedupRows(t, stack); got != 1 {
+		t.Fatalf("строк реестра %d, ожидалась 1", got)
+	}
+}
+
+// TestIntegrationRetentionKeepsUnacknowledgedItems — §12: удаляется только то,
+// что подтверждено. Неподтверждённый batch агент пришлёт снова, и без своей
+// строки реестра он начислится второй раз.
+//
+// Состояние «обработан, но не подтверждён» — не выдумка теста: между commit
+// группы и AdvanceCursor есть окно, и падение воркера в нём оставляет ровно это.
+func TestIntegrationRetentionKeepsUnacknowledgedItems(t *testing.T) {
+	stack := newUsageStack(t)
+	seedProcessedItem(t, stack)
+
+	exec(t, stack.pool, `UPDATE node_usage_cursors SET acked_sequence = 0 WHERE node_id = 'NL-1'`)
+	ageDedupRows(t, stack, 2*testRetentionWindow)
+
+	pruneDedup(t, stack, testRetentionWindow)
+	if got := dedupRows(t, stack); got != 1 {
+		t.Fatalf("строк реестра %d, ожидалась 1 — удалено неподтверждённое", got)
+	}
+
+	// Вторая половина проверяет, что предыдущая не прошла по постороннему поводу:
+	// та же строка после подтверждения обязана уйти.
+	exec(t, stack.pool, `UPDATE node_usage_cursors SET acked_sequence = 1 WHERE node_id = 'NL-1'`)
+
+	pruneDedup(t, stack, testRetentionWindow)
+	if got := dedupRows(t, stack); got != 0 {
+		t.Errorf("строк реестра %d, ожидалось 0 — подтверждённое не удалено", got)
+	}
+}
+
+// TestIntegrationRetentionKeepsFreshItems — §12: возраст сам по себе является
+// условием. Он покрывает простой backend: подтверждение записано у нас, но до
+// агента ещё не доехало.
+func TestIntegrationRetentionKeepsFreshItems(t *testing.T) {
+	stack := newUsageStack(t)
+	seedProcessedItem(t, stack)
+
+	// Строка подтверждена (pullRound сдвинул курсор), но моложе окна.
+	pruneDedup(t, stack, testRetentionWindow)
+	if got := dedupRows(t, stack); got != 1 {
+		t.Fatalf("строк реестра %d, ожидалась 1 — удалено моложе окна", got)
+	}
+
+	ageDedupRows(t, stack, 2*testRetentionWindow)
+
+	pruneDedup(t, stack, testRetentionWindow)
+	if got := dedupRows(t, stack); got != 0 {
+		t.Errorf("строк реестра %d, ожидалось 0 — старое не удалено", got)
+	}
+}
+
+// TestIntegrationRetentionDropsVanishedSpool — §12: строки исчезнувшего спула
+// удаляются, даже если их sequence выше подтверждённого.
+//
+// Сравнивать их с acked_sequence бессмысленно: новый спул начинает нумерацию с
+// нуля, поэтому по одному только sequence такие строки лежали бы вечно.
+func TestIntegrationRetentionDropsVanishedSpool(t *testing.T) {
+	stack := newUsageStack(t)
+	seedProcessedItem(t, stack)
+
+	// Агент переустановлен: новый spool_id, нумерация с нуля.
+	exec(t, stack.pool,
+		`UPDATE node_usage_cursors SET spool_id = 'spool-2', acked_sequence = 0 WHERE node_id = 'NL-1'`)
+	ageDedupRows(t, stack, 2*testRetentionWindow)
+
+	pruneDedup(t, stack, testRetentionWindow)
+	if got := dedupRows(t, stack); got != 0 {
+		t.Errorf("строк реестра %d, ожидалось 0 — строки исчезнувшего спула остались", got)
+	}
+}
+
+// TestIntegrationRetentionLateRetryReaccrues — §18, fault test: очень поздний
+// повтор после очистки дедупа начисляет трафик ВТОРОЙ раз.
+//
+// Тест закрепляет принятую погрешность, а не желаемое поведение. §12 называет её
+// положительной (в пользу сервиса) и допустимой; цена альтернативы — реестр,
+// растущий пропорционально трафику без ограничения.
+//
+// Обратная сторона того же утверждения проверена соседями: пока строка реестра
+// жива, тот же повтор — no-op (TestIntegrationUsageDeduplicatesRepeatedBatch).
+func TestIntegrationRetentionLateRetryReaccrues(t *testing.T) {
+	stack := newUsageStack(t)
+	seedProcessedItem(t, stack)
+
+	if got := nodeTotal(t, stack, "NL-1"); got != 300 {
+		t.Fatalf("расход NL-1 %d, ожидалось 300", got)
+	}
+
+	ageDedupRows(t, stack, 2*testRetentionWindow)
+	pruneDedup(t, stack, testRetentionWindow)
+	if got := dedupRows(t, stack); got != 0 {
+		t.Fatalf("строк реестра %d, ожидалось 0 — ретенция не сработала", got)
+	}
+
+	// Агент так и не получил подтверждения и присылает тот же batch снова.
+	exec(t, stack.pool, `UPDATE node_usage_cursors SET acked_sequence = 0 WHERE node_id = 'NL-1'`)
+	pullRound(t, stack.usage)
+
+	if got := nodeTotal(t, stack, "NL-1"); got != 600 {
+		t.Errorf("расход NL-1 %d, ожидалось 600: после очистки дедупа повтор обязан "+
+			"начислиться второй раз — это принятая погрешность §12, а не ошибка", got)
+	}
+}

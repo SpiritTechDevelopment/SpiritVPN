@@ -139,6 +139,8 @@ func run() error {
 		repository, agent, sealer, processJitter{}, owner, dispatchLeaseTTL)
 	usageUC := app.NewPullUsage(
 		repository, agent, crypto.NewGenerator(), logger, owner, usageLeaseTTL, usagePullInterval)
+	pruneUC := app.NewPruneUsageDedup(
+		registry.WrapUsageRetention(repository), usageDedupRetention, usageDedupBatchSize)
 	statsUC := registry.StatsWorker(repository)
 
 	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, manifestUC)
@@ -183,6 +185,11 @@ func run() error {
 	for range dispatchConcurrency {
 		start("usage", usageUC, usageIdleInterval, usageErrorBackoff)
 	}
+
+	// Ретенция реестра дедупа — единственный воркер без lease: удалять уже
+	// удалённую строку нечего, поэтому конкуренция здесь стоит лишнего прохода, а
+	// не корректности (§12).
+	start("prune-usage-dedup", pruneUC, usageDedupIdleInterval, usageDedupErrorBackoff)
 
 	// Снимок состояния для метрик — тоже воркер, но с постоянным темпом: его шаг
 	// всегда сообщает «работы больше нет», поэтому цикл спит ровно idle-интервал

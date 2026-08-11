@@ -69,6 +69,7 @@ func (r *Repository) CollectStats(ctx context.Context) (app.Stats, error) {
 		ExpiredCustomers:          scalars.ExpiredCustomers,
 		ExpiryLagSeconds:          scalars.ExpiryLagSeconds,
 		ExhaustedNodeQuotas:       scalars.ExhaustedNodeQuotas,
+		UsageDedupOldestAge:       scalars.UsageDedupOldestAgeSeconds,
 	}
 
 	if stats.Cursors, err = cursorStatsFromRows(cursors); err != nil {

@@ -319,3 +319,16 @@ CREATE INDEX agent_operations_in_flight_lease
 CREATE UNIQUE INDEX agent_operations_single_in_flight_per_node
     ON agent_operations (node_id)
     WHERE status = 'IN_FLIGHT';
+
+-- Путь ретенции реестра дедупа (§12).
+--
+-- Реестр — единственная таблица, растущая пропорционально трафику: строка на
+-- активного пользователя каждые 15 секунд. Без индекса каждый прогон прунера
+-- сканировал бы её целиком, то есть стоимость уборки росла бы вместе с тем, что
+-- она убирает. С индексом в устоявшемся режиме сканирование останавливается на
+-- первых LIMIT строках: всё старое только что удалено.
+--
+-- Он же обслуживает метрику возраста самой старой записи (§15): min(processed_at)
+-- берётся с первой страницы индекса.
+CREATE INDEX traffic_usage_items_processed_processed_at
+    ON traffic_usage_items_processed (processed_at);

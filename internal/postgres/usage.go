@@ -167,6 +167,26 @@ func (r *Repository) AdvanceCursor(
 	})
 }
 
+// PruneProcessedUsageItems удаляет одну пачку дедуп-записей (§12, ретенция).
+//
+// Вне транзакции: удаление пачки и есть вся работа шага, а объединять пачки
+// значило бы держать длинную транзакцию ровно на той таблице, которая растёт
+// быстрее всех.
+func (r *Repository) PruneProcessedUsageItems(
+	ctx context.Context,
+	retention time.Duration,
+	limit int,
+) (int, error) {
+	deleted, err := db.New(r.pool).PruneProcessedUsageItems(ctx, db.PruneProcessedUsageItemsParams{
+		RetentionSeconds: retention.Seconds(),
+		MaxRows:          int64(limit),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("postgres: очистка реестра дедупа: %w", err)
+	}
+	return int(deleted), nil
+}
+
 // WithinUsageGroupTx выполняет обработку одной группы в одной транзакции (§11.1).
 func (r *Repository) WithinUsageGroupTx(ctx context.Context, fn func(app.UsageGroupTx) error) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})

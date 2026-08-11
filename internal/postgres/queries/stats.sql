@@ -133,4 +133,18 @@ SELECT
     (SELECT count(*) FROM node_usage_cursors WHERE lease_expires_at >= now())::bigint
         AS usage_leases_held,
     (SELECT count(*) FROM node_usage_cursors WHERE lease_expires_at < now())::bigint
-        AS usage_leases_expired;
+        AS usage_leases_expired,
+
+    -- Возраст самой старой дедуп-записи — наблюдаемость ретенции (§12, §15).
+    --
+    -- В норме значение колеблется около окна ретенции и НЕ стремится к нулю:
+    -- младше окна не удаляется ничего. Alert поэтому строится на превышении окна
+    -- с запасом, а не на росте как таковом.
+    --
+    -- Превышение имеет две причины, и метрика их не различает: отказ прунера
+    -- либо нода, чей курсор давно не двигался (тогда её строки не подтверждены и
+    -- удалять их нельзя). Вторая причина сама по себе повод разбираться, и
+    -- отделяется она по cursor_last_pull_age_seconds той же выдачи.
+    (SELECT coalesce(EXTRACT(EPOCH FROM now() - min(processed_at)), 0)
+     FROM traffic_usage_items_processed)::double precision
+        AS usage_dedup_oldest_age_seconds;

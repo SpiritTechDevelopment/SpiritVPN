@@ -100,6 +100,7 @@ func (r *Registry) publish(stats app.Stats, at time.Time) {
 	r.expiredCustomers.Set(float64(stats.ExpiredCustomers))
 	r.expiryLag.Set(stats.ExpiryLagSeconds)
 	r.exhaustedQuotas.Set(float64(stats.ExhaustedNodeQuotas))
+	r.usageDedupOldestAge.Set(stats.UsageDedupOldestAge)
 	r.schemaVersion.Set(float64(stats.SchemaVersion))
 	r.schemaDirty.Set(boolGauge(stats.SchemaDirty))
 

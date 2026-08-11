@@ -84,6 +84,7 @@ type Registry struct {
 	nodeXrayUptime       *prometheus.GaugeVec
 	nodeNeedsBootstrap   *prometheus.GaugeVec
 	credentialOpenErrors prometheus.Counter
+	usageDedupPruned     prometheus.Counter
 
 	// Снимок БД.
 	operations           *prometheus.GaugeVec
@@ -101,6 +102,7 @@ type Registry struct {
 	expiredCustomers     prometheus.Gauge
 	expiryLag            prometheus.Gauge
 	exhaustedQuotas      prometheus.Gauge
+	usageDedupOldestAge  prometheus.Gauge
 	schemaVersion        prometheus.Gauge
 	schemaDirty          prometheus.Gauge
 	binarySchemaVersion  prometheus.Gauge
@@ -191,6 +193,12 @@ func New() *Registry {
 		Help:      "Failures to decrypt client_uuid.",
 	})
 
+	r.usageDedupPruned = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: namespace,
+		Name:      "usage_dedup_rows_pruned_total",
+		Help:      "Usage dedup rows deleted by retention.",
+	})
+
 	r.operations = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "agent_operations",
@@ -257,6 +265,8 @@ func New() *Registry {
 		"How far past expiry the oldest not-yet-revoked customer is.")
 	r.exhaustedQuotas = newGauge("exhausted_node_quotas",
 		"Nodes whose quota is exhausted within an open period.")
+	r.usageDedupOldestAge = newGauge("usage_dedup_oldest_age_seconds",
+		"Age of the oldest usage dedup row. Sits near the retention window; alert above it.")
 	r.schemaVersion = newGauge("schema_version",
 		"Schema version present in the database.")
 	r.schemaDirty = newGauge("schema_dirty",
@@ -280,13 +290,13 @@ func New() *Registry {
 
 		r.agentCallDuration, r.agentCalls, r.agentLastSuccess, r.agentAlerts,
 		r.usagePullCapped, r.nodeXrayReachable, r.nodeXrayUptime, r.nodeNeedsBootstrap,
-		r.credentialOpenErrors,
+		r.credentialOpenErrors, r.usageDedupPruned,
 
 		r.operations, r.operationOldestAge, r.accesses,
 		r.cursorAge, r.cursorAcked, r.cursorLeaseExpired, r.quarantine,
 		r.leasesHeld, r.leasesExpired,
 		r.manifestRevision, r.materializedRevision, r.materializationLag,
-		r.expiredCustomers, r.expiryLag, r.exhaustedQuotas,
+		r.expiredCustomers, r.expiryLag, r.exhaustedQuotas, r.usageDedupOldestAge,
 		r.schemaVersion, r.schemaDirty, r.binarySchemaVersion,
 		r.statsRefreshes, r.statsRefreshedAt,
 	)
