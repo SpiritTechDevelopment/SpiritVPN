@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
-	"github.com/RomanRyabinkin/SpiritVPN/internal/migrations"
 )
 
 // readinessTimeout ограничивает суммарную проверку готовности: probe, который
@@ -25,14 +24,15 @@ type readinessCheck struct {
 
 // newHTTPServer собирает служебную поверхность (§15).
 //
-// Метода /metrics здесь пока нет — это осознанное расхождение со спекой. Он
-// требует отдельной зависимости, а перечисленные в §15 метрики почти целиком
-// относятся к воркерам (agent operations, materialization lag, usage cursor),
-// которых ещё не существует. Пустой endpoint создавал бы видимость покрытия.
-func newHTTPServer(addr string, checks []readinessCheck) *http.Server {
+// Все три endpoint'а живут на служебном порту и наружу не публикуются. Для
+// /metrics это существенно, а не наследование: выдача раскрывает размер fleet,
+// объём трафика и состав очередей. Аутентификации у него нет — §14 её для
+// служебного порта не требует, и границей служит сеть.
+func newHTTPServer(addr string, checks []readinessCheck, metrics http.Handler) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health/live", handleLive)
 	mux.HandleFunc("GET /health/ready", handleReady(checks))
+	mux.Handle("GET /metrics", metrics)
 
 	return &http.Server{
 		Addr:    addr,
@@ -78,15 +78,11 @@ func handleReady(checks []readinessCheck) http.HandlerFunc {
 
 // readinessChecks собирает проверки в порядке возрастания стоимости: смысла
 // спрашивать схему у недоступной базы нет.
-func readinessChecks(pool *pgxpool.Pool, cipher *crypto.Cipher) ([]readinessCheck, error) {
-	// Версия вычисляется один раз на старте: она зашита в бинарь и меняться в
-	// рантайме не может, а ошибка разбора имён миграций обязана валить старт, а
-	// не всплывать на первом probe.
-	latest, err := migrations.Latest()
-	if err != nil {
-		return nil, err
-	}
-
+//
+// latest приходит параметром, а не читается здесь: ту же версию публикует
+// метрика binary_schema_version (§15), и вычислять её дважды значило бы завести
+// два источника одного числа.
+func readinessChecks(pool *pgxpool.Pool, cipher *crypto.Cipher, latest uint) []readinessCheck {
 	return []readinessCheck{
 		{
 			name: "postgres",
@@ -100,7 +96,7 @@ func readinessChecks(pool *pgxpool.Pool, cipher *crypto.Cipher) ([]readinessChec
 			name: "encryption_key",
 			run:  func(context.Context) error { return cipher.SelfTest() },
 		},
-	}, nil
+	}
 }
 
 // schemaCheck сверяет версию схемы с миграциями, встроенными в этот бинарь.

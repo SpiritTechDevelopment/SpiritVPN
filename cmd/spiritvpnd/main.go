@@ -31,6 +31,8 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/config"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/metrics"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/migrations"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/postgres"
 )
@@ -83,16 +85,36 @@ func run() error {
 	}
 	defer pool.Close()
 
+	// Реестр метрик собирается до use case'ов: их зависимости в него
+	// заворачиваются (§15). Домен и app про Prometheus не знают — инструментируются
+	// адаптеры, уже реализующие порты.
+	registry := metrics.New()
+	registry.RegisterPool(pool)
+
+	// Версия миграций, зашитая в бинарь. Считается один раз: ошибка разбора имён
+	// обязана валить старт, а не всплывать на первом probe.
+	latest, err := migrations.Latest()
+	if err != nil {
+		return err
+	}
+	registry.SetBinarySchemaVersion(latest)
+
 	// Один адаптер на оба use case: репозиторий владеет пулом, а командный и
 	// read-путь отличаются только транзакцией, которую каждый открывает сам.
 	repository := postgres.New(pool)
-	applyUC := app.NewApplyCustomerAccess(repository, crypto.NewGenerator(), cipher)
-	linksUC := app.NewGetCustomerAccessLinks(repository, cipher)
+
+	// Расшифровки считаются на границе шифра, а не в местах вызова: Open —
+	// единственная воронка обоих путей (§9 и §8), и считать по местам значило бы
+	// забыть третье, когда оно появится.
+	sealer := registry.WrapSealer(cipher)
+
+	applyUC := app.NewApplyCustomerAccess(repository, crypto.NewGenerator(), sealer)
+	linksUC := app.NewGetCustomerAccessLinks(repository, sealer)
 	manifestUC := app.NewApplyFleetManifest(repository)
 
 	owner := workerOwner()
 	materializeUC := app.NewMaterializeManifest(
-		repository, crypto.NewGenerator(), cipher, owner, materializeLeaseTTL)
+		repository, crypto.NewGenerator(), sealer, owner, materializeLeaseTTL)
 	expiryUC := app.NewExpireCustomers(repository, crypto.NewGenerator())
 
 	// Клиент агентов собирается здесь, потому что владеет соединениями: их надо
@@ -108,20 +130,23 @@ func run() error {
 	}
 	defer func() { _ = agentClient.Close() }()
 
+	// Один декоратор на оба порта агента: диспетчер и pull worker ходят к нодам
+	// через один и тот же клиент, и latency, коды исхода и health ноды снимаются
+	// в одном месте, а не в двух воркерах по отдельности (§15).
+	agent := registry.WrapAgent(agentClient)
+
 	dispatchUC := app.NewDispatchOperations(
-		repository, agentClient, cipher, processJitter{}, owner, dispatchLeaseTTL)
+		repository, agent, sealer, processJitter{}, owner, dispatchLeaseTTL)
 	usageUC := app.NewPullUsage(
-		repository, agentClient, crypto.NewGenerator(), logger, owner, usageLeaseTTL, usagePullInterval)
+		repository, agent, crypto.NewGenerator(), logger, owner, usageLeaseTTL, usagePullInterval)
+	statsUC := registry.StatsWorker(repository)
 
 	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, manifestUC)
 	if err != nil {
 		return err
 	}
 
-	checks, err := readinessChecks(pool, cipher)
-	if err != nil {
-		return err
-	}
+	checks := readinessChecks(pool, cipher, latest)
 
 	// Фоновые воркеры живут на собственном контексте: serve может вернуться не
 	// только по сигналу, но и по отказу слушателя, а ждать воркер, которому никто
@@ -159,7 +184,13 @@ func run() error {
 		start("usage", usageUC, usageIdleInterval, usageErrorBackoff)
 	}
 
-	err = serve(ctx, logger, cfg, grpcServer, newHTTPServer(cfg.HTTP.Listen, checks))
+	// Снимок состояния для метрик — тоже воркер, но с постоянным темпом: его шаг
+	// всегда сообщает «работы больше нет», поэтому цикл спит ровно idle-интервал
+	// (§15). Один экземпляр: снимать одно и то же состояние параллельно незачем.
+	start("stats", statsUC, statsRefreshInterval, statsErrorBackoff)
+
+	err = serve(ctx, logger, cfg, grpcServer,
+		newHTTPServer(cfg.HTTP.Listen, checks, registry.Handler()))
 
 	// Воркеры останавливаются ПОСЛЕ поверхностей: их шаги коротки, а прогресс
 	// зафиксирован в БД, поэтому ждать их безопасно и быстро. Операция, чей RPC
