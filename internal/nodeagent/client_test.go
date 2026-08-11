@@ -182,8 +182,14 @@ type fakeAgent struct {
 	result *nodeagentv1.OperationResult
 	err    error
 
+	// state и stateErr — ответ на GetNodeState. Отдельно от result: у опроса свой
+	// тип ответа и свой исход (PullOutcome), и делить их с Ensure было бы натяжкой.
+	state    *nodeagentv1.GetNodeStateResponse
+	stateErr error
+
 	presentReq *nodeagentv1.EnsureUserPresentRequest
 	absentReq  *nodeagentv1.EnsureUserAbsentRequest
+	stateReq   *nodeagentv1.GetNodeStateRequest
 	calls      int
 }
 
@@ -203,6 +209,15 @@ func (a *fakeAgent) EnsureUserAbsent(
 	a.calls++
 	a.absentReq = req
 	return a.result, a.err
+}
+
+func (a *fakeAgent) GetNodeState(
+	_ context.Context,
+	req *nodeagentv1.GetNodeStateRequest,
+) (*nodeagentv1.GetNodeStateResponse, error) {
+	a.calls++
+	a.stateReq = req
+	return a.state, a.stateErr
 }
 
 // startAgent поднимает поддельного агента на localhost с настоящим mTLS.
