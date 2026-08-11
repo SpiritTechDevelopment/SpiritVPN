@@ -7,16 +7,6 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
-// Значения записи аудита приёма манифеста (§15: audit обязателен для
-// destructive manifest). Строки стабильны — по ним строятся выборки, поэтому их
-// переименование является изменением контракта наблюдаемости.
-const (
-	auditActorTypeManifestWriter = "manifest-writer"
-	auditActionManifestApplied   = "manifest.applied"
-	auditTargetTypeManifest      = "manifest_revision"
-	auditOutcomeAccepted         = "ACCEPTED"
-)
-
 // ApplyManifestCommand — принятый к обработке снапшот вместе с тем, что нужно
 // аудиту.
 //

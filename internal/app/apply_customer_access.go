@@ -3,11 +3,27 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
+
+// ApplyCustomerCommand — доменная команда вместе с тем, что нужно аудиту (§15).
+//
+// Actor и RequestID не входят в domain.ApplyCommand намеренно: домен от них не
+// зависит ни одним правилом, а попав туда, они стали бы частью значения, по
+// которому §5 сравнивает повторы команд. Та же форма, что и у
+// ApplyManifestCommand.
+type ApplyCustomerCommand struct {
+	Command domain.ApplyCommand
+	// Actor — идентичность вызывающего из mTLS (§14). Пустая допустима: тесты и
+	// будущие внутренние вызовы актора не имеют, а колонка nullable.
+	Actor string
+	// RequestID связывает запись журнала с логами того же запроса (§15).
+	RequestID string
+}
 
 // ApplyCustomerAccess — use case команды ApplyCustomerAccess (§5).
 //
@@ -38,8 +54,11 @@ func NewApplyCustomerAccess(repo ApplyRepository, ids IDs, sealer CredentialSeal
 //  5. проверка fleet — только после шага 4, иначе повтор старой команды для
 //     исчезнувшего из manifest fleet вернул бы NOT_FOUND вместо OK;
 //  6. планирование и запись; last_command_number двигается при успешном commit,
-//     в том числе на валидном no-op.
-func (uc *ApplyCustomerAccess) Execute(ctx context.Context, cmd domain.ApplyCommand) error {
+//     в том числе на валидном no-op;
+//  7. запись аудита — в той же транзакции, поэтому откат уносит и её (§15).
+func (uc *ApplyCustomerAccess) Execute(ctx context.Context, request ApplyCustomerCommand) error {
+	cmd := request.Command
+
 	// Шаг 1.
 	if err := domain.ValidateApplyCommand(cmd); err != nil {
 		return err
@@ -120,8 +139,63 @@ func (uc *ApplyCustomerAccess) Execute(ctx context.Context, cmd domain.ApplyComm
 			return err
 		}
 
-		return tx.WritePlan(ctx, materialized)
+		if err := tx.WritePlan(ctx, materialized); err != nil {
+			return err
+		}
+
+		// Шаг 7. Аудируется всё принятое, включая пустой план: команда принята и
+		// last_command_number сдвинулся, а «backend принял команду N» — ровно тот
+		// факт, который потом сверяют с product-сервисом. Устаревшая команда сюда
+		// не доходит (шаг 4), и правильно: side effects у неё нет, а повтор
+		// доставки писал бы дубликаты одного и того же no-op.
+		event, err := customerAudit(request, plan)
+		if err != nil {
+			return err
+		}
+		return tx.AppendAudit(ctx, event)
 	})
+}
+
+// customerActions — действие журнала по решению домена (§15).
+//
+// Словарь, а не switch с default: промах означает, что домен завёл четвёртое
+// решение, а запись с action "UNKNOWN" молча увезла бы это расхождение в журнал,
+// по которому потом разбирают инциденты.
+var customerActions = map[domain.ApplyDecision]string{
+	domain.ApplyDecisionCreate:      auditActionCustomerCreated,
+	domain.ApplyDecisionRenewal:     auditActionCustomerRenewed,
+	domain.ApplyDecisionQuotaChange: auditActionCustomerQuotaChanged,
+}
+
+// customerAudit собирает запись о принятой команде customer (§15).
+//
+// В метаданных только счётчики и лимиты. Ни accounting_id, ни client_uuid: §15
+// запрещает секреты в журнале, а customer_id, наоборот, разрешён именно здесь и
+// уезжает в target_id.
+func customerAudit(request ApplyCustomerCommand, plan domain.ApplyPlan) (AuditEvent, error) {
+	action, ok := customerActions[plan.Decision]
+	if !ok {
+		return AuditEvent{}, fmt.Errorf("app: нет действия аудита для решения %s", plan.Decision)
+	}
+
+	return AuditEvent{
+		ActorType:  auditActorTypeAccessWriter,
+		ActorID:    request.Actor,
+		Action:     action,
+		TargetType: auditTargetTypeCustomer,
+		TargetID:   request.Command.CustomerID,
+		RequestID:  request.RequestID,
+		Outcome:    auditOutcomeAccepted,
+		Metadata: map[string]any{
+			"command_number":   request.Command.CommandNumber,
+			"expires_at":       plan.ExpiresAt.UTC().Format(time.RFC3339),
+			"quota_bytes":      plan.QuotaBytes,
+			"new_quota_period": plan.OpenNewPeriod,
+			"created_access":   len(plan.CreateAccesses),
+			"changed_access":   len(plan.DesiredChanges),
+			"affected_nodes":   len(plan.TouchedNodes),
+		},
+	}, nil
 }
 
 // materialize дополняет доменный план идентификаторами и credentials.

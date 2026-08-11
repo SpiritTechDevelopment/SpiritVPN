@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -79,6 +80,9 @@ func migrateUp(dsn string) error {
 const (
 	testFleetID    = 42
 	testCustomerID = "customer-integration"
+	// testApplyActor — идентичность product-сервиса из mTLS (§14); уезжает в
+	// actor_id записи аудита.
+	testApplyActor = "product-svc"
 )
 
 // truncatedTables перечисляются в порядке, обратном зависимостям; CASCADE снял бы
@@ -184,13 +188,20 @@ func seedTopology(t *testing.T, pool *pgxpool.Pool, nodes []string, bridges [][4
 // открывался бы новый период квоты, а накопленный трафик сбрасывался. На проводе
 // такого значения не бывает по типу поля, но тест обязан строить команду так же,
 // как её строит граница системы, иначе он проверяет несуществующий сценарий.
-func command(commandNumber uint64, quotaBytes uint64, expiresAt time.Time) domain.ApplyCommand {
-	return domain.ApplyCommand{
-		CustomerID:      testCustomerID,
-		FleetID:         testFleetID,
-		UsageQuotaBytes: quotaBytes,
-		ExpiresAt:       time.Unix(expiresAt.Unix(), 0).UTC(),
-		CommandNumber:   commandNumber,
+//
+// Возвращает app-команду, а не доменную: actor и request_id уезжают в
+// audit_events (§15), и тест обязан подавать их так же, как транспорт.
+func command(commandNumber uint64, quotaBytes uint64, expiresAt time.Time) app.ApplyCustomerCommand {
+	return app.ApplyCustomerCommand{
+		Command: domain.ApplyCommand{
+			CustomerID:      testCustomerID,
+			FleetID:         testFleetID,
+			UsageQuotaBytes: quotaBytes,
+			ExpiresAt:       time.Unix(expiresAt.Unix(), 0).UTC(),
+			CommandNumber:   commandNumber,
+		},
+		Actor:     testApplyActor,
+		RequestID: "req-" + strconv.FormatUint(commandNumber, 10),
 	}
 }
 
@@ -308,7 +319,7 @@ func TestIntegrationApplyRepeatIsNoOp(t *testing.T) {
 	// колонки (timestamptz — микросекунды) или изменением границы системы.
 	stored := scalar[time.Time](t, pool,
 		`SELECT expires_at FROM customer_entitlements WHERE customer_id = $1`, testCustomerID)
-	if sent := command(1, 1<<30, expiresAt).ExpiresAt; !stored.Equal(sent) {
+	if sent := command(1, 1<<30, expiresAt).Command.ExpiresAt; !stored.Equal(sent) {
 		t.Fatalf("expires_at прочитан как %v, записан был %v", stored.UTC(), sent)
 	}
 
@@ -472,7 +483,7 @@ func TestIntegrationApplyUnknownFleet(t *testing.T) {
 	seedTopology(t, pool, []string{"node-a"}, nil)
 
 	cmd := command(1, 1<<30, time.Now().UTC().Add(24*time.Hour))
-	cmd.FleetID = testFleetID + 1
+	cmd.Command.FleetID = testFleetID + 1
 
 	err := uc.Execute(context.Background(), cmd)
 	if !errors.Is(err, domain.ErrFleetNotFound) {
@@ -518,5 +529,98 @@ func TestIntegrationQuotaRoundTripAtUint64Max(t *testing.T) {
 	if !scalar[bool](t, pool,
 		`SELECT last_command_number = 18446744073709551615 FROM customer_entitlements`) {
 		t.Fatal("last_command_number не совпал с 2^64-1")
+	}
+}
+
+// TestIntegrationApplyWritesAudit — §15: audit обязателен для customer
+// Apply/renewal. Проверяется на настоящей БД, потому что запись проходит через
+// сериализацию metadata в jsonb и nullable-колонки адаптера.
+func TestIntegrationApplyWritesAudit(t *testing.T) {
+	uc, pool := newFixture(t)
+	seedTopology(t, pool, []string{"node-a"}, nil)
+
+	expiresAt := time.Now().UTC().Add(30 * 24 * time.Hour)
+	if err := uc.Execute(context.Background(), command(1, 1<<30, expiresAt)); err != nil {
+		t.Fatalf("ApplyCustomerAccess: %v", err)
+	}
+
+	if got := scalar[int64](t, pool,
+		`SELECT count(*) FROM audit_events
+		 WHERE action = 'CUSTOMER_CREATED' AND target_type = 'CUSTOMER'
+		   AND target_id = $1 AND actor_id = $2 AND outcome = 'ACCEPTED'`,
+		testCustomerID, testApplyActor); got != 1 {
+		t.Fatalf("записей о создании %d, ожидалась 1", got)
+	}
+
+	// Продление даёт отдельное действие, а не повтор CUSTOMER_CREATED.
+	if err := uc.Execute(context.Background(),
+		command(2, 1<<30, expiresAt.Add(30*24*time.Hour))); err != nil {
+		t.Fatalf("продление: %v", err)
+	}
+
+	if got := scalar[int64](t, pool,
+		`SELECT count(*) FROM audit_events WHERE action = 'CUSTOMER_RENEWED' AND target_id = $1`,
+		testCustomerID); got != 1 {
+		t.Errorf("записей о продлении %d, ожидалась 1", got)
+	}
+
+	// Метаданные доехали структурой, а не строкой, и несут только счётчики.
+	if got := scalar[bool](t, pool,
+		`SELECT sanitized_metadata->>'new_quota_period' = 'true'
+		 FROM audit_events WHERE action = 'CUSTOMER_RENEWED'`); !got {
+		t.Error("продление не отмечено открытием нового периода квоты")
+	}
+
+	// request_id связывает запись с логами того же запроса (§15).
+	if got := scalar[int64](t, pool,
+		`SELECT count(*) FROM audit_events WHERE request_id IS NULL`); got != 0 {
+		t.Errorf("записей без request_id %d, ожидалось 0", got)
+	}
+}
+
+// TestIntegrationApplyAuditRollsBackWithCommand — журнал ведётся в той
+// же транзакции, что и изменение.
+//
+// Это главное свойство аудита, а не деталь: запись, пережившая откат, утверждала
+// бы про изменения, которых в базе нет, — и разбор инцидента пошёл бы по ложному
+// следу. Отклонённая команда следа не оставляет, и это осознанный предел v1.
+func TestIntegrationApplyAuditRollsBackWithCommand(t *testing.T) {
+	uc, pool := newFixture(t)
+	seedTopology(t, pool, []string{"node-a"}, nil)
+
+	// Fleet, которого нет в манифесте: команда отклоняется после того, как
+	// транзакция уже открыта (§5, правило 6).
+	cmd := command(1, 1<<30, time.Now().UTC().Add(30*24*time.Hour))
+	cmd.Command.FleetID = testFleetID + 1
+
+	if err := uc.Execute(context.Background(), cmd); !errors.Is(err, domain.ErrFleetNotFound) {
+		t.Fatalf("Execute = %v, ожидалась ErrFleetNotFound", err)
+	}
+
+	if got := scalar[int64](t, pool, `SELECT count(*) FROM audit_events`); got != 0 {
+		t.Errorf("записей аудита %d, ожидалось 0: откат не унёс журнал", got)
+	}
+	if got := scalar[int64](t, pool, `SELECT count(*) FROM customer_entitlements`); got != 0 {
+		t.Errorf("строк customer %d, ожидалось 0", got)
+	}
+}
+
+// TestIntegrationApplyStaleCommandWritesNoAudit — устаревшая команда
+// коммитится, но side effects не имеет (§5, правило 2), поэтому и записи о ней
+// быть не должно: повтор доставки иначе плодил бы дубликаты одного no-op.
+func TestIntegrationApplyStaleCommandWritesNoAudit(t *testing.T) {
+	uc, pool := newFixture(t)
+	seedTopology(t, pool, []string{"node-a"}, nil)
+
+	expiresAt := time.Now().UTC().Add(30 * 24 * time.Hour)
+	if err := uc.Execute(context.Background(), command(5, 1<<30, expiresAt)); err != nil {
+		t.Fatalf("ApplyCustomerAccess: %v", err)
+	}
+	if err := uc.Execute(context.Background(), command(3, 9<<30, expiresAt)); err != nil {
+		t.Fatalf("устаревшая команда вернула ошибку: %v", err)
+	}
+
+	if got := scalar[int64](t, pool, `SELECT count(*) FROM audit_events`); got != 1 {
+		t.Errorf("записей аудита %d, ожидалась 1: устаревшая команда добавила свою", got)
 	}
 }

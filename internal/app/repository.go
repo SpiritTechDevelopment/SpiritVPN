@@ -60,6 +60,13 @@ type ApplyTx interface {
 	// last_command_number. Вызывается и на пустом плане: валидный no-op номер
 	// команды всё равно двигает (§5, правило 4).
 	WritePlan(ctx context.Context, plan MaterializedPlan) error
+
+	// AppendAudit добавляет запись в audit_events (§15).
+	//
+	// В той же транзакции, что и изменение, а не после неё: журнал, переживший
+	// откат, утверждал бы про изменения, которых нет. Обратная сторона — отказ
+	// команды не оставляет следа, и это осознанный предел аудита v1.
+	AppendAudit(ctx context.Context, event AuditEvent) error
 }
 
 // LinksRepository читает всё, из чего строится ответ GetCustomerAccessLinks (§5).
@@ -462,22 +469,6 @@ type OperationResult struct {
 	ErrorCode string
 	// ErrorMessage — санитизированная диагностика агента. Секретов не содержит.
 	ErrorMessage string
-}
-
-// AuditEvent — запись журнала аудита (§15).
-//
-// Metadata обязана быть sanitized: ни секретов, ни client_uuid, ни accounting ID.
-// Тип не проверяет это за вызывающего — проверять содержимое map он не может, —
-// но фиксирует требование в одном месте.
-type AuditEvent struct {
-	ActorType  string
-	ActorID    string
-	Action     string
-	TargetType string
-	TargetID   string
-	RequestID  string
-	Outcome    string
-	Metadata   map[string]any
 }
 
 // MaterializedPlan — доменный план, дополненный тем, что домен принципиально не

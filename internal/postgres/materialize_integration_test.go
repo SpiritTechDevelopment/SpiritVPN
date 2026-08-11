@@ -281,7 +281,7 @@ func TestIntegrationMaterializeCursorWalksAllCustomers(t *testing.T) {
 
 	// Второй customer на том же fleet.
 	second := command(1, 1<<30, time.Now().UTC().Add(30*24*time.Hour))
-	second.CustomerID = "customer-integration-2"
+	second.Command.CustomerID = "customer-integration-2"
 	if err := stack.customer.Execute(context.Background(), second); err != nil {
 		t.Fatalf("второй ApplyCustomerAccess: %v", err)
 	}

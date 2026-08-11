@@ -8,13 +8,6 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
-// Значения audit_events для истечения (§15).
-const (
-	auditActorTypeSystem       = "SYSTEM"
-	auditActionCustomerExpired = "CUSTOMER_EXPIRED"
-	auditTargetTypeCustomer    = "CUSTOMER"
-)
-
 // ExpireCustomers — воркер истечения срока (§13).
 //
 // Единственный, кто снимает доступ по времени: команды ручного enable/disable в v1

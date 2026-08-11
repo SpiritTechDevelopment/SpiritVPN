@@ -269,7 +269,7 @@ func TestIntegrationManifestDestructiveMarksInsteadOfDeleting(t *testing.T) {
 	// §15: destructive-манифест обязан оставить запись аудита.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM audit_events
-		 WHERE action = 'manifest.applied' AND actor_id = 'infra-ci'
+		 WHERE action = 'MANIFEST_APPLIED' AND actor_id = 'infra-ci'
 		   AND sanitized_metadata->>'destructive' = 'true'`); got != 1 {
 		t.Errorf("записей аудита %d, ожидалась 1", got)
 	}

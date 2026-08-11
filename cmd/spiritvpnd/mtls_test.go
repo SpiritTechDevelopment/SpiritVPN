@@ -51,11 +51,11 @@ const rpcTimeout = 5 * time.Second
 type stubUseCase struct {
 	mu     sync.Mutex
 	calls  int
-	cmd    domain.ApplyCommand
+	cmd    app.ApplyCustomerCommand
 	result error
 }
 
-func (s *stubUseCase) Execute(_ context.Context, cmd domain.ApplyCommand) error {
+func (s *stubUseCase) Execute(_ context.Context, cmd app.ApplyCustomerCommand) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -64,7 +64,7 @@ func (s *stubUseCase) Execute(_ context.Context, cmd domain.ApplyCommand) error 
 	return s.result
 }
 
-func (s *stubUseCase) state() (int, domain.ApplyCommand) {
+func (s *stubUseCase) state() (int, app.ApplyCustomerCommand) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -417,16 +417,28 @@ func TestMTLSAllowsConfiguredWriter(t *testing.T) {
 		t.Fatal("пустой ответ не получен")
 	}
 
-	calls, cmd := server.stub.state()
+	calls, request := server.stub.state()
 	if calls != 1 {
 		t.Fatalf("use case вызван %d раз, ожидался 1", calls)
 	}
+
+	cmd := request.Command
 	if cmd.CustomerID != "cust-1" || cmd.FleetID != 1 {
 		t.Errorf("команда доехала искажённой: %+v", cmd)
 	}
 	// Решение 11 на настоящем транспорте.
 	if cmd.ExpiresAt.Nanosecond() != 0 || cmd.ExpiresAt.Location() != time.UTC {
 		t.Errorf("expires_at %v: ожидалась секундная точность в UTC", cmd.ExpiresAt)
+	}
+
+	// §15: идентичность вызывающего из mTLS уезжает в audit_events. Проверяется
+	// на настоящем рукопожатии, потому что это единственное место, где она
+	// вообще появляется.
+	if request.Actor != "product-svc" {
+		t.Errorf("actor %q, ожидался product-svc", request.Actor)
+	}
+	if request.RequestID == "" {
+		t.Error("request_id не доехал до use case: запись аудита не свяжется с логами")
 	}
 }
 

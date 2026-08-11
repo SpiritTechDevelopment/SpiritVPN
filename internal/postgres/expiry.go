@@ -153,10 +153,8 @@ func (t *expiryTx) writeExpiryOperations(ctx context.Context, plan app.Materiali
 	return nil
 }
 
-// AppendAudit — тот же запрос, что и у приёма манифеста (§15).
-func (t *expiryTx) AppendAudit(ctx context.Context, event app.AuditEvent) error {
-	return appendAudit(ctx, t.queries, event)
-}
+// AppendAudit приходит из встроенного applyTx: командный путь ведёт тот же
+// журнал, и второй метод с тем же телом разъехался бы с первым.
 
 // Компиляторная проверка, что адаптер закрывает порт целиком.
 var _ app.ExpiryRepository = (*Repository)(nil)

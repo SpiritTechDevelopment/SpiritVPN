@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,6 +39,7 @@ type fakeTx struct {
 	accesses     []domain.Access
 
 	written *app.MaterializedPlan
+	audits  []app.AuditEvent
 }
 
 func (tx *fakeTx) record(call string) { tx.calls = append(tx.calls, call) }
@@ -75,6 +77,12 @@ func (tx *fakeTx) LoadTopology(context.Context, int64) (domain.FleetTopology, er
 func (tx *fakeTx) LoadAccesses(context.Context, string) ([]domain.Access, error) {
 	tx.record("LoadAccesses")
 	return tx.accesses, nil
+}
+
+func (tx *fakeTx) AppendAudit(_ context.Context, event app.AuditEvent) error {
+	tx.record("AppendAudit")
+	tx.audits = append(tx.audits, event)
+	return nil
 }
 
 func (tx *fakeTx) WritePlan(_ context.Context, plan app.MaterializedPlan) error {
@@ -153,11 +161,25 @@ func (s *stubSealer) KeyID() string { return "test" }
 
 var testNow = time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
 
+// Идентичность вызывающего и корреляция запроса; уезжают в audit_events (§15).
+const (
+	testActor     = "product-svc"
+	testRequestID = "req-1"
+)
+
 func newHarness(tx *fakeTx) (*app.ApplyCustomerAccess, *fakeRepo, *countingIDs, *stubSealer) {
 	repo := &fakeRepo{tx: tx}
 	ids := &countingIDs{}
 	sealer := &stubSealer{}
 	return app.NewApplyCustomerAccess(repo, ids, sealer), repo, ids, sealer
+}
+
+// request оборачивает доменную команду в то, что принимает use case.
+//
+// validCommand остаётся доменной, потому что тесты правил §5 меняют её поля:
+// actor и request_id к этим правилам отношения не имеют и добавляются здесь.
+func request(cmd domain.ApplyCommand) app.ApplyCustomerCommand {
+	return app.ApplyCustomerCommand{Command: cmd, Actor: testActor, RequestID: testRequestID}
 }
 
 func validCommand() domain.ApplyCommand {
@@ -190,7 +212,7 @@ func TestExecuteValidatesBeforeTouchingDatabase(t *testing.T) {
 			cmd := validCommand()
 			mutate(&cmd)
 
-			if err := uc.Execute(context.Background(), cmd); err == nil {
+			if err := uc.Execute(context.Background(), request(cmd)); err == nil {
 				t.Fatal("ожидалась ошибка валидации")
 			}
 			if repo.opened != 0 {
@@ -218,7 +240,7 @@ func TestExecuteStaleCommandStopsBeforeFleetLookup(t *testing.T) {
 	cmd := validCommand()
 	cmd.CommandNumber = 5 // не больше сохранённого
 
-	if err := uc.Execute(context.Background(), cmd); err != nil {
+	if err := uc.Execute(context.Background(), request(cmd)); err != nil {
 		t.Fatalf("устаревшая команда вернула ошибку: %v", err)
 	}
 
@@ -247,7 +269,7 @@ func TestExecuteReadsTransactionTimeFirst(t *testing.T) {
 	}
 	uc, _, _, _ := newHarness(tx)
 
-	if err := uc.Execute(context.Background(), validCommand()); err != nil {
+	if err := uc.Execute(context.Background(), request(validCommand())); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
 
@@ -264,7 +286,7 @@ func TestExecuteUnknownFleet(t *testing.T) {
 	tx := &fakeTx{now: testNow, fleetCurrent: false}
 	uc, repo, _, _ := newHarness(tx)
 
-	err := uc.Execute(context.Background(), validCommand())
+	err := uc.Execute(context.Background(), request(validCommand()))
 	if !errors.Is(err, domain.ErrFleetNotFound) {
 		t.Fatalf("Execute = %v, ожидалась ErrFleetNotFound", err)
 	}
@@ -295,7 +317,7 @@ func TestExecuteCreatesCustomer(t *testing.T) {
 	}
 	uc, repo, ids, sealer := newHarness(tx)
 
-	if err := uc.Execute(context.Background(), validCommand()); err != nil {
+	if err := uc.Execute(context.Background(), request(validCommand())); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
 	if !repo.committed {
@@ -303,7 +325,10 @@ func TestExecuteCreatesCustomer(t *testing.T) {
 	}
 
 	// Периода у нового customer нет, поэтому его блокировка не запрашивается.
-	want := []string{"Now", "LockEntitlement", "FleetIsCurrent", "LoadTopology", "LoadAccesses", "WritePlan"}
+	want := []string{
+		"Now", "LockEntitlement", "FleetIsCurrent",
+		"LoadTopology", "LoadAccesses", "WritePlan", "AppendAudit",
+	}
 	if !slices.Equal(tx.calls, want) {
 		t.Fatalf("вызовы %v, ожидалось %v", tx.calls, want)
 	}
@@ -391,7 +416,7 @@ func TestExecuteAbsentAtBirthIssuesNoOperation(t *testing.T) {
 	cmd := validCommand()
 	cmd.ExpiresAt = expired // тот же expiry: не renewal
 
-	if err := uc.Execute(context.Background(), cmd); err != nil {
+	if err := uc.Execute(context.Background(), request(cmd)); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
 
@@ -456,7 +481,7 @@ func TestExecuteAcceptedNoOpStillAdvancesCommandNumber(t *testing.T) {
 	}
 	uc, repo, ids, sealer := newHarness(tx)
 
-	if err := uc.Execute(context.Background(), validCommand()); err != nil {
+	if err := uc.Execute(context.Background(), request(validCommand())); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
 	if !repo.committed {
@@ -468,7 +493,7 @@ func TestExecuteAcceptedNoOpStillAdvancesCommandNumber(t *testing.T) {
 	want := []string{
 		"Now", "LockEntitlement", "FleetIsCurrent",
 		"LockOpenQuotaPeriod", "LockNodeQuotaUsage",
-		"LoadTopology", "LoadAccesses", "WritePlan",
+		"LoadTopology", "LoadAccesses", "WritePlan", "AppendAudit",
 	}
 	if !slices.Equal(tx.calls, want) {
 		t.Fatalf("вызовы %v, ожидалось %v", tx.calls, want)
@@ -539,7 +564,7 @@ func TestExecuteQuotaDecreaseBlocksOnlyExhaustedNode(t *testing.T) {
 	cmd := validCommand()
 	cmd.UsageQuotaBytes = 1 << 30 // понижение: node-a уже исчерпала новый лимит
 
-	if err := uc.Execute(context.Background(), cmd); err != nil {
+	if err := uc.Execute(context.Background(), request(cmd)); err != nil {
 		t.Fatalf("Execute: %v", err)
 	}
 
@@ -584,7 +609,7 @@ func TestExecutePropagatesSealError(t *testing.T) {
 	sealFailed := errors.New("шифрование недоступно")
 	uc := app.NewApplyCustomerAccess(repo, &countingIDs{}, &stubSealer{err: sealFailed})
 
-	err := uc.Execute(context.Background(), validCommand())
+	err := uc.Execute(context.Background(), request(validCommand()))
 	if !errors.Is(err, sealFailed) {
 		t.Fatalf("Execute = %v, ожидался проброс ошибки Seal", err)
 	}
@@ -593,5 +618,222 @@ func TestExecutePropagatesSealError(t *testing.T) {
 	}
 	if repo.committed {
 		t.Fatal("отказ шифрования обязан откатывать транзакцию")
+	}
+}
+
+// --- аудит команды customer (§15) ---------------------------------------------
+
+// existingCustomerTx — уже заведённый customer с открытым периодом. Основа для
+// решений RENEWAL и QUOTA_CHANGE: оба требуют сохранённой корневой строки.
+func existingCustomerTx() *fakeTx {
+	return &fakeTx{
+		now:          testNow,
+		fleetCurrent: true,
+		entitlement: &domain.Entitlement{
+			FleetID:           7,
+			ExpiresAt:         testNow.Add(24 * time.Hour),
+			LastCommandNumber: 4,
+			DesiredVersion:    2,
+		},
+		openPeriod: &domain.QuotaPeriod{
+			ID:              uuid.New(),
+			UsageQuotaBytes: 1 << 30,
+			StartedAt:       testNow.Add(-48 * time.Hour),
+		},
+		topology: domain.FleetTopology{FleetID: 7, Nodes: []domain.NodeID{"node-a"}},
+	}
+}
+
+// newCustomerTx — customer, которого ещё нет.
+func newCustomerTx() *fakeTx {
+	return &fakeTx{
+		now:          testNow,
+		fleetCurrent: true,
+		topology:     domain.FleetTopology{FleetID: 7, Nodes: []domain.NodeID{"node-a"}},
+	}
+}
+
+// applyForAudit прогоняет команду и возвращает записанные события.
+func applyForAudit(t *testing.T, tx *fakeTx, cmd domain.ApplyCommand) []app.AuditEvent {
+	t.Helper()
+
+	uc, _, _, _ := newHarness(tx)
+	if err := uc.Execute(context.Background(), request(cmd)); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	return tx.audits
+}
+
+// TestApplyAuditsDecision — §15 перечисляет «Apply/renewal» раздельно, поэтому
+// решение домена попадает в action, а не в метаданные: фильтр по колонке дешевле
+// и надёжнее разбора jsonb.
+func TestApplyAuditsDecision(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		prepare func() (*fakeTx, domain.ApplyCommand)
+		want    string
+	}{
+		{
+			name: "первый Apply — создание",
+			prepare: func() (*fakeTx, domain.ApplyCommand) {
+				return newCustomerTx(), validCommand()
+			},
+			want: "CUSTOMER_CREATED",
+		},
+		{
+			name: "срок вырос — продление",
+			prepare: func() (*fakeTx, domain.ApplyCommand) {
+				tx := existingCustomerTx()
+				cmd := validCommand()
+				cmd.CommandNumber = tx.entitlement.LastCommandNumber + 1
+				cmd.ExpiresAt = tx.entitlement.ExpiresAt.Add(30 * 24 * time.Hour)
+				return tx, cmd
+			},
+			want: "CUSTOMER_RENEWED",
+		},
+		{
+			name: "срок тот же — смена квоты",
+			prepare: func() (*fakeTx, domain.ApplyCommand) {
+				tx := existingCustomerTx()
+				cmd := validCommand()
+				cmd.CommandNumber = tx.entitlement.LastCommandNumber + 1
+				cmd.ExpiresAt = tx.entitlement.ExpiresAt
+				cmd.UsageQuotaBytes = 9 << 30
+				return tx, cmd
+			},
+			want: "CUSTOMER_QUOTA_CHANGED",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tx, cmd := tc.prepare()
+
+			audits := applyForAudit(t, tx, cmd)
+			if len(audits) != 1 {
+				t.Fatalf("записей аудита %d, ожидалась 1", len(audits))
+			}
+			if audits[0].Action != tc.want {
+				t.Errorf("action %q, ожидался %q", audits[0].Action, tc.want)
+			}
+		})
+	}
+}
+
+// TestApplyAuditsEmptyPlan — команда, ничего не изменившая, всё равно принята:
+// last_command_number сдвинулся, и «backend принял команду N» — ровно тот факт,
+// который потом сверяют с product-сервисом.
+func TestApplyAuditsEmptyPlan(t *testing.T) {
+	tx := existingCustomerTx()
+	// Access под текущую топологию уже есть, поэтому создавать нечего.
+	tx.accesses = []domain.Access{{
+		ID:               uuid.New(),
+		Kind:             domain.AccessKindFreedom,
+		LogicalTargetKey: "node-a",
+		Generation:       1,
+		EntryNodeID:      "node-a",
+		EgressKey:        domain.FreedomEgressKey,
+		AccountingID:     "u.existing",
+		DesiredState:     domain.DesiredStatePresent,
+		DesiredVersion:   1,
+	}}
+
+	cmd := validCommand()
+	cmd.CommandNumber = tx.entitlement.LastCommandNumber + 1
+	cmd.ExpiresAt = tx.entitlement.ExpiresAt
+	cmd.UsageQuotaBytes = tx.openPeriod.UsageQuotaBytes // и срок, и квота прежние
+
+	audits := applyForAudit(t, tx, cmd)
+	if len(audits) != 1 {
+		t.Fatalf("записей аудита %d, ожидалась 1", len(audits))
+	}
+	if got := audits[0].Metadata["created_access"]; got != 0 {
+		t.Errorf("created_access %v, ожидался 0: план обязан быть пустым", got)
+	}
+}
+
+// TestApplyAuditCarriesCaller — actor и request_id связывают запись с
+// mTLS-идентичностью вызывающего и логами того же запроса (§15).
+func TestApplyAuditCarriesCaller(t *testing.T) {
+	audits := applyForAudit(t, newCustomerTx(), validCommand())
+	if len(audits) != 1 {
+		t.Fatalf("записей аудита %d, ожидалась 1", len(audits))
+	}
+
+	event := audits[0]
+	if event.ActorID != testActor || event.RequestID != testRequestID {
+		t.Errorf("actor %q request %q, ожидались %q и %q",
+			event.ActorID, event.RequestID, testActor, testRequestID)
+	}
+	// customer_id разрешён §15 именно в audit records и живёт в target_id.
+	if event.TargetID != validCommand().CustomerID {
+		t.Errorf("target_id %q, ожидался %q", event.TargetID, validCommand().CustomerID)
+	}
+	if event.Outcome != "ACCEPTED" {
+		t.Errorf("outcome %q, ожидался ACCEPTED", event.Outcome)
+	}
+}
+
+// TestApplyAuditMetadataCarriesNoSecrets — §15 запрещает секреты в журнале.
+//
+// Проверка идёт по ЗНАЧЕНИЯМ, а не по именам ключей: accounting_id и client_uuid
+// опасны именно как значения, и попасть туда они могут под любым именем.
+func TestApplyAuditMetadataCarriesNoSecrets(t *testing.T) {
+	tx := newCustomerTx()
+	audits := applyForAudit(t, tx, validCommand())
+
+	if tx.written == nil || len(tx.written.NewAccesses) == 0 {
+		t.Fatal("подготовка: план не создал ни одного access, проверять нечего")
+	}
+
+	rendered := fmt.Sprint(audits[0].Metadata)
+	for _, access := range tx.written.NewAccesses {
+		if strings.Contains(rendered, access.AccountingID) {
+			t.Errorf("метаданные несут accounting_id: %s", rendered)
+		}
+	}
+	for _, forbidden := range []string{"client_uuid", "credential", "uri"} {
+		if strings.Contains(strings.ToLower(rendered), forbidden) {
+			t.Errorf("метаданные несут %q: %s", forbidden, rendered)
+		}
+	}
+}
+
+// TestApplyStaleCommandWritesNoAudit — устаревшая команда не имеет side effects
+// (§5, правило 2), и запись о ней означала бы изменение, которого не было.
+// Повтор доставки иначе плодил бы дубликаты одного и того же no-op.
+func TestApplyStaleCommandWritesNoAudit(t *testing.T) {
+	tx := existingCustomerTx()
+	cmd := validCommand()
+	cmd.CommandNumber = tx.entitlement.LastCommandNumber // не больше сохранённого
+
+	uc, _, _, _ := newHarness(tx)
+	if err := uc.Execute(context.Background(), request(cmd)); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	if len(tx.audits) != 0 {
+		t.Errorf("устаревшая команда записала аудит: %+v", tx.audits)
+	}
+}
+
+// TestApplyRejectedCommandWritesNoAudit — отклонённая команда до записи журнала
+// не доходит. Это предел аудита v1: следа у отказа не остаётся, зато журнал не
+// может утверждать про изменения, которых нет.
+//
+// Здесь проверяется именно «не дошла»: фейковая транзакция ничего не откатывает,
+// поэтому сам откат журнала вместе с командой проверяется интеграционно
+// (TestIntegrationApplyAuditRollsBackWithCommand).
+func TestApplyRejectedCommandWritesNoAudit(t *testing.T) {
+	tx := &fakeTx{now: testNow, fleetCurrent: false}
+
+	uc, repo, _, _ := newHarness(tx)
+	if err := uc.Execute(context.Background(), request(validCommand())); !errors.Is(err, domain.ErrFleetNotFound) {
+		t.Fatalf("Execute = %v, ожидалась ErrFleetNotFound", err)
+	}
+
+	if repo.committed {
+		t.Fatal("отклонённая команда обязана откатывать транзакцию")
+	}
+	if len(tx.audits) != 0 {
+		t.Errorf("отклонённая команда записала аудит: %+v", tx.audits)
 	}
 }

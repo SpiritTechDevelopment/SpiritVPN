@@ -38,7 +38,7 @@ const (
 // вызов, а тест хендлера не должен тащить за собой репозиторий, sealer и
 // генератор идентификаторов.
 type applyCustomerAccess interface {
-	Execute(ctx context.Context, cmd domain.ApplyCommand) error
+	Execute(ctx context.Context, cmd app.ApplyCustomerCommand) error
 }
 
 // getCustomerAccessLinks — use case запроса ссылок.
@@ -71,7 +71,14 @@ func (s *CustomerAccessServer) ApplyCustomerAccess(
 	ctx context.Context,
 	req *customerv1.ApplyCustomerAccessRequest,
 ) (*customerv1.ApplyCustomerAccessResponse, error) {
-	if err := s.apply.Execute(ctx, applyCommandFrom(req)); err != nil {
+	// Идентичность вызывающего и request_id уезжают в audit_events (§15). Роль
+	// уже проверена interceptor'ом; здесь берётся сама идентичность, потому что
+	// журналу нужен конкретный вызывающий, а не его класс.
+	if err := s.apply.Execute(ctx, app.ApplyCustomerCommand{
+		Command:   applyCommandFrom(req),
+		Actor:     peerIdentity(ctx),
+		RequestID: RequestIDFromContext(ctx),
+	}); err != nil {
 		return nil, statusFromError(ctx, err)
 	}
 

@@ -143,6 +143,15 @@ func (t *applyTx) LoadAccesses(ctx context.Context, customerID string) ([]domain
 // Шаг 4 (traffic_usage_items_processed) принадлежит usage worker и здесь
 // пропускается; пропуск не затрагиваемых строк допустим, менять взаимный порядок
 // фактически берущихся locks — нет.
+// AppendAudit добавляет запись в append-only журнал (§15).
+//
+// Живёт на applyTx, а не на каждом пути отдельно: expiryTx встраивает его и
+// получает метод даром, а отображение AuditEvent в колонки остаётся в одном
+// месте.
+func (t *applyTx) AppendAudit(ctx context.Context, event app.AuditEvent) error {
+	return appendAudit(ctx, t.queries, event)
+}
+
 func (t *applyTx) WritePlan(ctx context.Context, plan app.MaterializedPlan) error {
 	if err := t.writeEntitlement(ctx, plan); err != nil {
 		return err

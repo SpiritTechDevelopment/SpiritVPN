@@ -25,16 +25,21 @@ const epochSec int64 = 1_800_000_000
 // stubApply — фейковый use case: запоминает полученную команду и возвращает
 // заданную ошибку. Транспорт больше ничего от use case не требует.
 type stubApply struct {
-	calls int
-	cmd   domain.ApplyCommand
-	err   error
+	calls   int
+	request app.ApplyCustomerCommand
+	err     error
 }
 
-func (s *stubApply) Execute(_ context.Context, cmd domain.ApplyCommand) error {
+func (s *stubApply) Execute(_ context.Context, request app.ApplyCustomerCommand) error {
 	s.calls++
-	s.cmd = cmd
+	s.request = request
 	return s.err
 }
+
+// cmd — доменная часть последней команды. Сокращение: транспортных тестов,
+// сверяющих перевод запроса в команду, много, и .request.Command в каждом
+// заслоняло бы то, что они проверяют.
+func (s *stubApply) cmd() domain.ApplyCommand { return s.request.Command }
 
 // validRequest — запрос, проходящий валидацию §5. Тесты меняют в нём только то,
 // что проверяют.
@@ -146,7 +151,7 @@ func TestApplyCustomerAccessPinsExpiresAtPrecision(t *testing.T) {
 		t.Fatalf("неожиданная ошибка: %v", err)
 	}
 
-	got := stub.cmd.ExpiresAt
+	got := stub.cmd().ExpiresAt
 	if want := time.Unix(epochSec, 0).UTC(); !got.Equal(want) {
 		t.Fatalf("expires_at %v, ожидалось %v", got, want)
 	}
@@ -180,8 +185,8 @@ func TestApplyCustomerAccessMapsRequestFields(t *testing.T) {
 		ExpiresAt:       time.Unix(req.GetExpiresAtEpochSec(), 0).UTC(),
 		CommandNumber:   req.GetCommandNumber(),
 	}
-	if stub.cmd != want {
-		t.Fatalf("команда %+v, ожидалась %+v", stub.cmd, want)
+	if stub.cmd() != want {
+		t.Fatalf("команда %+v, ожидалась %+v", stub.cmd(), want)
 	}
 }
 

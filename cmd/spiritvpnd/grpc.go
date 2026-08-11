@@ -14,7 +14,6 @@ import (
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/config"
-	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 	customerv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1"
 	manifestv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/manifest/v1"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/grpcsvc"
@@ -26,7 +25,7 @@ import (
 // тест mTLS поднимает настоящий сервер с настоящим рукопожатием, и тащить в него
 // пул PostgreSQL только чтобы проверить границу безопасности незачем.
 type applyUseCase interface {
-	Execute(ctx context.Context, cmd domain.ApplyCommand) error
+	Execute(ctx context.Context, cmd app.ApplyCustomerCommand) error
 }
 
 // linksUseCase — то же самое для read-пути §5.
