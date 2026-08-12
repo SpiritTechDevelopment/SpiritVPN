@@ -33,6 +33,8 @@ const seedOperationCount = 3
 type scriptedAgent struct {
 	outcomes []nodeagent.Outcome
 	fallback nodeagent.Outcome
+	// byNode — исход, зависящий от того, к какой ноде обратились.
+	byNode map[string]nodeagent.Outcome
 
 	calls   []nodeagent.Endpoint
 	present []nodeagent.User
@@ -47,6 +49,14 @@ func (a *scriptedAgent) next(endpoint nodeagent.Endpoint) nodeagent.Outcome {
 	if a.before != nil {
 		a.before()
 	}
+
+	// Исход, привязанный к ноде, старше очереди: стаб, отвечающий за несколько
+	// нод, обязан различать их по node_id, а очередь задаёт лишь порядок вызовов
+	// и о том, кому отвечает, ничего не знает.
+	if outcome, ok := a.byNode[endpoint.NodeID]; ok {
+		return outcome
+	}
+
 	if len(a.outcomes) == 0 {
 		return a.fallback
 	}
@@ -677,5 +687,101 @@ func TestIntegrationDispatchAbsentCarriesNoCredential(t *testing.T) {
 	}
 	if operation.AccountingID == "" {
 		t.Error("accounting_id пуст: удалять нечего")
+	}
+}
+
+// TestIntegrationPartialFleetReadiness — §18: fleet, где часть нод отвечает, а
+// часть нет.
+//
+// Стек берётся usage'овый: он единственный собирает манифест, материализацию,
+// доставку и ссылки поверх одного пула, а проверяется здесь именно то, что
+// видит customer после частично удавшейся доставки.
+//
+// Утверждение §16 и §5 вместе: недоступность ноды не меняет ни desired state, ни
+// состав fleet, а готовые ссылки отдаются, не дожидаясь неготовых. Обратное —
+// «пока не доставили всем, не показываем никому» — превратило бы одну упавшую
+// ноду в полную потерю сервиса для всех customer этого fleet.
+func TestIntegrationPartialFleetReadiness(t *testing.T) {
+	stack := newUsageStack(t)
+
+	// Своя раскладка вместо seedUsageCustomer: тому нужна удавшаяся доставка, а
+	// здесь она обязана удаться наполовину.
+	applyManifest(t, stack.manifest, manifestFixture(7), false)
+	expiresAt := time.Now().UTC().Add(30 * 24 * time.Hour)
+	if err := stack.customer.Execute(context.Background(), command(1, 1<<30, expiresAt)); err != nil {
+		t.Fatalf("ApplyCustomerAccess: %v", err)
+	}
+	drainMaterialization(t, stack.materialize)
+
+	// DE-1 отвечает, NL-1 недоступна.
+	stack.dispatched.byNode = map[string]nodeagent.Outcome{
+		"NL-1": {Result: domain.AttemptRetryable, Code: nodeagent.CodeUnavailable},
+		"DE-1": agentApplied(),
+	}
+	drainDispatch(t, stack.dispatch)
+
+	links, err := stack.links.Execute(context.Background(), testCustomerID)
+	if err != nil {
+		t.Fatalf("GetCustomerAccessLinks: %v", err)
+	}
+	if len(links) != 3 {
+		t.Fatalf("ссылок %d, ожидалось 3", len(links))
+	}
+
+	var ready, pending int
+	for _, link := range links {
+		switch link.Status.State {
+		case domain.LinkStateReady:
+			ready++
+			if link.URI == "" {
+				t.Errorf("READY-ссылка %s без URI", link.Kind)
+			}
+		case domain.LinkStatePending:
+			pending++
+			// §5: у недоставленной ссылки URI нет и быть не может — она бы не
+			// работала, а customer счёл бы её рабочей.
+			if link.URI != "" {
+				t.Errorf("PENDING-ссылка %s отдана с URI", link.Kind)
+			}
+		default:
+			t.Errorf("ссылка %s в состоянии %s", link.Kind, link.Status.State)
+		}
+	}
+	// На NL-1 два access (FREEDOM и BRIDGE, где она входная), на DE-1 один.
+	if ready != 1 || pending != 2 {
+		t.Errorf("READY %d, PENDING %d; ожидалось 1 и 2", ready, pending)
+	}
+
+	// §16: недоступность ноды не трогает desired state. Иначе повторная попытка
+	// доставила бы не то, что задумано, а то, во что состояние выродилось.
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM vpn_accesses WHERE desired_state = 'PRESENT' AND retired_at IS NULL`); got != 3 {
+		t.Errorf("access в PRESENT %d, ожидалось 3", got)
+	}
+	// Работа не потеряна: операции недоступной ноды ждут следующей попытки в
+	// RETRY_WAIT, а не осели в IN_FLIGHT навсегда.
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM agent_operations
+		 WHERE node_id = 'NL-1' AND status = 'RETRY_WAIT' AND next_attempt_at > now()`); got != 2 {
+		t.Errorf("ждущих повтора операций на NL-1 %d, ожидалось 2", got)
+	}
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM agent_operations WHERE status = 'IN_FLIGHT'`); got != 0 {
+		t.Errorf("зависших IN_FLIGHT %d, ожидалось 0", got)
+	}
+
+	// Восстановившаяся нода догоняет сама, без внешнего вмешательства.
+	stack.dispatched.byNode["NL-1"] = agentApplied()
+	exec(t, stack.pool, `UPDATE agent_operations SET next_attempt_at = now() WHERE node_id = 'NL-1'`)
+	drainDispatch(t, stack.dispatch)
+
+	links, err = stack.links.Execute(context.Background(), testCustomerID)
+	if err != nil {
+		t.Fatalf("GetCustomerAccessLinks после восстановления: %v", err)
+	}
+	for _, link := range links {
+		if link.Status.State != domain.LinkStateReady {
+			t.Errorf("ссылка %s в состоянии %s, ожидалось READY", link.Kind, link.Status.State)
+		}
 	}
 }

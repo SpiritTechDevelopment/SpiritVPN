@@ -272,6 +272,72 @@ func TestUsagePullCappedWhenBatchesAtLimit(t *testing.T) {
 	}
 }
 
+// TestReconcileCountsDrift — §10: сводка изменений полного набора становится
+// тремя сериями reconcile_drift_total, и результат доезжает до вызывающего
+// нетронутым. Ненулевой removed на живой ноде — расхождение, о котором никто не
+// сообщал, и alert строится именно по нему.
+func TestReconcileCountsDrift(t *testing.T) {
+	want := nodeagent.ReconcileResult{
+		Outcome:   nodeagent.Outcome{Result: domain.AttemptSucceeded, Code: nodeagent.CodeApplied},
+		Added:     3,
+		Replaced:  2,
+		Removed:   5,
+		Unchanged: 11,
+	}
+
+	registry := New()
+	agent := wrapAgent(t, registry, &fakeAgent{reconcile: want})
+
+	got := agent.ReconcileUsers(context.Background(), endpoint(), "op-1", nil)
+	if got != want {
+		t.Errorf("результат %+v, ожидался %+v", got, want)
+	}
+
+	for _, tc := range []struct {
+		kind string
+		want float64
+	}{
+		{kind: driftAdded, want: 3},
+		{kind: driftReplaced, want: 2},
+		{kind: driftRemoved, want: 5},
+	} {
+		series := registry.reconcileDrift.WithLabelValues(testNodeID, tc.kind)
+		if got := testutil.ToFloat64(series); got != tc.want {
+			t.Errorf("drift %s %v, ожидалось %v", tc.kind, got, tc.want)
+		}
+	}
+
+	// Вызов считается и как обычный RPC: без этого reconcile был бы невидим в
+	// agent_calls_total, и по нему нельзя было бы отличить неработающий воркер
+	// от ноды без дрейфа — у обоих все три drift-серии нулевые.
+	calls := registry.agentCalls.WithLabelValues(testNodeID, methodReconcileUsers, nodeagent.CodeApplied)
+	if got := testutil.ToFloat64(calls); got != 1 {
+		t.Errorf("вызовов %v, ожидался 1", got)
+	}
+}
+
+// TestFailedReconcileCountsNoDrift — у неудавшегося набора сводка недостоверна.
+// Агент мог не применить ничего, применить часть или ответить после применения:
+// различить эти случаи backend не может. Засчитанный здесь дрейф означал бы
+// alert по расхождению, которого, возможно, не было.
+func TestFailedReconcileCountsNoDrift(t *testing.T) {
+	registry := New()
+	agent := wrapAgent(t, registry, &fakeAgent{reconcile: nodeagent.ReconcileResult{
+		Outcome: nodeagent.Outcome{Result: domain.AttemptRetryable, Code: nodeagent.CodeUnavailable},
+		Removed: 5,
+	}})
+
+	agent.ReconcileUsers(context.Background(), endpoint(), "op-1", nil)
+
+	if got := seriesCount(t, registry, "spiritvpn_reconcile_drift_total"); got != 0 {
+		t.Errorf("серий reconcile_drift_total %d, ожидалось 0", got)
+	}
+	if got := testutil.ToFloat64(registry.agentCalls.WithLabelValues(
+		testNodeID, methodReconcileUsers, nodeagent.CodeUnavailable)); got != 1 {
+		t.Errorf("вызовов %v, ожидался 1: отказ обязан считаться", got)
+	}
+}
+
 // TestAgentPassesOutcomeThrough — декоратор наблюдает, а не решает. Подмена
 // исхода здесь означала бы, что диспетчер запишет в agent_operations не то, что
 // ответил агент.

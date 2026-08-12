@@ -1,8 +1,12 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
@@ -77,6 +81,9 @@ type usageStack struct {
 	agent       *spoolAgent
 	dispatched  *scriptedAgent
 	pool        *pgxpool.Pool
+	// logs — всё, что воркеры написали за прогон. Нужен целиком:
+	// TestIntegrationNoSecretsInLogs проверяет по нему отсутствие секретов.
+	logs *syncBuffer
 }
 
 func newUsageStack(t *testing.T) usageStack {
@@ -87,13 +94,15 @@ func newUsageStack(t *testing.T) usageStack {
 	repo := New(pool)
 	agent := &spoolAgent{}
 	dispatched := &scriptedAgent{fallback: agentApplied()}
+	logs := &syncBuffer{}
 
 	return usageStack{
+		logs:     logs,
 		manifest: app.NewApplyFleetManifest(repo),
 		customer: customer,
 		materialize: app.NewMaterializeManifest(
 			repo, crypto.NewGenerator(), cipher, testWorkerOwner, time.Minute),
-		usage: app.NewPullUsage(repo, agent, crypto.NewGenerator(), testLogger(t),
+		usage: app.NewPullUsage(repo, agent, crypto.NewGenerator(), testLogger(logs),
 			testUsageOwner, time.Minute, 0),
 		dispatch:   app.NewDispatchOperations(repo, dispatched, cipher, zeroJitter{}, testDispatchOwner, time.Minute),
 		links:      app.NewGetCustomerAccessLinks(repo, cipher),
@@ -103,16 +112,33 @@ func newUsageStack(t *testing.T) usageStack {
 	}
 }
 
-// testLogger гасит вывод: воркер логирует недоступность нод и смену спула, и в
-// выводе тестов это только шум.
-func testLogger(t *testing.T) *slog.Logger {
-	t.Helper()
-	return slog.New(slog.NewTextHandler(testWriter{t}, &slog.HandlerOptions{Level: slog.LevelError + 1}))
+// testLogger уводит записи воркера в буфер вместо вывода теста: недоступность
+// нод и смена спула — штатный шум прогона.
+//
+// Уровень Debug, а не молчание, хотя читать этот буфер интересно ровно одному
+// тесту: заглушенный логгер сделал бы проверку «в логах нет секретов» вакуумной
+// — искать было бы попросту негде.
+func testLogger(sink io.Writer) *slog.Logger {
+	return slog.New(slog.NewTextHandler(sink, &slog.HandlerOptions{Level: slog.LevelDebug}))
 }
 
-type testWriter struct{ t *testing.T }
+// syncBuffer — буфер логов, переживающий воркер с несколькими горутинами.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
 
-func (w testWriter) Write(p []byte) (int, error) { return len(p), nil }
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
 
 // seedUsageCustomer заводит топологию, customer с заданной квотой и доставляет
 // доступ. Возвращает accounting_id FREEDOM-access на NL-1.
@@ -128,9 +154,20 @@ func seedUsageCustomer(t *testing.T, stack usageStack, quotaBytes uint64) string
 	drainMaterialization(t, stack.materialize)
 	drainDispatch(t, stack.dispatch)
 
+	return accountingOn(t, stack, "NL-1")
+}
+
+// accountingOn — accounting_id FREEDOM-access на указанной входной ноде.
+//
+// Отчитаться за accounting_id может только та нода, на которой он заведён: на
+// чужой это неизвестный юзер и карантин (§12, шаг 6). Поэтому тесту, трогающему
+// обе ноды, нужен идентификатор каждой.
+func accountingOn(t *testing.T, stack usageStack, nodeID string) string {
+	t.Helper()
+
 	return scalar[string](t, stack.pool,
 		`SELECT accounting_id FROM vpn_accesses
-		 WHERE entry_node_id = 'NL-1' AND kind = 'FREEDOM'`)
+		 WHERE entry_node_id = $1 AND kind = 'FREEDOM'`, nodeID)
 }
 
 // batchOf собирает batch одной ноды.
@@ -334,6 +371,71 @@ func TestIntegrationUsageThresholdFiresOnce(t *testing.T) {
 		 JOIN quota_periods p ON p.quota_period_id = u.quota_period_id
 		 WHERE u.node_id = 'NL-1' AND p.closed_at IS NULL`); !got.Equal(exhaustedAtFirst) {
 		t.Errorf("exhausted_at переставлен: было %v, стало %v", exhaustedAtFirst, got)
+	}
+}
+
+// TestIntegrationUsageQuotaIsPerNode — §12: расход принадлежит паре (нода,
+// период), а не customer, и пороги на разных нодах пересекаются независимо.
+//
+// Проверяется в обе стороны, потому что это два разных способа ошибиться. Сложи
+// счётчики нод в один — и два умеренно нагруженных access погасили бы друг друга,
+// не выбрав квоты ни на одной ноде. Возьми при блокировке access не по ноде, а по
+// customer — и исчерпание на DE-1 сняло бы доступ на NL-1, где расход нулевой.
+func TestIntegrationUsageQuotaIsPerNode(t *testing.T) {
+	stack := newUsageStack(t)
+	nlAccounting := seedUsageCustomer(t, stack, 1000)
+	deAccounting := accountingOn(t, stack, "DE-1")
+
+	// По 600 на ноду: суммарно 1200 — больше квоты, на каждой ноде — меньше.
+	now := time.Now().UTC()
+	stack.agent.set("NL-1",
+		batchOf(1, now, nodeagent.UserUsage{AccountingID: nlAccounting, UplinkBytes: 600}))
+	stack.agent.set("DE-1",
+		batchOf(1, now, nodeagent.UserUsage{AccountingID: deAccounting, UplinkBytes: 600}))
+	pullRound(t, stack.usage)
+
+	if got := nodeTotal(t, stack, "NL-1"); got != 600 {
+		t.Errorf("расход NL-1 %d, ожидалось 600", got)
+	}
+	if got := nodeTotal(t, stack, "DE-1"); got != 600 {
+		t.Errorf("расход DE-1 %d, ожидалось 600", got)
+	}
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM node_quota_usage WHERE exhausted_at IS NOT NULL`); got != 0 {
+		t.Fatalf("исчерпанных нод %d, ожидалось 0 — расход сложился между нодами", got)
+	}
+	// Три access фикстуры: FREEDOM и BRIDGE на NL-1, FREEDOM на DE-1.
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM vpn_accesses WHERE desired_state = 'PRESENT'`); got != 3 {
+		t.Errorf("доступов PRESENT %d, ожидалось 3", got)
+	}
+
+	// Добираем DE-1 до квоты. NL-1 в этом раунде молчит.
+	stack.agent.set("NL-1")
+	stack.agent.set("DE-1",
+		batchOf(2, now, nodeagent.UserUsage{AccountingID: deAccounting, UplinkBytes: 400}))
+	pullRound(t, stack.usage)
+
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM node_quota_usage WHERE node_id = 'DE-1' AND exhausted_at IS NOT NULL`); got != 1 {
+		t.Fatal("DE-1 выбрала квоту, а отметка исчерпания не поставлена")
+	}
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM node_quota_usage WHERE node_id = 'NL-1' AND exhausted_at IS NOT NULL`); got != 0 {
+		t.Errorf("NL-1 отмечена исчерпанной %d раз, ожидалось 0", got)
+	}
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM vpn_accesses WHERE entry_node_id = 'DE-1' AND desired_state = 'ABSENT'`); got != 1 {
+		t.Errorf("погашено access на DE-1 %d, ожидался 1", got)
+	}
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM vpn_accesses WHERE entry_node_id = 'NL-1' AND desired_state = 'PRESENT'`); got != 2 {
+		t.Errorf("на NL-1 осталось PRESENT %d, ожидалось 2 — квота DE-1 задела чужую ноду", got)
+	}
+
+	// Расход NL-1 переживает блокировку соседа: период у неё свой.
+	if got := nodeTotal(t, stack, "NL-1"); got != 600 {
+		t.Errorf("расход NL-1 после блокировки DE-1 %d, ожидалось 600", got)
 	}
 }
 
@@ -738,5 +840,90 @@ func TestIntegrationRetentionLateRetryReaccrues(t *testing.T) {
 	if got := nodeTotal(t, stack, "NL-1"); got != 600 {
 		t.Errorf("расход NL-1 %d, ожидалось 600: после очистки дедупа повтор обязан "+
 			"начислиться второй раз — это принятая погрешность §12, а не ошибка", got)
+	}
+}
+
+// Fault tests учёта (§18). Проверяют не начисление, а то, что остаётся после
+// внезапной смерти воркера.
+
+// crashingUsage роняет шаг между durable commit группы и подтверждением курсора
+// — в единственной точке, где «начислено» и «подтверждено» расходятся.
+//
+// Встраивание порта, а не отдельный fake: начисление, которое потом проверяется
+// на неудвоение, должно быть настоящим.
+type crashingUsage struct {
+	app.UsageRepository
+	// armed разоружается первым падением: перезапуск обязан довести до конца.
+	armed bool
+}
+
+func (r *crashingUsage) AdvanceCursor(
+	ctx context.Context,
+	nodeID domain.NodeID,
+	cursor nodeagent.UsageCursor,
+) error {
+	if r.armed {
+		r.armed = false
+		return errWorkerCrashed
+	}
+	return r.UsageRepository.AdvanceCursor(ctx, nodeID, cursor)
+}
+
+// TestIntegrationUsageCrashBeforeAckDoesNotDoubleCharge — §18: смерть воркера
+// между commit группы и подтверждением курсора не удваивает трафик.
+//
+// Это цена решения 63: подтверждать курсор раньше commit нельзя, потому что
+// потерянные байты не восстановить. Значит окно «начислено, но не подтверждено»
+// существует всегда, и агент штатно присылает такой batch повторно. Не удваивает
+// его дедуп по traffic_usage_items_processed, а не удача.
+func TestIntegrationUsageCrashBeforeAckDoesNotDoubleCharge(t *testing.T) {
+	stack := newUsageStack(t)
+	accountingID := seedUsageCustomer(t, stack, 1<<30)
+
+	crashing := &crashingUsage{UsageRepository: New(stack.pool), armed: true}
+	worker := app.NewPullUsage(crashing, stack.agent, crypto.NewGenerator(), testLogger(stack.logs),
+		testUsageOwner, time.Minute, 0)
+
+	now := time.Now().UTC()
+	stack.agent.set("NL-1",
+		batchOf(1, now, nodeagent.UserUsage{AccountingID: accountingID, UplinkBytes: 100, DownlinkBytes: 200}))
+
+	// Ноды обходятся по одной, и порядок задан updated_at: до NL-1 может первой
+	// подвернуться DE-1, у которой спул пуст и подтверждать нечего.
+	var crashErr error
+	for range testFleetNodes {
+		if _, err := worker.ProcessNext(context.Background()); err != nil {
+			crashErr = err
+			break
+		}
+	}
+	if !errors.Is(crashErr, errWorkerCrashed) {
+		t.Fatalf("ошибка шага %v, ожидалась смерть воркера", crashErr)
+	}
+
+	// Группа закоммичена своей транзакцией и падение её не отменяет: байты уже
+	// учтены. Курсор при этом остался прежним — именно так и должно выглядеть
+	// окно, которое закрывает дедуп.
+	if got := nodeTotal(t, stack, "NL-1"); got != 300 {
+		t.Fatalf("расход %d, ожидалось 300 — группа не закоммичена, и тест проверял бы не то", got)
+	}
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM node_usage_cursors WHERE node_id = 'NL-1' AND acked_sequence > 0`); got != 0 {
+		t.Fatalf("курсор подтверждён %d раз, ожидалось 0 — падение случилось не в той точке", got)
+	}
+
+	// Перезапуск. Агент не получил подтверждения и присылает тот же batch снова.
+	pullRound(t, stack.usage)
+
+	if got := nodeTotal(t, stack, "NL-1"); got != 300 {
+		t.Errorf("расход после повтора %d, ожидалось 300 — batch начислен дважды", got)
+	}
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM traffic_usage_items_processed`); got != 1 {
+		t.Errorf("строк реестра дедупа %d, ожидалась 1", got)
+	}
+	if got := scalar[int64](t, stack.pool,
+		`SELECT acked_sequence::bigint FROM node_usage_cursors WHERE node_id = 'NL-1'`); got != 1 {
+		t.Errorf("acked_sequence %d, ожидался 1: повтор обязан довести подтверждение", got)
 	}
 }
