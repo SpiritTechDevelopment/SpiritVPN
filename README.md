@@ -503,6 +503,4 @@ make test-coverage       # всё под -race с профилем покрыт�
 
 ## Документация
 
-`docs/` — исходники сайта на mkdocs-material, публикуется на GitHub Pages при
-push в `main`. Подробности схемы и работы с ней — в
-[docs/DATABASE.md](docs/DATABASE.md).
+`docs/` — документация по проекту.
