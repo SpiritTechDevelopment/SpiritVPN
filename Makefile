@@ -3,7 +3,7 @@
 .PHONY: help build test test-coverage test-unit test-integration lint clean deps \
         proto proto-lint proto-breaking proto-format sqlc sqlc-vet \
         migrate-up migrate-down migrate-version \
-        docker-build docker-up docker-down docker-logs dev dev-db dev-db-down hooks
+        docs-serve docs-serve-down dev dev-db dev-db-down dev-certs dev-certs-clean hooks
 
 # Подключение к эфемерной dev-базе из docker-compose.dev.yml. Переопределяется из
 # окружения: DATABASE_URL=... make test-integration.
@@ -103,17 +103,11 @@ clean: ## Очистить build артефакты
 
 # --- Docker / dev ---------------------------------------------------------
 
-docker-build: ## Собрать Docker образы
-	docker-compose build
+docs-serve: ## Поднять локальное превью документации на http://localhost:8081
+	docker compose up -d
 
-docker-up: ## Запустить сервисы в Docker
-	docker-compose up -d
-
-docker-down: ## Остановить сервисы
-	docker-compose down
-
-docker-logs: ## Показать логи
-	docker-compose logs -f
+docs-serve-down: ## Остановить превью документации
+	docker compose down
 
 dev-db: ## Поднять эфемерный PostgreSQL для тестов (tmpfs, порт 5433)
 	docker compose -f docker-compose.dev.yml up -d --wait
