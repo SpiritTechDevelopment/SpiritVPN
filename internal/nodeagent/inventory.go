@@ -10,7 +10,7 @@ import (
 	nodeagentv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/nodeagent/v1"
 )
 
-// ActualUser — юзер, наблюдённый агентом непосредственно в Xray (§16).
+// ActualUser — юзер, наблюдённый агентом непосредственно в Xray (§10).
 //
 // BackendManaged отделяет наш namespace от чужого. Агент не удаляет
 // инфраструктурных и неизвестных юзеров даже при complete-наборе, поэтому и
@@ -31,7 +31,7 @@ type Inventory struct {
 	ObservedAt time.Time
 
 	// Complete — список не усечён. Пока он false, набор нельзя считать
-	// авторитетным ни в одну сторону (§16).
+	// авторитетным ни в одну сторону (§10).
 	Complete bool
 }
 
@@ -51,7 +51,7 @@ type InventoryOutcome struct {
 // отдельный и решается уже в домене.
 func (o InventoryOutcome) OK() bool { return o.Inventory != nil }
 
-// ObserveUsers запрашивает фактический инвентарь ноды (§16).
+// ObserveUsers запрашивает фактический инвентарь ноды (§10).
 //
 // Это тот же GetNodeState, что и у учёта, только с include_users. Отдельного RPC
 // под инвентарь в контракте нет, и последствий у совмещения два.

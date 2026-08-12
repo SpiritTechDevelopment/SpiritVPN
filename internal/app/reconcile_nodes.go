@@ -61,7 +61,7 @@ type ReconcileNodes struct {
 	MinInterval time.Duration
 
 	// MaxObservationAge — предел давности наблюдения Xray. Инвентарь старше него
-	// описывает уже неизвестно что, и сверяться с ним нельзя (§16).
+	// описывает уже неизвестно что, и сверяться с ним нельзя (§10).
 	MaxObservationAge time.Duration
 }
 
@@ -115,7 +115,7 @@ func (uc *ReconcileNodes) ProcessNext(ctx context.Context) (progressed bool, err
 
 	// Полный набор — дорогой вызов: до 2000 юзеров, каждого агент применяет к Xray
 	// по одному. Ноде с потерянным состоянием он нужен целиком, всем остальным
-	// достаточно убедиться, что расхождения нет (§16). До этого среза набор летел
+	// достаточно убедиться, что расхождения нет (§10). До этого среза набор летел
 	// на каждую ноду каждый интервал, и дрейф чинился вслепую.
 	if !node.NeedsBootstrap && !uc.drifted(ctx, *node, users) {
 		return true, nil
@@ -138,7 +138,7 @@ func (uc *ReconcileNodes) ProcessNext(ctx context.Context) (progressed bool, err
 	return true, uc.accept(ctx, *node, result)
 }
 
-// drifted сверяет ноду с её фактическим инвентарём (§16).
+// drifted сверяет ноду с её фактическим инвентарём (§10).
 //
 // false означает «полный набор сейчас не нужен», а не «нода в порядке»: сюда же
 // попадают недоступный агент и непригодное наблюдение. Это осознанно. Гнать набор

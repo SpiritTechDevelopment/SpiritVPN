@@ -76,7 +76,7 @@ type ReconcileAgent interface {
 		users []nodeagent.User,
 	) nodeagent.ReconcileResult
 
-	// ObserveUsers забирает фактический инвентарь Xray (§16). Читающий вызов: он
+	// ObserveUsers забирает фактический инвентарь Xray (§10). Читающий вызов: он
 	// ничего не применяет и потому не имеет ни operation_id, ни строки в
 	// agent_operations.
 	ObserveUsers(ctx context.Context, endpoint nodeagent.Endpoint) nodeagent.InventoryOutcome

@@ -64,7 +64,7 @@ WITH claimed AS (
         LIMIT 1
     )
     -- needs_bootstrap возвращается ДО сброса: по нему шаг выбирает между полным
-    -- набором и дешёвой сверкой инвентаря (§16). Флаг снимает не захват, а
+    -- набором и дешёвой сверкой инвентаря (§10). Флаг снимает не захват, а
     -- принятый результат.
     RETURNING node_id, agent_config, public_config, desired_revision, needs_bootstrap
 )

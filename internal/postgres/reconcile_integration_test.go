@@ -320,7 +320,7 @@ func TestIntegrationReconcileLeaseIsExclusive(t *testing.T) {
 	}
 }
 
-// Сверка с фактическим инвентарём Xray (§16). Смысл здесь не в SQL, а в стыке:
+// Сверка с фактическим инвентарём Xray (§10). Смысл здесь не в SQL, а в стыке:
 // desired-набор читается из БД и расшифровывается, а сравнивается с тем, что
 // «показала» нода. Юнит-тест сверки этот стык проверить не может — он оперирует
 // уже готовыми наборами.
@@ -411,7 +411,7 @@ func observedFrom(users []nodeagent.User) nodeagent.InventoryOutcome {
 	}
 }
 
-// TestIntegrationReconcileSkipsFullSetWhenInventoryMatches — §16: нода, чей
+// TestIntegrationReconcileSkipsFullSetWhenInventoryMatches — §10: нода, чей
 // инвентарь совпал с desired state, полного набора не получает.
 //
 // Это главный эффект среза: до него набор летел на каждую ноду каждый интервал.
@@ -444,7 +444,7 @@ func TestIntegrationReconcileSkipsFullSetWhenInventoryMatches(t *testing.T) {
 	}
 }
 
-// TestIntegrationReconcileSendsFullSetOnInventoryDrift — §16: расхождение с
+// TestIntegrationReconcileSendsFullSetOnInventoryDrift — §10: расхождение с
 // фактическим состоянием чинится полным набором (решение 86).
 func TestIntegrationReconcileSendsFullSetOnInventoryDrift(t *testing.T) {
 	stack := newUsageStack(t)
@@ -473,7 +473,7 @@ func TestIntegrationReconcileSendsFullSetOnInventoryDrift(t *testing.T) {
 	}
 }
 
-// TestIntegrationReconcileIgnoresForeignNamespace — §16: инфраструктурные юзеры
+// TestIntegrationReconcileIgnoresForeignNamespace — §10: инфраструктурные юзеры
 // на ноде расхождением не являются.
 //
 // Агент не удаляет их даже при complete-наборе, поэтому реагировать на них

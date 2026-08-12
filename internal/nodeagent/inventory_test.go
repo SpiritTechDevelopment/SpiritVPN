@@ -10,7 +10,7 @@ import (
 	nodeagentv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/nodeagent/v1"
 )
 
-// Наблюдение фактического инвентаря Xray (§16).
+// Наблюдение фактического инвентаря Xray (§10).
 
 const observedUUID = "11111111-1111-4111-8111-111111111111"
 
@@ -114,7 +114,7 @@ func TestInventoryFromWithoutObservation(t *testing.T) {
 	}
 }
 
-// TestObserveUsersRequestsInventory — §16: include_users обязан уехать взведённым,
+// TestObserveUsersRequestsInventory — §10: include_users обязан уехать взведённым,
 // иначе агент вернёт пустой список, и сверка не найдёт расхождений никогда.
 //
 // Заодно проверяется, что чужой курсор не подтверждается: спул принадлежит

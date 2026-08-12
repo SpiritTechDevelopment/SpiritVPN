@@ -362,7 +362,7 @@ func TestAgentPassesOutcomeThrough(t *testing.T) {
 	}
 }
 
-// TestInventoryObservationsClassifySnapshot — §16: пригодность снимка считается
+// TestInventoryObservationsClassifySnapshot — §10: пригодность снимка считается
 // отдельно от успеха вызова.
 //
 // Агент, который исправно отвечает усечённым снимком, из сверки выпадает молча:
