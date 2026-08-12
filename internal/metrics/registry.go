@@ -54,6 +54,13 @@ const (
 	driftRemoved  = "removed"
 )
 
+// Пригодность снимка Xray. Метка result у inventory_observations_total.
+const (
+	resultComplete    = "complete"
+	resultIncomplete  = "incomplete"
+	resultNotObserved = "not_observed"
+)
+
 // Имена RPC агента для метки method. Совпадают с именами методов в
 // NodeAgentService, чтобы метрика и контракт агента читались как одно.
 const (
@@ -61,6 +68,11 @@ const (
 	methodEnsureUserAbsent  = "EnsureUserAbsent"
 	methodGetNodeState      = "GetNodeState"
 	methodReconcileUsers    = "ReconcileUsers"
+	// methodObserveUsers — тот же GetNodeState, но с include_users. Отдельная
+	// метка, потому что это другой по смыслу и по цене вызов: инвентарь ноды
+	// заметно крупнее пачки дельт, и мешать их латентности в одну серию значило
+	// бы не видеть ни одной.
+	methodObserveUsers = "ObserveUsers"
 )
 
 // Полные наборы значений enum-колонок, которыми заполняются серии со счётчиком
@@ -99,6 +111,7 @@ type Registry struct {
 	credentialOpenErrors prometheus.Counter
 	usageDedupPruned     prometheus.Counter
 	reconcileDrift       *prometheus.CounterVec
+	inventoryObserved    *prometheus.CounterVec
 
 	// Снимок БД.
 	operations           *prometheus.GaugeVec
@@ -222,6 +235,16 @@ func New() *Registry {
 		Help:      "User changes an authoritative reconcile had to make, by node and kind.",
 	}, []string{labelNode, labelKind})
 
+	// Пригодность инвентаря считается отдельно от успеха вызова: агент, который
+	// исправно отвечает усечённым снимком, из сверки выпадает молча. Такая нода
+	// не показывает расхождений просто потому, что сравнивать не с чем, и без
+	// этой серии выглядела бы благополучнее исправной (§16).
+	r.inventoryObserved = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: namespace,
+		Name:      "inventory_observations_total",
+		Help:      "Xray inventory observations, by node and usability of the snapshot.",
+	}, []string{labelNode, labelResult})
+
 	r.operations = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "agent_operations",
@@ -313,7 +336,7 @@ func New() *Registry {
 
 		r.agentCallDuration, r.agentCalls, r.agentLastSuccess, r.agentAlerts,
 		r.usagePullCapped, r.nodeXrayReachable, r.nodeXrayUptime, r.nodeNeedsBootstrap,
-		r.credentialOpenErrors, r.usageDedupPruned, r.reconcileDrift,
+		r.credentialOpenErrors, r.usageDedupPruned, r.reconcileDrift, r.inventoryObserved,
 
 		r.operations, r.operationOldestAge, r.accesses,
 		r.cursorAge, r.cursorAcked, r.cursorLeaseExpired, r.quarantine,

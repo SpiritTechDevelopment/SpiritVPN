@@ -48,6 +48,7 @@ type ReconcileNodes struct {
 	Agent  ReconcileAgent
 	Sealer CredentialSealer
 	IDs    IDs
+	Clock  Clock
 	Logger *slog.Logger
 
 	// Owner попадает в reconcile_lease_owner: по нему видно, чей lease протух.
@@ -58,6 +59,10 @@ type ReconcileNodes struct {
 	// MinInterval — как часто нода reconcile-ится по таймеру. Он же потолок жизни
 	// расхождения, о котором никто не сообщил.
 	MinInterval time.Duration
+
+	// MaxObservationAge — предел давности наблюдения Xray. Инвентарь старше него
+	// описывает уже неизвестно что, и сверяться с ним нельзя (§16).
+	MaxObservationAge time.Duration
 }
 
 // NewReconcileNodes собирает воркер из портов.
@@ -66,19 +71,22 @@ func NewReconcileNodes(
 	agent ReconcileAgent,
 	sealer CredentialSealer,
 	ids IDs,
+	clock Clock,
 	logger *slog.Logger,
 	owner string,
-	leaseTTL, minInterval time.Duration,
+	leaseTTL, minInterval, maxObservationAge time.Duration,
 ) *ReconcileNodes {
 	return &ReconcileNodes{
-		Repo:        repo,
-		Agent:       agent,
-		Sealer:      sealer,
-		IDs:         ids,
-		Logger:      logger,
-		Owner:       owner,
-		LeaseTTL:    leaseTTL,
-		MinInterval: minInterval,
+		Repo:              repo,
+		Agent:             agent,
+		Sealer:            sealer,
+		IDs:               ids,
+		Clock:             clock,
+		Logger:            logger,
+		Owner:             owner,
+		LeaseTTL:          leaseTTL,
+		MinInterval:       minInterval,
+		MaxObservationAge: maxObservationAge,
 	}
 }
 
@@ -105,6 +113,14 @@ func (uc *ReconcileNodes) ProcessNext(ctx context.Context) (progressed bool, err
 		return true, nil
 	}
 
+	// Полный набор — дорогой вызов: до 2000 юзеров, каждого агент применяет к Xray
+	// по одному. Ноде с потерянным состоянием он нужен целиком, всем остальным
+	// достаточно убедиться, что расхождения нет (§16). До этого среза набор летел
+	// на каждую ноду каждый интервал, и дрейф чинился вслепую.
+	if !node.NeedsBootstrap && !uc.drifted(ctx, *node, users) {
+		return true, nil
+	}
+
 	operationID, err := uc.IDs.NewOperationID()
 	if err != nil {
 		return false, fmt.Errorf("идентификатор reconcile: %w", err)
@@ -120,6 +136,47 @@ func (uc *ReconcileNodes) ProcessNext(ctx context.Context) (progressed bool, err
 	}
 
 	return true, uc.accept(ctx, *node, result)
+}
+
+// drifted сверяет ноду с её фактическим инвентарём (§16).
+//
+// false означает «полный набор сейчас не нужен», а не «нода в порядке»: сюда же
+// попадают недоступный агент и непригодное наблюдение. Это осознанно. Гнать набор
+// на ноду, которая только что не ответила, бессмысленно, а гнать его по
+// непригодному наблюдению запрещено (решение 88). В обоих случаях ничего не
+// потеряно: повод для reconcile никуда не делся, и следующий интервал повторит
+// попытку.
+func (uc *ReconcileNodes) drifted(ctx context.Context, node ClaimedReconcileNode, users []nodeagent.User) bool {
+	outcome := uc.Agent.ObserveUsers(ctx, node.Endpoint)
+	if !outcome.OK() {
+		uc.Logger.LogAttrs(ctx, slog.LevelWarn, "инвентарь ноды не получен",
+			slog.String("node_id", string(node.NodeID)),
+			slog.String("code", outcome.Code),
+			slog.String("message", outcome.Message))
+		return false
+	}
+
+	verdict := CompareInventory(users, *outcome.Inventory, uc.Clock.Now(), uc.MaxObservationAge)
+	if !verdict.Usable {
+		// Уровень info, а не warn: усечённый или ещё не сделанный снимок — штатное
+		// состояние агента, который только что поднялся. Тревожит не сам факт, а
+		// его повторяемость, и это видно по метрике, а не по одной записи.
+		uc.Logger.LogAttrs(ctx, slog.LevelInfo, "инвентарь ноды непригоден для сверки",
+			slog.String("node_id", string(node.NodeID)),
+			slog.String("reason", verdict.Reason))
+		return false
+	}
+
+	if !verdict.Drifted() {
+		return false
+	}
+
+	uc.Logger.LogAttrs(ctx, slog.LevelWarn, "нода разошлась с desired state",
+		slog.String("node_id", string(node.NodeID)),
+		slog.Int("missing", verdict.Drift[DriftMissing]),
+		slog.Int("extra", verdict.Drift[DriftExtra]),
+		slog.Int("mismatch", verdict.Drift[DriftMismatch]))
+	return true
 }
 
 // materialize расшифровывает набор. ok=false означает, что отправлять нельзя.

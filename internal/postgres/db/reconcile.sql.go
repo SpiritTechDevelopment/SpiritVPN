@@ -63,9 +63,12 @@ WITH claimed AS (
         FOR UPDATE SKIP LOCKED
         LIMIT 1
     )
-    RETURNING node_id, agent_config, public_config, desired_revision
+    -- needs_bootstrap возвращается ДО сброса: по нему шаг выбирает между полным
+    -- набором и дешёвой сверкой инвентаря (§16). Флаг снимает не захват, а
+    -- принятый результат.
+    RETURNING node_id, agent_config, public_config, desired_revision, needs_bootstrap
 )
-SELECT node_id, agent_config, public_config, desired_revision FROM claimed
+SELECT node_id, agent_config, public_config, desired_revision, needs_bootstrap FROM claimed
 `
 
 type ClaimNodeForReconcileParams struct {
@@ -79,6 +82,7 @@ type ClaimNodeForReconcileRow struct {
 	AgentConfig     []byte
 	PublicConfig    []byte
 	DesiredRevision int64
+	NeedsBootstrap  bool
 }
 
 // Authoritative reconcile: приведение ноды к точному desired state (§10).
@@ -108,6 +112,7 @@ func (q *Queries) ClaimNodeForReconcile(ctx context.Context, arg ClaimNodeForRec
 		&i.AgentConfig,
 		&i.PublicConfig,
 		&i.DesiredRevision,
+		&i.NeedsBootstrap,
 	)
 	return i, err
 }

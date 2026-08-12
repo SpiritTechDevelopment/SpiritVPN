@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
@@ -29,6 +31,37 @@ import (
 type reconcileSpy struct {
 	users  []nodeagent.User
 	result nodeagent.ReconcileResult
+}
+
+// observedSecret — открытый client_uuid, «наблюдённый» на ноде.
+//
+// Отдельный от набора секрет, и в этом весь смысл: до сверки инвентаря открытые
+// credential попадали в backend только из своей же БД, а теперь приезжают ещё и
+// в ОТВЕТЕ агента (§16). Это новая поверхность утечки, и она обязана проверяться
+// тем же прогоном.
+var observedSecret = uuid.MustParse("99999999-9999-4999-8999-999999999999")
+
+// ObserveUsers отдаёт инвентарь, заведомо разошедшийся с desired state: юзер на
+// ноде чужой, значит сверка найдёт расхождение и запустит полный набор.
+func (s *reconcileSpy) ObserveUsers(
+	_ context.Context,
+	_ nodeagent.Endpoint,
+) nodeagent.InventoryOutcome {
+	return nodeagent.InventoryOutcome{
+		Inventory: &nodeagent.Inventory{
+			Users: []nodeagent.ActualUser{{
+				User: nodeagent.User{
+					AccountingID: "u.из-инвентаря",
+					ClientUUID:   crypto.NewClientUUID(observedSecret),
+					Flow:         domain.FlowXTLSRprxVision,
+				},
+				BackendManaged: true,
+			}},
+			ObservedAt: time.Now().UTC(),
+			Complete:   true,
+		},
+		Code: nodeagent.CodeApplied,
+	}
 }
 
 func (s *reconcileSpy) ReconcileUsers(
@@ -55,8 +88,9 @@ func TestIntegrationNoSecretsInLogs(t *testing.T) {
 		Unchanged: 1,
 	}}
 	reconcile := app.NewReconcileNodes(
-		New(stack.pool), spy, testCipher(t), crypto.NewGenerator(), testLogger(stack.logs),
-		testReconcileOwner, testReconcileTTL, testReconcileInterval)
+		New(stack.pool), spy, testCipher(t), crypto.NewGenerator(), app.SystemClock{},
+		testLogger(stack.logs), testReconcileOwner, testReconcileTTL, testReconcileInterval,
+		testMaxObservationAge)
 
 	// Успешный учёт: дельты, начисление, пересечение квоты и гашение доступа.
 	now := time.Now().UTC()
@@ -78,8 +112,8 @@ func TestIntegrationNoSecretsInLogs(t *testing.T) {
 	pullRound(t, stack.usage)
 	stack.agent.failWith = ""
 
-	// Полный набор ноды: единственное место, где открытый credential собирается
-	// пачкой, — и потому самое опасное для логов.
+	// Сверка инвентаря и полный набор следом: первая приносит открытые credential
+	// снаружи, второй собирает их пачкой из БД. Обе поверхности за один шаг.
 	if progressed, err := reconcile.ProcessNext(context.Background()); err != nil {
 		t.Fatalf("ReconcileNodes.ProcessNext: %v", err)
 	} else if !progressed {
@@ -108,6 +142,12 @@ func TestIntegrationNoSecretsInLogs(t *testing.T) {
 		if strings.Contains(logs, secret) {
 			t.Errorf("открытый client_uuid юзера %s попал в логи", user.AccountingID)
 		}
+	}
+
+	// Credential, пришедший от агента, не логируется тоже: он такой же секрет, а
+	// приходит из менее доверенного источника, чем собственная БД.
+	if strings.Contains(logs, observedSecret.String()) {
+		t.Error("открытый client_uuid из инвентаря ноды попал в логи")
 	}
 
 	// Готовая ссылка не логируется целиком: в ней тот же credential плюс

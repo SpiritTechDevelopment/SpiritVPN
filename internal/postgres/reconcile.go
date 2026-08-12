@@ -72,6 +72,7 @@ func (r *Repository) ClaimNodeForReconcile(
 		Endpoint:        nodeAgentFrom(row.NodeID, row.AgentConfig),
 		Flow:            nodePublicFrom(row.PublicConfig).Flow,
 		DesiredRevision: row.DesiredRevision,
+		NeedsBootstrap:  row.NeedsBootstrap,
 		Users:           make([]app.ReconcileUser, 0, len(users)),
 	}
 

@@ -117,6 +117,45 @@ func (a *observedAgent) ReconcileUsers(
 	return result
 }
 
+// ObserveUsers — сверка фактического инвентаря Xray (§16).
+//
+// Наблюдения считаются по исходу, а не только по успеху вызова: «агент ответил,
+// но снимок усечён» и «агент ответил полным снимком» — разные состояния с
+// одинаковым Code, и различает их только reason. Нода, чей инвентарь никогда не
+// бывает пригодным, иначе выглядела бы благополучной: расхождений у неё не
+// находят просто потому, что не с чем сравнивать.
+func (a *observedAgent) ObserveUsers(
+	ctx context.Context,
+	endpoint nodeagent.Endpoint,
+) nodeagent.InventoryOutcome {
+	started := a.now()
+	outcome := a.inner.ObserveUsers(ctx, endpoint)
+
+	a.observe(endpoint.NodeID, methodObserveUsers, started, outcome.Code, outcome.Alert, outcome.OK())
+
+	if outcome.OK() {
+		a.reg.inventoryObserved.WithLabelValues(endpoint.NodeID, snapshotResult(*outcome.Inventory)).Inc()
+	}
+	return outcome
+}
+
+// snapshotResult классифицирует снимок по тому, годится ли он для сверки.
+//
+// Свежесть здесь не проверяется намеренно: порог и часы принадлежат use case, а
+// декоратор наблюдает, а не решает. Протухший снимок попадёт сюда как complete —
+// зато нода, чей снимок НИКОГДА не бывает полным, видна сразу, а это и есть та
+// тихая поломка, ради которой серия заведена.
+func snapshotResult(inventory nodeagent.Inventory) string {
+	switch {
+	case !inventory.Complete:
+		return resultIncomplete
+	case inventory.ObservedAt.IsZero():
+		return resultNotObserved
+	default:
+		return resultComplete
+	}
+}
+
 // observe записывает то, что есть у любого вызова: длительность, исход и —
 // при успехе — момент последнего успеха.
 func (a *observedAgent) observe(

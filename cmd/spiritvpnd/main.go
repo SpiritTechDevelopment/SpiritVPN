@@ -140,8 +140,8 @@ func run() error {
 	usageUC := app.NewPullUsage(
 		repository, agent, crypto.NewGenerator(), logger, owner, usageLeaseTTL, usagePullInterval)
 	reconcileUC := app.NewReconcileNodes(
-		repository, agent, sealer, crypto.NewGenerator(), logger,
-		owner, reconcileLeaseTTL, reconcileInterval)
+		repository, agent, sealer, crypto.NewGenerator(), app.SystemClock{}, logger,
+		owner, reconcileLeaseTTL, reconcileInterval, maxObservationAge)
 	pruneUC := app.NewPruneUsageDedup(
 		registry.WrapUsageRetention(repository), usageDedupRetention, usageDedupBatchSize)
 	statsUC := registry.StatsWorker(repository)

@@ -75,6 +75,11 @@ type ReconcileAgent interface {
 		operationID string,
 		users []nodeagent.User,
 	) nodeagent.ReconcileResult
+
+	// ObserveUsers забирает фактический инвентарь Xray (§16). Читающий вызов: он
+	// ничего не применяет и потому не имеет ни operation_id, ни строки в
+	// agent_operations.
+	ObserveUsers(ctx context.Context, endpoint nodeagent.Endpoint) nodeagent.InventoryOutcome
 }
 
 // Jitter — источник случайности для backoff (§9).

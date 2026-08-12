@@ -30,6 +30,11 @@ type fakeAgent struct {
 	absent    nodeagent.Outcome
 	pull      nodeagent.PullOutcome
 	reconcile nodeagent.ReconcileResult
+	observe   nodeagent.InventoryOutcome
+}
+
+func (f *fakeAgent) ObserveUsers(context.Context, nodeagent.Endpoint) nodeagent.InventoryOutcome {
+	return f.observe
 }
 
 func (f *fakeAgent) ReconcileUsers(
@@ -354,5 +359,81 @@ func TestAgentPassesOutcomeThrough(t *testing.T) {
 	got := agent.EnsureUserPresent(context.Background(), endpoint(), "op-1", nodeagent.User{})
 	if got != want {
 		t.Errorf("исход %+v, ожидался %+v", got, want)
+	}
+}
+
+// TestInventoryObservationsClassifySnapshot — §16: пригодность снимка считается
+// отдельно от успеха вызова.
+//
+// Агент, который исправно отвечает усечённым снимком, из сверки выпадает молча:
+// расхождений у него не находят просто потому, что сравнивать не с чем. По
+// agent_calls_total такая нода неотличима от здоровой — там у обеих успех.
+func TestInventoryObservationsClassifySnapshot(t *testing.T) {
+	observedAt := sampleTime.Add(-time.Minute)
+
+	for _, tc := range []struct {
+		name      string
+		inventory nodeagent.Inventory
+		want      string
+	}{
+		{
+			name:      "полный свежий снимок",
+			inventory: nodeagent.Inventory{Complete: true, ObservedAt: observedAt},
+			want:      resultComplete,
+		},
+		{
+			name:      "снимок усечён",
+			inventory: nodeagent.Inventory{ObservedAt: observedAt},
+			want:      resultIncomplete,
+		},
+		{
+			name:      "наблюдения ещё не было",
+			inventory: nodeagent.Inventory{Complete: true},
+			want:      resultNotObserved,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			registry := New()
+			agent := wrapAgent(t, registry, &fakeAgent{observe: nodeagent.InventoryOutcome{
+				Inventory: &tc.inventory,
+				Code:      nodeagent.CodeApplied,
+			}})
+
+			agent.ObserveUsers(context.Background(), endpoint())
+
+			if got := testutil.ToFloat64(
+				registry.inventoryObserved.WithLabelValues(testNodeID, tc.want)); got != 1 {
+				t.Errorf("наблюдений %s: %v, ожидалось 1", tc.want, got)
+			}
+			if got := seriesCount(t, registry, "spiritvpn_inventory_observations_total"); got != 1 {
+				t.Errorf("серий наблюдений %d, ожидалась 1: снимок отнесён к нескольким исходам", got)
+			}
+			// Вызов считается и как обычный RPC: без этого нельзя отличить
+			// неработающую сверку от ноды, которую просто не успели опросить.
+			if got := testutil.ToFloat64(registry.agentCalls.WithLabelValues(
+				testNodeID, methodObserveUsers, nodeagent.CodeApplied)); got != 1 {
+				t.Errorf("вызовов %v, ожидался 1", got)
+			}
+		})
+	}
+}
+
+// TestFailedObservationCountsNoSnapshot — у недоступной ноды снимка нет, и
+// классифицировать нечего. Любая метка здесь означала бы наблюдение, которого не
+// было, — а по этой серии видно как раз ноды, чей снимок никогда не годится.
+func TestFailedObservationCountsNoSnapshot(t *testing.T) {
+	registry := New()
+	agent := wrapAgent(t, registry, &fakeAgent{observe: nodeagent.InventoryOutcome{
+		Code: nodeagent.CodeUnavailable,
+	}})
+
+	agent.ObserveUsers(context.Background(), endpoint())
+
+	if got := seriesCount(t, registry, "spiritvpn_inventory_observations_total"); got != 0 {
+		t.Errorf("серий наблюдений %d, ожидалось 0", got)
+	}
+	if got := testutil.ToFloat64(registry.agentCalls.WithLabelValues(
+		testNodeID, methodObserveUsers, nodeagent.CodeUnavailable)); got != 1 {
+		t.Errorf("вызовов %v, ожидался 1: отказ обязан считаться", got)
 	}
 }

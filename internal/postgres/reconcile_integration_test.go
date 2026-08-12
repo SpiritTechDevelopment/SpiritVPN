@@ -10,6 +10,8 @@ import (
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 )
 
 // Интеграционные тесты authoritative reconcile (§10). Смысл слоя в SQL: предикат
@@ -22,6 +24,10 @@ const (
 	// сделало бы предикат захвата неотличимым от «берём что попало».
 	testReconcileInterval = time.Hour
 	testReconcileTTL      = time.Minute
+	// testMaxObservationAge — предел давности снимка Xray. Заведомо длиннее
+	// прогона: тест, где наблюдение протухает само по себе, проверял бы часы, а
+	// не сверку.
+	testMaxObservationAge = time.Hour
 )
 
 // claimForReconcile берёт ноду напрямую через репозиторий.
@@ -311,5 +317,187 @@ func TestIntegrationReconcileLeaseIsExclusive(t *testing.T) {
 	}
 	if again.NodeID != "NL-1" {
 		t.Errorf("после снятия lease досталась нода %s, ожидалась NL-1", again.NodeID)
+	}
+}
+
+// Сверка с фактическим инвентарём Xray (§16). Смысл здесь не в SQL, а в стыке:
+// desired-набор читается из БД и расшифровывается, а сравнивается с тем, что
+// «показала» нода. Юнит-тест сверки этот стык проверить не может — он оперирует
+// уже готовыми наборами.
+
+// inventoryAgent отдаёт заготовленный инвентарь и запоминает полные наборы.
+type inventoryAgent struct {
+	observed     nodeagent.InventoryOutcome
+	observeCalls int
+
+	users []nodeagent.User
+	calls int
+}
+
+func (a *inventoryAgent) ObserveUsers(
+	_ context.Context,
+	_ nodeagent.Endpoint,
+) nodeagent.InventoryOutcome {
+	a.observeCalls++
+	return a.observed
+}
+
+func (a *inventoryAgent) ReconcileUsers(
+	_ context.Context,
+	_ nodeagent.Endpoint,
+	_ string,
+	users []nodeagent.User,
+) nodeagent.ReconcileResult {
+	a.calls++
+	a.users = users
+	return nodeagent.ReconcileResult{
+		Outcome:   nodeagent.Outcome{Result: domain.AttemptSucceeded, Code: nodeagent.CodeApplied},
+		Unchanged: uint32(len(users)),
+	}
+}
+
+// newInventoryStack собирает reconcile поверх настоящего репозитория.
+func newInventoryStack(t *testing.T, stack usageStack) (*app.ReconcileNodes, *inventoryAgent) {
+	t.Helper()
+
+	agent := &inventoryAgent{}
+	uc := app.NewReconcileNodes(
+		New(stack.pool), agent, testCipher(t), crypto.NewGenerator(), app.SystemClock{},
+		testLogger(stack.logs), testReconcileOwner, testReconcileTTL, testReconcileInterval,
+		testMaxObservationAge)
+
+	return uc, agent
+}
+
+// bootstrapNode готовит ровно одну ноду к захвату и прогоняет по ней полный
+// набор. Что уехало агенту, остаётся в inventoryAgent.users.
+//
+// Через bootstrap, а не в обход: так набор для сравнения получен тем же путём,
+// каким его собирает бой, и тест не изобретает собственного представления о
+// desired state. Остальные ноды отмечаются сверенными, поэтому захват
+// детерминирован — интервал в тестах длиннее прогона.
+func bootstrapNode(t *testing.T, stack usageStack, uc *app.ReconcileNodes, nodeID string) {
+	t.Helper()
+
+	settleReconcile(t, stack)
+	exec(t, stack.pool, `UPDATE vpn_nodes SET needs_bootstrap = true WHERE node_id = $1`, nodeID)
+
+	if progressed, err := uc.ProcessNext(context.Background()); err != nil {
+		t.Fatalf("bootstrap ноды %s: %v", nodeID, err)
+	} else if !progressed {
+		t.Fatalf("нода %s не взята на bootstrap", nodeID)
+	}
+
+	// Агент отчитался, что состояние больше не потеряно, — в бою это делает
+	// usage-воркер по ответу GetNodeState.
+	exec(t, stack.pool, `UPDATE vpn_nodes SET needs_bootstrap = false WHERE node_id = $1`, nodeID)
+	exec(t, stack.pool, `UPDATE vpn_nodes SET reconcile_attempted_at = NULL WHERE node_id = $1`, nodeID)
+}
+
+// observedFrom собирает пригодный снимок из юзеров, которые реально уехали на ноду.
+func observedFrom(users []nodeagent.User) nodeagent.InventoryOutcome {
+	actual := make([]nodeagent.ActualUser, 0, len(users))
+	for _, user := range users {
+		actual = append(actual, nodeagent.ActualUser{User: user, BackendManaged: true})
+	}
+
+	return nodeagent.InventoryOutcome{
+		Inventory: &nodeagent.Inventory{
+			Users:      actual,
+			ObservedAt: time.Now().UTC(),
+			Complete:   true,
+		},
+		Code: nodeagent.CodeApplied,
+	}
+}
+
+// TestIntegrationReconcileSkipsFullSetWhenInventoryMatches — §16: нода, чей
+// инвентарь совпал с desired state, полного набора не получает.
+//
+// Это главный эффект среза: до него набор летел на каждую ноду каждый интервал.
+func TestIntegrationReconcileSkipsFullSetWhenInventoryMatches(t *testing.T) {
+	stack := newUsageStack(t)
+	seedUsageCustomer(t, stack, 1<<30)
+	uc, agent := newInventoryStack(t, stack)
+
+	bootstrapNode(t, stack, uc, "NL-1")
+	if agent.calls != 1 {
+		t.Fatalf("подготовка: полных наборов %d, ожидался 1", agent.calls)
+	}
+	// На NL-1 два access: FREEDOM и BRIDGE, где она входная (§4).
+	if got := len(agent.users); got != 2 {
+		t.Fatalf("подготовка: в наборе %d юзеров, ожидалось 2", got)
+	}
+	agent.observed = observedFrom(agent.users)
+
+	if progressed, err := uc.ProcessNext(context.Background()); err != nil {
+		t.Fatalf("ProcessNext: %v", err)
+	} else if !progressed {
+		t.Fatal("нода не взята на сверку")
+	}
+
+	if agent.observeCalls != 1 {
+		t.Errorf("наблюдений инвентаря %d, ожидалось 1", agent.observeCalls)
+	}
+	if agent.calls != 1 {
+		t.Errorf("полных наборов %d, ожидался 1 — сверка не удержала лишний набор", agent.calls)
+	}
+}
+
+// TestIntegrationReconcileSendsFullSetOnInventoryDrift — §16: расхождение с
+// фактическим состоянием чинится полным набором (решение 86).
+func TestIntegrationReconcileSendsFullSetOnInventoryDrift(t *testing.T) {
+	stack := newUsageStack(t)
+	seedUsageCustomer(t, stack, 1<<30)
+	uc, agent := newInventoryStack(t, stack)
+
+	bootstrapNode(t, stack, uc, "NL-1")
+	// Один из двух юзеров с ноды пропал.
+	agent.observed = observedFrom(agent.users[:1])
+	sent := agent.users
+
+	if _, err := uc.ProcessNext(context.Background()); err != nil {
+		t.Fatalf("ProcessNext: %v", err)
+	}
+
+	if agent.calls != 2 {
+		t.Fatalf("полных наборов %d, ожидалось 2: расхождение не починено", agent.calls)
+	}
+	// Чинит по desired state из БД, а не по инвентарю: уезжают оба юзера.
+	if got := len(agent.users); got != len(sent) {
+		t.Errorf("в наборе %d юзеров, ожидалось %d — набор собран из инвентаря", got, len(sent))
+	}
+	if got := scalar[int64](t, stack.pool,
+		`SELECT count(*) FROM vpn_nodes WHERE node_id = 'NL-1' AND reconciled_revision IS NOT NULL`); got != 1 {
+		t.Error("результат reconcile не принят")
+	}
+}
+
+// TestIntegrationReconcileIgnoresForeignNamespace — §16: инфраструктурные юзеры
+// на ноде расхождением не являются.
+//
+// Агент не удаляет их даже при complete-наборе, поэтому реагировать на них
+// значило бы гонять полный набор каждый интервал до скончания века — то самое
+// вечное «расхождение», которое ничем не чинится.
+func TestIntegrationReconcileIgnoresForeignNamespace(t *testing.T) {
+	stack := newUsageStack(t)
+	seedUsageCustomer(t, stack, 1<<30)
+	uc, agent := newInventoryStack(t, stack)
+
+	bootstrapNode(t, stack, uc, "NL-1")
+
+	observed := observedFrom(agent.users)
+	observed.Inventory.Users = append(observed.Inventory.Users, nodeagent.ActualUser{
+		User:           nodeagent.User{AccountingID: "infra.probe"},
+		BackendManaged: false,
+	})
+	agent.observed = observed
+
+	if _, err := uc.ProcessNext(context.Background()); err != nil {
+		t.Fatalf("ProcessNext: %v", err)
+	}
+
+	if agent.calls != 1 {
+		t.Errorf("полных наборов %d, ожидался 1 — чужой юзер принят за расхождение", agent.calls)
 	}
 }
