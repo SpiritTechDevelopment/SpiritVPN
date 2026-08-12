@@ -17,6 +17,7 @@ import (
 type Agent interface {
 	app.AgentDispatcher
 	app.UsageAgent
+	app.ReconcileAgent
 }
 
 // WrapAgent инструментирует вызовы к нодам (§15).
@@ -89,6 +90,31 @@ func (a *observedAgent) GetNodeState(
 		a.observeNodeHealth(endpoint.NodeID, outcome.State, maxBatches)
 	}
 	return outcome
+}
+
+// ReconcileUsers — полный набор ноды (§10).
+//
+// Счётчик удалённых юзеров живёт здесь, а не рядом с логом в use case: удаление
+// при reconcile означает найденный дрейф, то есть расхождение, о котором никто
+// не сообщал. По нему строится alert, а лог для этого не годится.
+func (a *observedAgent) ReconcileUsers(
+	ctx context.Context,
+	endpoint nodeagent.Endpoint,
+	operationID string,
+	users []nodeagent.User,
+) nodeagent.ReconcileResult {
+	started := a.now()
+	result := a.inner.ReconcileUsers(ctx, endpoint, operationID, users)
+
+	succeeded := result.Result == domain.AttemptSucceeded
+	a.observe(endpoint.NodeID, methodReconcileUsers, started, result.Code, result.Alert, succeeded)
+
+	if succeeded {
+		a.reg.reconcileDrift.WithLabelValues(endpoint.NodeID, driftAdded).Add(float64(result.Added))
+		a.reg.reconcileDrift.WithLabelValues(endpoint.NodeID, driftReplaced).Add(float64(result.Replaced))
+		a.reg.reconcileDrift.WithLabelValues(endpoint.NodeID, driftRemoved).Add(float64(result.Removed))
+	}
+	return result
 }
 
 // observe записывает то, что есть у любого вызова: длительность, исход и —

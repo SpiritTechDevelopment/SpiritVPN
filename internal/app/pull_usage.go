@@ -104,6 +104,14 @@ func (uc *PullUsage) ProcessNext(ctx context.Context) (progressed bool, err erro
 		return true, nil
 	}
 
+	// Признак bootstrap запоминается здесь, потому что этот вызов — единственный
+	// источник, из которого он вообще приходит. Реагирует на него reconcile (§10):
+	// агент с новым или повреждённым локальным состоянием не имеет права ничего
+	// удалять и сам из этого состояния не выйдет.
+	if err := uc.Repo.SetNodeNeedsBootstrap(ctx, node.NodeID, outcome.State.NeedsBootstrap); err != nil {
+		return true, fmt.Errorf("признак bootstrap ноды: %w", err)
+	}
+
 	return true, uc.consume(ctx, *node, outcome.State)
 }
 

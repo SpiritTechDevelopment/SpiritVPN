@@ -77,14 +77,18 @@ type Config struct {
 	CallTimeout time.Duration
 	// PullTimeout ограничивает GetNodeState; ноль означает DefaultPullTimeout.
 	PullTimeout time.Duration
+	// ReconcileTimeout ограничивает ReconcileUsers; ноль означает
+	// DefaultReconcileTimeout.
+	ReconcileTimeout time.Duration
 }
 
 // Client вызывает агентов, переиспользуя по одному соединению на ноду (§9).
 type Client struct {
-	cert        tls.Certificate
-	roots       *x509.CertPool
-	callTimeout time.Duration
-	pullTimeout time.Duration
+	cert             tls.Certificate
+	roots            *x509.CertPool
+	callTimeout      time.Duration
+	pullTimeout      time.Duration
+	reconcileTimeout time.Duration
 
 	mu    sync.Mutex
 	conns map[string]*agentConn
@@ -115,13 +119,18 @@ func New(cfg Config) (*Client, error) {
 	if pullTimeout <= 0 {
 		pullTimeout = DefaultPullTimeout
 	}
+	reconcileTimeout := cfg.ReconcileTimeout
+	if reconcileTimeout <= 0 {
+		reconcileTimeout = DefaultReconcileTimeout
+	}
 
 	return &Client{
-		cert:        cert,
-		roots:       roots,
-		callTimeout: timeout,
-		pullTimeout: pullTimeout,
-		conns:       make(map[string]*agentConn),
+		cert:             cert,
+		roots:            roots,
+		callTimeout:      timeout,
+		pullTimeout:      pullTimeout,
+		reconcileTimeout: reconcileTimeout,
+		conns:            make(map[string]*agentConn),
 	}, nil
 }
 

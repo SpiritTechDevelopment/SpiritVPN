@@ -49,7 +49,32 @@ CREATE TABLE vpn_nodes (
     manifest_revision bigint      NOT NULL REFERENCES manifest_revisions (revision),
     current           boolean     NOT NULL DEFAULT true,
     created_at        timestamptz NOT NULL DEFAULT now(),
-    updated_at        timestamptz NOT NULL DEFAULT now()
+    updated_at        timestamptz NOT NULL DEFAULT now(),
+
+    -- Состояние authoritative reconcile (§10). Живёт здесь, а не отдельной
+    -- таблицей, по той же причине, что и desired_revision: это runtime-счётчики
+    -- одной ноды, и апсерт манифеста их не трогает (перечисляет колонки явно).
+
+    -- Последняя desired_revision, которую агент подтвердил полным набором. Ноль
+    -- означает «не reconcile-ился ни разу»; отставание от desired_revision — это
+    -- и есть мера дрейфа.
+    reconciled_revision        bigint      NOT NULL DEFAULT 0 CHECK (reconciled_revision >= 0),
+
+    -- Локальное состояние агента новое или повреждено: до полного набора ему
+    -- нельзя удалять юзеров (§10). Приезжает в GetNodeState, пишется pull
+    -- worker'ом — единственным, кто с агентом разговаривает постоянно.
+    needs_bootstrap            boolean     NOT NULL DEFAULT false,
+
+    -- Время последнего ПРИНЯТОГО reconcile. NULL — не было ни одного.
+    reconciled_at              timestamptz,
+
+    -- Время последней ПОПЫТКИ, а не последнего успеха: темп задаётся им, иначе
+    -- нода, у которой reconcile стабильно не удаётся, опрашивалась бы циклом без
+    -- пауз (та же логика, что у node_usage_cursors.updated_at, решение 61).
+    reconcile_attempted_at     timestamptz,
+
+    reconcile_lease_owner      text,
+    reconcile_lease_expires_at timestamptz
 );
 
 -- Membership fleet<->нода. current=false — нода покинула fleet.

@@ -161,12 +161,18 @@ type VpnFleetNode struct {
 }
 
 type VpnNode struct {
-	NodeID           string
-	AgentConfig      []byte
-	PublicConfig     []byte
-	DesiredRevision  int64
-	ManifestRevision int64
-	Current          bool
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	NodeID                  string
+	AgentConfig             []byte
+	PublicConfig            []byte
+	DesiredRevision         int64
+	ManifestRevision        int64
+	Current                 bool
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	ReconciledRevision      int64
+	NeedsBootstrap          bool
+	ReconciledAt            *time.Time
+	ReconcileAttemptedAt    *time.Time
+	ReconcileLeaseOwner     *string
+	ReconcileLeaseExpiresAt *time.Time
 }

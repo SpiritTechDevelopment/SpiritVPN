@@ -85,6 +85,34 @@ const (
 	usageLeaseTTL = 5 * time.Minute
 )
 
+// Темп authoritative reconcile (§10).
+const (
+	// reconcileInterval — как часто нода приводится к desired state по таймеру.
+	//
+	// Это не темп доставки изменений: их по одному везёт диспетчер (§9), а
+	// reconcile существует ради инициализации и починки. Поэтому величина значит
+	// ровно одно — потолок жизни расхождения, о котором никто не сообщил. Пока
+	// сверки инвентаря нет, таймер остаётся единственным лекарством от него.
+	//
+	// Для масштаба: usage-воркер ходит на ту же ноду 240 раз в час, reconcile —
+	// двенадцать.
+	reconcileInterval = 5 * time.Minute
+
+	// reconcileIdleInterval — пауза, когда ни одна нода не «созрела». Короче
+	// интервала, потому что воркер один на весь fleet: просыпаться реже значило бы
+	// обходить ноды медленнее заявленного темпа.
+	reconcileIdleInterval = 15 * time.Second
+
+	// reconcileErrorBackoff — пауза после отказа базы. Недоступность агента сюда
+	// не доходит: она не ошибка шага (§16).
+	reconcileErrorBackoff = 15 * time.Second
+
+	// reconcileLeaseTTL — на сколько берётся нода. С запасом перекрывает
+	// nodeagent.DefaultReconcileTimeout: истёкший раньше ответа lease пустил бы
+	// второй полный набор на ту же ноду.
+	reconcileLeaseTTL = 5 * time.Minute
+)
+
 // Ретенция реестра дедупа usage-items (§12).
 const (
 	// usageDedupRetention — сколько дедуп-запись живёт после того, как её batch

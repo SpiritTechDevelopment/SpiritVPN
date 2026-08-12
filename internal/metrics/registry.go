@@ -40,6 +40,18 @@ const (
 	labelReason       = "reason"
 	labelWorker       = "worker"
 	labelResult       = "result"
+	labelKind         = "kind"
+)
+
+// Виды изменений, которые находит reconcile. Метка kind у reconcile_drift_total.
+//
+// unchanged серией не заводится: она означает отсутствие дрейфа, то есть штатную
+// работу, и на каждом проходе давала бы счётчик размером со всю ноду, в котором
+// интересное тонет.
+const (
+	driftAdded    = "added"
+	driftReplaced = "replaced"
+	driftRemoved  = "removed"
 )
 
 // Имена RPC агента для метки method. Совпадают с именами методов в
@@ -48,6 +60,7 @@ const (
 	methodEnsureUserPresent = "EnsureUserPresent"
 	methodEnsureUserAbsent  = "EnsureUserAbsent"
 	methodGetNodeState      = "GetNodeState"
+	methodReconcileUsers    = "ReconcileUsers"
 )
 
 // Полные наборы значений enum-колонок, которыми заполняются серии со счётчиком
@@ -85,6 +98,7 @@ type Registry struct {
 	nodeNeedsBootstrap   *prometheus.GaugeVec
 	credentialOpenErrors prometheus.Counter
 	usageDedupPruned     prometheus.Counter
+	reconcileDrift       *prometheus.CounterVec
 
 	// Снимок БД.
 	operations           *prometheus.GaugeVec
@@ -199,6 +213,15 @@ func New() *Registry {
 		Help:      "Usage dedup rows deleted by retention.",
 	})
 
+	// Каждое изменение, найденное reconcile, — это дрейф: обычные изменения
+	// доставляет dispatcher, и к приходу полного набора нода уже должна совпадать
+	// с desired. Устойчиво ненулевой rate означает, что что-то расходится молча.
+	r.reconcileDrift = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: namespace,
+		Name:      "reconcile_drift_total",
+		Help:      "User changes an authoritative reconcile had to make, by node and kind.",
+	}, []string{labelNode, labelKind})
+
 	r.operations = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "agent_operations",
@@ -290,7 +313,7 @@ func New() *Registry {
 
 		r.agentCallDuration, r.agentCalls, r.agentLastSuccess, r.agentAlerts,
 		r.usagePullCapped, r.nodeXrayReachable, r.nodeXrayUptime, r.nodeNeedsBootstrap,
-		r.credentialOpenErrors, r.usageDedupPruned,
+		r.credentialOpenErrors, r.usageDedupPruned, r.reconcileDrift,
 
 		r.operations, r.operationOldestAge, r.accesses,
 		r.cursorAge, r.cursorAcked, r.cursorLeaseExpired, r.quarantine,

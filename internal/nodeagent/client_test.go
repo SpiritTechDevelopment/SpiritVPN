@@ -187,10 +187,25 @@ type fakeAgent struct {
 	state    *nodeagentv1.GetNodeStateResponse
 	stateErr error
 
-	presentReq *nodeagentv1.EnsureUserPresentRequest
-	absentReq  *nodeagentv1.EnsureUserAbsentRequest
-	stateReq   *nodeagentv1.GetNodeStateRequest
-	calls      int
+	// reconcile и reconcileErr — ответ на ReconcileUsers. Свой тип и здесь: агент
+	// возвращает не только исход, но и сводку изменений.
+	reconcile    *nodeagentv1.ReconcileUsersResponse
+	reconcileErr error
+
+	presentReq   *nodeagentv1.EnsureUserPresentRequest
+	absentReq    *nodeagentv1.EnsureUserAbsentRequest
+	stateReq     *nodeagentv1.GetNodeStateRequest
+	reconcileReq *nodeagentv1.ReconcileUsersRequest
+	calls        int
+}
+
+func (a *fakeAgent) ReconcileUsers(
+	_ context.Context,
+	req *nodeagentv1.ReconcileUsersRequest,
+) (*nodeagentv1.ReconcileUsersResponse, error) {
+	a.calls++
+	a.reconcileReq = req
+	return a.reconcile, a.reconcileErr
 }
 
 func (a *fakeAgent) EnsureUserPresent(
@@ -576,4 +591,69 @@ func TestNewRejectsBrokenMaterial(t *testing.T) {
 			t.Fatal("New принял CA без единого сертификата")
 		}
 	})
+}
+
+// TestReconcileUsersMarksSetComplete — §10 и вендорный контракт: complete=true —
+// это утверждение, что набор авторитетный, а не усечённый по дороге. Без него
+// агент не имеет права удалять backend-owned юзеров, которых в наборе нет, то
+// есть reconcile перестаёт быть reconcile.
+func TestReconcileUsersMarksSetComplete(t *testing.T) {
+	agent := &fakeAgent{reconcile: &nodeagentv1.ReconcileUsersResponse{
+		Operation: applied(),
+		Added:     1,
+		Removed:   2,
+		Unchanged: 3,
+	}}
+	client, endpoint := newHarness(t, agent)
+
+	result := client.ReconcileUsers(context.Background(), endpoint, "op-3", []User{testUser()})
+
+	if result.Result != domain.AttemptSucceeded || result.Code != CodeApplied {
+		t.Fatalf("исход %+v, ожидался успех", result)
+	}
+	if !agent.reconcileReq.GetComplete() {
+		t.Error("complete не выставлен: агент не станет удалять лишних юзеров")
+	}
+	if agent.reconcileReq.GetOperationId() != "op-3" {
+		t.Errorf("operation_id %q", agent.reconcileReq.GetOperationId())
+	}
+
+	users := agent.reconcileReq.GetUsers()
+	if len(users) != 1 {
+		t.Fatalf("до агента доехало %d юзеров, ожидался 1", len(users))
+	}
+	if got := users[0].GetCredentialUuid(); got != testUser().ClientUUID.Reveal().String() {
+		t.Errorf("credential_uuid не доехал в открытом виде: %q", got)
+	}
+	if got := users[0].GetEgressKey(); got != "de-exit" {
+		t.Errorf("egress_key %q: без него агент не восстановит per-user rule (§10)", got)
+	}
+
+	// Сводка изменений — то, по чему виден найденный дрейф (§15).
+	if result.Added != 1 || result.Removed != 2 || result.Unchanged != 3 {
+		t.Errorf("сводка изменений потеряна: %+v", result)
+	}
+}
+
+// TestReconcileUsersSendsEmptySet — §10: пустой набор легален и означает
+// «backend-owned юзеров на ноде нет». Он обязан доехать как пустой список с тем
+// же complete, а не превратиться в отсутствие вызова.
+func TestReconcileUsersSendsEmptySet(t *testing.T) {
+	agent := &fakeAgent{reconcile: &nodeagentv1.ReconcileUsersResponse{Operation: applied()}}
+	client, endpoint := newHarness(t, agent)
+
+	result := client.ReconcileUsers(context.Background(), endpoint, "op-4", nil)
+
+	if result.Result != domain.AttemptSucceeded {
+		t.Fatalf("исход %+v, ожидался успех", result)
+	}
+	if agent.calls != 1 {
+		t.Fatalf("вызовов агента %d, ожидался 1", agent.calls)
+	}
+	if got := len(agent.reconcileReq.GetUsers()); got != 0 {
+		t.Errorf("до агента доехало %d юзеров, ожидался пустой набор", got)
+	}
+	if !agent.reconcileReq.GetComplete() {
+		t.Error("complete не выставлен у пустого набора: агент примет его за усечённый и никого не удалит")
+	}
 }

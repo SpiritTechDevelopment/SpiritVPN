@@ -248,6 +248,78 @@ type UsageRepository interface {
 	// AdvanceCursor подтверждает позицию спула. Вызывается только после durable
 	// commit всех групп batch (решение 63).
 	AdvanceCursor(ctx context.Context, nodeID domain.NodeID, cursor nodeagent.UsageCursor) error
+
+	// SetNodeNeedsBootstrap запоминает признак, присланный агентом (§10).
+	//
+	// Живёт здесь, а не в ReconcileRepository, потому что источник у него один —
+	// GetNodeState, а его зовёт только pull worker. Reconcile-воркер спит между
+	// заходами и узнал бы о bootstrap с задержкой в целый интервал.
+	SetNodeNeedsBootstrap(ctx context.Context, nodeID domain.NodeID, needsBootstrap bool) error
+}
+
+// ReconcileRepository — состояние authoritative reconcile (§10).
+//
+// Форма как у DispatchRepository: шаг состоит из двух транзакций с сетевым
+// вызовом между ними, потому что §11.1 запрещает держать транзакцию открытой во
+// время обращения к агенту.
+type ReconcileRepository interface {
+	// ClaimNodeForReconcile берёт lease ноды и её полный набор ОДНОЙ
+	// транзакцией. nil означает, что reconcile-ить сейчас нечего.
+	//
+	// Набор возвращается вместе с lease намеренно: §10 требует фиксировать
+	// desired_revision и читать users под одной блокировкой строки ноды, иначе
+	// зафиксированная ревизия не описывала бы прочитанный набор.
+	ClaimNodeForReconcile(
+		ctx context.Context,
+		owner string,
+		leaseTTL, minInterval time.Duration,
+	) (*ClaimedReconcileNode, error)
+
+	// ReleaseNodeReconcile снимает собственный lease.
+	ReleaseNodeReconcile(ctx context.Context, nodeID domain.NodeID, owner string) error
+
+	// AcceptReconcile применяет результат, если desired_revision ноды не
+	// сдвинулась. accepted=false означает, что desired state уехал, пока мы
+	// ходили к агенту: набор на проводе устарел и принимать его нельзя (§10).
+	AcceptReconcile(ctx context.Context, acceptance ReconcileAcceptance) (accepted bool, err error)
+}
+
+// ClaimedReconcileNode — нода, взятая на reconcile, вместе с её набором (§10).
+type ClaimedReconcileNode struct {
+	NodeID   domain.NodeID
+	Endpoint nodeagent.Endpoint
+
+	// Flow — параметр входной ноды из её public_config, общий для всех её юзеров
+	// (§8, §9).
+	Flow string
+
+	// DesiredRevision зафиксирована в момент чтения набора. Ею же результат
+	// принимается: сдвиг означает, что набор устарел.
+	DesiredRevision int64
+
+	// Users — полный набор фактически разрешённых desired PRESENT (§10). Пустой
+	// набор легален и означает, что backend-owned юзеров на ноде нет.
+	Users []ReconcileUser
+}
+
+// ReconcileUser — один юзер набора до расшифрования.
+type ReconcileUser struct {
+	AccessID     uuid.UUID
+	AccountingID string
+	EgressKey    string
+	Credential   crypto.SealedCredential
+}
+
+// ReconcileAcceptance — что записать по итогу принятого reconcile (§10).
+type ReconcileAcceptance struct {
+	NodeID          domain.NodeID
+	DesiredRevision int64
+
+	// AppliedAccessIDs — те access, что уехали в наборе. Перечислены поимённо, а
+	// не выведены запросом заново: между чтением набора и этой транзакцией
+	// прошёл сетевой вызов, и повторный вывод мог бы отметить APPLIED то, чего
+	// агент не получал.
+	AppliedAccessIDs []uuid.UUID
 }
 
 // UsageRetentionRepository — ретенция реестра дедупа (§12).

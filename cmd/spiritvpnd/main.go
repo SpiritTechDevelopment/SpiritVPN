@@ -139,6 +139,9 @@ func run() error {
 		repository, agent, sealer, processJitter{}, owner, dispatchLeaseTTL)
 	usageUC := app.NewPullUsage(
 		repository, agent, crypto.NewGenerator(), logger, owner, usageLeaseTTL, usagePullInterval)
+	reconcileUC := app.NewReconcileNodes(
+		repository, agent, sealer, crypto.NewGenerator(), logger,
+		owner, reconcileLeaseTTL, reconcileInterval)
 	pruneUC := app.NewPruneUsageDedup(
 		registry.WrapUsageRetention(repository), usageDedupRetention, usageDedupBatchSize)
 	statsUC := registry.StatsWorker(repository)
@@ -185,6 +188,12 @@ func run() error {
 	for range dispatchConcurrency {
 		start("usage", usageUC, usageIdleInterval, usageErrorBackoff)
 	}
+
+	// Reconcile в одном экземпляре: шаг упирается в сетевой вызов, но нод у него
+	// весь fleet, а не очередь, и параллелить обход десятка нод, каждая из которых
+	// созревает раз в пять минут, нечего. Гейт на ноду держит её собственный lease
+	// (§10).
+	start("reconcile", reconcileUC, reconcileIdleInterval, reconcileErrorBackoff)
 
 	// Ретенция реестра дедупа — единственный воркер без lease: удалять уже
 	// удалённую строку нечего, поэтому конкуренция здесь стоит лишнего прохода, а

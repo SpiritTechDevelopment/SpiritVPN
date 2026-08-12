@@ -26,9 +26,16 @@ var sampleTime = time.Unix(1_700_000_000, 0).UTC()
 // декоратора нет своей сетевой логики, и поддельный агент проверял бы nodeagent,
 // а не метрики (тот же принцип, что и в решении 53).
 type fakeAgent struct {
-	present nodeagent.Outcome
-	absent  nodeagent.Outcome
-	pull    nodeagent.PullOutcome
+	present   nodeagent.Outcome
+	absent    nodeagent.Outcome
+	pull      nodeagent.PullOutcome
+	reconcile nodeagent.ReconcileResult
+}
+
+func (f *fakeAgent) ReconcileUsers(
+	context.Context, nodeagent.Endpoint, string, []nodeagent.User,
+) nodeagent.ReconcileResult {
+	return f.reconcile
 }
 
 func (f *fakeAgent) EnsureUserPresent(

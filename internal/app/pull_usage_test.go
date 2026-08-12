@@ -48,9 +48,25 @@ type fakeUsageRepo struct {
 
 	cursors []nodeagent.UsageCursor
 
+	// bootstrap — последнее записанное значение признака по нодам (§10).
+	bootstrap map[domain.NodeID]bool
+
 	// Что видит транзакция группы.
 	entitlement *domain.Entitlement
 	period      *app.UsagePeriod
+}
+
+func (r *fakeUsageRepo) SetNodeNeedsBootstrap(
+	_ context.Context,
+	nodeID domain.NodeID,
+	needsBootstrap bool,
+) error {
+	r.journal = append(r.journal, "bootstrap")
+	if r.bootstrap == nil {
+		r.bootstrap = make(map[domain.NodeID]bool)
+	}
+	r.bootstrap[nodeID] = needsBootstrap
+	return nil
 }
 
 func (r *fakeUsageRepo) ClaimNode(

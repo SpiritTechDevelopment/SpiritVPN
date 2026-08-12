@@ -62,6 +62,21 @@ type AgentDispatcher interface {
 	EnsureUserAbsent(ctx context.Context, endpoint nodeagent.Endpoint, operationID, accountingID string) nodeagent.Outcome
 }
 
+// ReconcileAgent — то, что authoritative reconcile требует от агента (§10).
+//
+// Порт отдельный от AgentDispatcher по той же причине, по которой отдельным
+// сделан UsageAgent: у полного набора нет строки в agent_operations, свой
+// deadline (он на два порядка крупнее одного Ensure) и свой ответ — агент
+// возвращает сводку изменений, а не только исход.
+type ReconcileAgent interface {
+	ReconcileUsers(
+		ctx context.Context,
+		endpoint nodeagent.Endpoint,
+		operationID string,
+		users []nodeagent.User,
+	) nodeagent.ReconcileResult
+}
+
 // Jitter — источник случайности для backoff (§9).
 //
 // Отдельный порт, а не math/rand напрямую: домен случайности не производит
