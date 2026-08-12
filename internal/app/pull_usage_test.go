@@ -313,7 +313,7 @@ func TestPullUsageAdvancesCursorAfterCommit(t *testing.T) {
 	}
 
 	// Сравниваются ПЕРВЫЕ вхождения. Проверка «в журнале есть tx-commit,advance»
-	// была бы вакуумной: при двух batch эта пара складывается и на стыке —
+	// не проверяла бы ничего: при двух batch эта пара складывается и на стыке —
 	// commit первого рядом с подтверждением второго, — то есть проходила бы и
 	// при полностью обратном порядке внутри batch.
 	firstCommit := slices.Index(repo.journal, "tx-commit")

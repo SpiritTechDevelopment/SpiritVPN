@@ -291,7 +291,7 @@ func TestIntegrationReconcileLeaseIsExclusive(t *testing.T) {
 	// без bootstrap нода переставала бы проходить условие ТАЙМЕРА сразу после
 	// первого же захвата: второй возвращал бы пусто независимо от lease, и тест
 	// мерил бы таймер вместо исключительности. Ровно так он и был написан сперва,
-	// что и показала проверка на вакуумность.
+	// что и показал mutation testing.
 	settleReconcile(t, stack)
 	if err := New(stack.pool).SetNodeNeedsBootstrap(context.Background(), "NL-1", true); err != nil {
 		t.Fatalf("SetNodeNeedsBootstrap: %v", err)

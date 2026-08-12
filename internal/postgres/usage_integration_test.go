@@ -116,8 +116,8 @@ func newUsageStack(t *testing.T) usageStack {
 // нод и смена спула — штатный шум прогона.
 //
 // Уровень Debug, а не молчание, хотя читать этот буфер интересно ровно одному
-// тесту: заглушенный логгер сделал бы проверку «в логах нет секретов» вакуумной
-// — искать было бы попросту негде.
+// тесту: с заглушенным логгером проверка «в логах нет секретов» проходила бы
+// всегда — искать было бы попросту негде.
 func testLogger(sink io.Writer) *slog.Logger {
 	return slog.New(slog.NewTextHandler(sink, &slog.HandlerOptions{Level: slog.LevelDebug}))
 }

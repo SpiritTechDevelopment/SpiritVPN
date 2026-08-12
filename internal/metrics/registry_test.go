@@ -65,7 +65,7 @@ func TestNoCustomerIDLabels(t *testing.T) {
 
 	registry := New()
 	// Снимок наполняется реальными значениями: пустой реестр не содержит серий с
-	// динамическими метками, и проверка на нём была бы вакуумной.
+	// динамическими метками, и проверка на нём проходила бы при любом коде.
 	registry.publish(sampleStats(), sampleTime)
 	observeSampleAgentCall(registry)
 
