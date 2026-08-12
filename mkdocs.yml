@@ -28,6 +28,7 @@ nav:
   - Архитектура:
       - Общая архитектура: ARCHITECTURE.md
       - База данных: DATABASE.md
+      - Infrastructure manifest: MANIFEST.md
       - VPN и протокол VLESS: VLESS.md
   - Разработка:
       - Руководство по тестированию: TESTING.md
