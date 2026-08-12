@@ -235,12 +235,9 @@ golangci-lint run
 
 ## Документация
 
-* `docs/API.md` — REST API
 * `docs/ARCHITECTURE.md` — архитектура системы
 * `docs/DATABASE.md` — модели и слой данных
 * `docs/DEPLOYMENT.md` — развертывание
-* `docs/FAQ.md` — ответы на частые вопросы
-* `docs/ROADMAP.md` — план развития
 * `docs/TESTING.md` — тестирование
 * `docs/VLESS.md` — описание протокола VLESS и настройки Xray
 * `pkg/logger/README.md` — документация по логированию

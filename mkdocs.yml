@@ -29,13 +29,8 @@ nav:
       - Общая архитектура: ARCHITECTURE.md
       - База данных: DATABASE.md
       - VPN и протокол VLESS: VLESS.md
-      - Биллинг и выдача доступа: PAYMENTS.md 
-  - Разработка и API:
-      - Документация API: API.md
+  - Разработка:
       - Руководство по тестированию: TESTING.md
       - Правила Changelog: CHANGELOG_GUIDE.md
   - Инфраструктура:
       - Развертывание (Деплой): DEPLOYMENT.md
-  - Развитие:
-      - План разработки (Roadmap): ROADMAP.md
-      - Частые вопросы (FAQ): FAQ.md

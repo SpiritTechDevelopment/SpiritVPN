@@ -211,7 +211,6 @@ logs/
 
 * `README.md`
 * `docs/ARCHITECTURE.md`
-* `docs/API.md`
 * `docs/DATABASE.md`
 * `docs/VLESS.md`
 * `pkg/logger/README.md`
