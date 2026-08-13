@@ -36,3 +36,4 @@ nav:
       - Правила Changelog: CHANGELOG_GUIDE.md
   - Инфраструктура:
       - Развертывание (Деплой): DEPLOYMENT.md
+      - Эксплуатация: OPERATIONS.md
