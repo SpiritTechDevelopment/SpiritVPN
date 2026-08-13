@@ -27,6 +27,7 @@ nav:
   - Главная: index.md
   - Архитектура:
       - Общая архитектура: ARCHITECTURE.md
+      - Внешний API: API.md
       - База данных: DATABASE.md
       - Infrastructure manifest: MANIFEST.md
       - VPN и протокол VLESS: VLESS.md
