@@ -11,7 +11,7 @@ import (
 // UsageItemResult — исход обработки одного usage-item.
 //
 // Значения совпадают с колонкой traffic_usage_items_processed.result: item
-// регистрируется как обработанный при ЛЮБОМ исходе, иначе плохой item блокировал
+// регистрируется как обработанный при любом исходе, иначе плохой item блокировал
 // бы batch навсегда.
 type UsageItemResult string
 
@@ -69,7 +69,7 @@ type UsageGroupPlan struct {
 	// Тогда же гасятся access и создаются Remove operations.
 	ExhaustedAt *time.Time
 
-	// DesiredChanges — access customer на ЭТОЙ ноде, уходящие в ABSENT.
+	// DesiredChanges — access customer на этой ноде, уходящие в ABSENT.
 	// Отсортированы по access_id.
 	DesiredChanges []DesiredChange
 }
@@ -84,7 +84,7 @@ type UsageGroupInput struct {
 	// Now — время транзакции. Им отмечается exhausted_at.
 	Now time.Time
 
-	// Items — НОВЫЕ items группы: уже прошедшие дедуп по
+	// Items — новые items группы: уже прошедшие дедуп по
 	// (spool_id, sequence, accounting_id). Повторно присланные сюда не доходят.
 	Items []UsageItem
 
@@ -100,7 +100,7 @@ type UsageGroupInput struct {
 	// NodeExhaustedAt — уже стоящая отметка исчерпания, если она есть.
 	NodeExhaustedAt *time.Time
 
-	// NodeAccesses — ВСЕ нератайрнутые access customer с этой входной нодой.
+	// NodeAccesses — все нератайрнутые access customer с этой входной нодой.
 	// Гасятся все, а не только тот, чей accounting_id приехал.
 	NodeAccesses []Access
 }

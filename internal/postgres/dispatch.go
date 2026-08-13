@@ -151,8 +151,8 @@ const (
 // isSingleInFlightViolation опознаёт проигранную гонку за ноду.
 //
 // Проверяется именно этот индекс, а не любой unique violation: коллизия
-// accounting_id или повторная (access_id, desired_version) — нарушение инварианта,
-// которое обязано провалить шаг громко, а не быть проглоченным как «занято».
+// accounting_id или повторная (access_id, desired_version) — нарушение
+// инварианта, и шаг должен упасть громко, а не проглотить его как «занято».
 func isSingleInFlightViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) &&
@@ -174,7 +174,7 @@ func desiredStateFor(operationType string) (domain.DesiredState, error) {
 }
 
 // leaseSeconds сужает TTL под тип колонки, проверяя границы ДО приведения:
-// отрицательный или абсурдно большой TTL дал бы бессмысленный lease вместо явной
+// отрицательный или абсурдно большой TTL дал бы негодный lease вместо явной
 // ошибки. Тот же приём, что и в ClaimJob воркера материализации.
 func leaseSeconds(leaseTTL time.Duration) (int32, error) {
 	seconds := leaseTTL.Seconds()

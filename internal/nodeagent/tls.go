@@ -105,7 +105,7 @@ func loadTLSMaterial(files tlsFiles) (tls.Certificate, *x509.CertPool, error) {
 // ServerName берётся из манифеста и задаёт как SNI, так и имя, по которому
 // проверяется сертификат. Сверх этого проверяется идентичность:
 // валидная цепочка отвечает только на вопрос «сертификат выпущен нашим CA», а им
-// подписаны сертификаты ВСЕХ нод. Без явной сверки любая нода могла бы выдать
+// подписаны сертификаты всех нод. Без явной сверки любая нода могла бы выдать
 // себя за любую другую и получить чужие credentials.
 func tlsConfigFor(
 	cert tls.Certificate,
@@ -127,7 +127,7 @@ func tlsConfigFor(
 
 // verifyAgentIdentity сверяет SAN проверенной цепочки с ожидаемой идентичностью.
 //
-// Вызывается уже ПОСЛЕ штатной проверки цепочки и имени, поэтому verifiedChains
+// Вызывается уже после штатной проверки цепочки и имени, поэтому verifiedChains
 // непуст, а leaf доверен. Читаются DNS SAN и URI SAN — те же поля, что и на
 // серверной стороне; CN не используется.
 func verifyAgentIdentity(expected string, check *identityCheck) func([][]byte, [][]*x509.Certificate) error {

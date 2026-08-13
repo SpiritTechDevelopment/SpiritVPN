@@ -250,8 +250,8 @@ func livingCustomer(repo *fakeUsageRepo) {
 // steps склеивает журнал для сравнения порядка целиком, а не по одному шагу.
 func steps(journal []string) string { return strings.Join(journal, ",") }
 
-// TestPullUsageCallsAgentOutsideTransaction — запрещает держать транзакцию
-// открытой во время обращения к агенту.
+// TestPullUsageCallsAgentOutsideTransaction — держать транзакцию открытой во
+// время обращения к агенту запрещено.
 //
 // Проверяется позицией в журнале, а не «моком, который бы заметил»: единственный
 // способ отличить вызов вне транзакции от вызова внутри неё — порядок событий.
@@ -290,7 +290,7 @@ func TestPullUsageCallsAgentOutsideTransaction(t *testing.T) {
 	}
 }
 
-// TestPullUsageAdvancesCursorAfterCommit — курсор подтверждается ТОЛЬКО после
+// TestPullUsageAdvancesCursorAfterCommit — курсор подтверждается только после
 // commit группы. Обратный порядок означал бы, что упавшая группа
 // уже подтверждена и batch к нам больше не приедет.
 func TestPullUsageAdvancesCursorAfterCommit(t *testing.T) {
@@ -312,7 +312,7 @@ func TestPullUsageAdvancesCursorAfterCommit(t *testing.T) {
 		t.Fatalf("ProcessNext: %v", err)
 	}
 
-	// Сравниваются ПЕРВЫЕ вхождения. Проверка «в журнале есть tx-commit,advance»
+	// Сравниваются Первые вхождения. Проверка «в журнале есть tx-commit,advance»
 	// не проверяла бы ничего: при двух batch эта пара складывается и на стыке —
 	// commit первого рядом с подтверждением второго, — то есть проходила бы и
 	// при полностью обратном порядке внутри batch.
@@ -366,7 +366,7 @@ func TestPullUsageKeepsCursorWhenGroupFails(t *testing.T) {
 	uc := newPullUsage(repo, agent)
 
 	// progressed не проверяется намеренно: runWorker разбирает err первой веткой
-	// и до этого значения не доходит вовсе. Утверждение о нём закрепило бы
+	// и до этого значения не доходит. Утверждение о нём закрепило бы
 	// случайность реализации, а не контракт.
 	if _, err := uc.ProcessNext(context.Background()); err == nil {
 		t.Fatal("отказ группы не вернул ошибку, значит цикл не сделает backoff")
@@ -384,7 +384,7 @@ func TestPullUsageKeepsCursorWhenGroupFails(t *testing.T) {
 }
 
 // TestPullUsageSkipsAcknowledgedBatch — монотонность: уже
-// подтверждённый batch не должен открывать транзакцию вовсе.
+// подтверждённый batch не должен открывать транзакцию.
 func TestPullUsageSkipsAcknowledgedBatch(t *testing.T) {
 	acknowledged := nodeagent.UsageCursor{SpoolID: usageSpoolID, Sequence: 5}
 	repo := &fakeUsageRepo{claimed: []*app.ClaimedUsageNode{claimedNode(acknowledged)}}

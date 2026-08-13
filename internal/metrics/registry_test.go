@@ -48,8 +48,8 @@ func TestRegistryPassesPrometheusLint(t *testing.T) {
 	}
 }
 
-// TestNoCustomerIDLabels — дословно: customer ID допускается только в
-// ограниченных audit records и НЕ используется как metric label.
+// TestNoCustomerIDLabels — customer ID допускается только в ограниченных audit
+// records и не используется как metric label.
 //
 // Проверка идёт по белому списку, а не поиском строки "customer_id": так она
 // ловит и метку, названную иначе (client, subscriber, account), потому что любая

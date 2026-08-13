@@ -18,7 +18,7 @@ import (
 // WithinMaterializationTx выполняет один шаг воркера в одной транзакции.
 //
 // READ COMMITTED с явными row locks, как и командный путь: шаг меняет
-// состояние одного customer и обязан подчиняться тому же порядку блокировок.
+// состояние одного customer и подчиняется тому же порядку блокировок.
 func (r *Repository) WithinMaterializationTx(ctx context.Context, fn func(app.MaterializationTx) error) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
@@ -54,7 +54,7 @@ func (t *materializeTx) ClaimJob(
 	leaseTTL time.Duration,
 ) (*app.MaterializationJob, error) {
 	// Границы проверяются до сужения: отрицательный или абсурдно большой TTL
-	// после приведения к int32 дал бы бессмысленный lease вместо явной ошибки.
+	// после приведения к int32 дал бы негодный lease вместо явной ошибки.
 	seconds := leaseTTL.Seconds()
 	if seconds < 1 || seconds > math.MaxInt32 {
 		return nil, fmt.Errorf("postgres: недопустимый lease TTL %s", leaseTTL)
@@ -224,7 +224,7 @@ func (t *materializeTx) writeMaterializedAccesses(ctx context.Context, plan app.
 // writeMaterializedOperations supersede-ит устаревшие операции и кладёт новые в
 // outbox.
 //
-// Supersede выполняется для КАЖДОГО изменённого access, включая ретайр на
+// Supersede выполняется для каждого изменённого access, включая ретайр на
 // глобально удалённой ноде: его pending-операции нужно supersede-ить,
 // и это единственный способ не оставить в очереди команду на endpoint, которого
 // больше нет.

@@ -159,7 +159,7 @@ func TestIntegrationExpiryIsIdempotent(t *testing.T) {
 	versionAfterFirst := scalar[int64](t, stack.pool,
 		`SELECT desired_version FROM customer_entitlements WHERE customer_id = $1`, testCustomerID)
 
-	// Второй проход обязан не найти работы вовсе: истёкший customer без PRESENT
+	// Второй проход не должен найти работы: истёкший customer без PRESENT
 	// access в выборку не попадает, иначе воркер крутился бы вхолостую.
 	if got := drainExpiry(t, stack.expiry); got != 0 {
 		t.Fatalf("шагов на повторном проходе %d, ожидалось 0", got)

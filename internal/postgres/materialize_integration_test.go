@@ -303,7 +303,7 @@ func TestIntegrationMaterializeCursorWalksAllCustomers(t *testing.T) {
 	}
 }
 
-// TestIntegrationMaterializeSkipsExpiredCustomer — ограничивает создание
+// TestIntegrationMaterializeSkipsExpiredCustomer — создание ограничено
 // неистёкшими customer.
 func TestIntegrationMaterializeSkipsExpiredCustomer(t *testing.T) {
 	stack := newMaterializeStack(t)
@@ -388,7 +388,7 @@ type crashingMaterializationTx struct {
 	repo *crashingMaterialization
 }
 
-// AdvanceCursor сдвигает курсор по-настоящему и лишь ПОТОМ роняет шаг.
+// AdvanceCursor сдвигает курсор по-настоящему и лишь потом роняет шаг.
 //
 // Порядок именно такой, чтобы утверждение о курсоре не было самосбывающимся:
 // упади обёртка раньше вызова, курсор остался бы пустым просто потому, что его
@@ -407,7 +407,7 @@ func (t *crashingMaterializationTx) AdvanceCursor(ctx context.Context, revision 
 // TestIntegrationMaterializeCrashLeavesNoPartialCustomer — смерть воркера
 // посреди customer не оставляет ни половины изменений, ни съеденной работы.
 //
-// Всё держится на решении 34: курсор двигается той же транзакцией, что и
+// Всё держится на том, что курсор двигается той же транзакцией, что и
 // изменения. Поэтому «сделано, но не отмечено» существовать не может, и
 // отдельная сверка после рестарта не нужна.
 func TestIntegrationMaterializeCrashLeavesNoPartialCustomer(t *testing.T) {
@@ -507,7 +507,7 @@ func TestIntegrationMaterializeResumesFromCursorAfterCrash(t *testing.T) {
 		t.Fatal("перезапущенный воркер не подобрал осиротевшую джобу")
 	}
 
-	// Единственный шаг после перезапуска достался ВТОРОМУ customer. Начнись обход
+	// Единственный шаг после перезапуска достался второму customer. Начнись обход
 	// с начала, первый customer прошёл бы вхолостую, а этой строки бы не было.
 	if got := scalar[int64](t, stack.pool,
 		`SELECT count(*) FROM vpn_accesses WHERE entry_node_id = 'FR-1' AND customer_id = $1`,

@@ -111,7 +111,7 @@ func TestIntegrationReconcileClaimsBootstrapNode(t *testing.T) {
 }
 
 // TestIntegrationReconcileSetExcludesExpiredAndExhausted — истёкшие
-// entitlement и исчерпавшие квоту в набор не входят, ДАЖЕ если expiry или usage
+// entitlement и исчерпавшие квоту в набор не входят, даже если expiry или usage
 // worker ещё не перевели их access в ABSENT.
 //
 // Это не оптимизация: набор авторитетен, поэтому включить такого юзера значило
@@ -238,7 +238,7 @@ func TestIntegrationReconcileAcceptMarksAppliedAndClosesOperations(t *testing.T)
 }
 
 // TestIntegrationReconcileRejectsStaleRevision — если desired_revision
-// сдвинулась, пока набор был на проводе, результат не принимается и НИЧЕГО не
+// сдвинулась, пока набор был на проводе, результат не принимается и ничего не
 // пишет. Набор на ноде уже не тот, который заказан.
 func TestIntegrationReconcileRejectsStaleRevision(t *testing.T) {
 	stack := newUsageStack(t)
@@ -288,7 +288,7 @@ func TestIntegrationReconcileLeaseIsExclusive(t *testing.T) {
 	// bootstrap, который захват не сбрасывает.
 	//
 	// Это существенно, а не декорация. Захват сам ставит reconcile_attempted_at, и
-	// без bootstrap нода переставала бы проходить условие ТАЙМЕРА сразу после
+	// без bootstrap нода переставала бы проходить условие таймера сразу после
 	// первого же захвата: второй возвращал бы пусто независимо от lease, и тест
 	// мерил бы таймер вместо исключительности. Ровно так он и был написан сперва,
 	// что и показал mutation testing.
@@ -477,7 +477,7 @@ func TestIntegrationReconcileSendsFullSetOnInventoryDrift(t *testing.T) {
 // на ноде расхождением не являются.
 //
 // Агент не удаляет их даже при complete-наборе, поэтому реагировать на них
-// значило бы гонять полный набор каждый интервал до скончания века — то самое
+// гоняло бы полный набор каждый интервал до скончания века — то самое
 // вечное «расхождение», которое ничем не чинится.
 func TestIntegrationReconcileIgnoresForeignNamespace(t *testing.T) {
 	stack := newUsageStack(t)

@@ -31,7 +31,7 @@ func TestCanonicalizeManifestGolden(t *testing.T) {
 	}
 }
 
-// TestCanonicalizeManifestExcludesRevision — rollback выполняется ПРЕЖНИМ
+// TestCanonicalizeManifestExcludesRevision — rollback выполняется прежним
 // desired snapshot под новой большей revision. Это работает только если revision
 // в digest не входит.
 func TestCanonicalizeManifestExcludesRevision(t *testing.T) {

@@ -86,7 +86,7 @@ func TestPlanManifestFirstAcceptance(t *testing.T) {
 }
 
 // TestPlanManifestIdempotentReplay — повтор той же revision с тем же digest.
-// План пуст целиком, писать нечего вовсе.
+// План пуст целиком, писать нечего.
 func TestPlanManifestIdempotentReplay(t *testing.T) {
 	snapshot := validSnapshot()
 	plan := planOrFail(t, ManifestInput{Snapshot: snapshot, Projection: projectionOf(snapshot)})
@@ -388,7 +388,7 @@ func TestPlanManifestRevive(t *testing.T) {
 	}
 }
 
-// TestPlanManifestRouteTransfer — разрешает перенос route: удалить старый
+// TestPlanManifestRouteTransfer — перенос route разрешён: удалить старый
 // routing_key и добавить новый. Пара при этом освобождается, потому что
 // уникальность пары держится только на текущих связях (см. baseline).
 func TestPlanManifestRouteTransfer(t *testing.T) {

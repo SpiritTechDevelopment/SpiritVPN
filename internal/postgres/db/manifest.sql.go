@@ -100,7 +100,7 @@ FROM vpn_fleets
 ORDER BY vpn_fleet_id
 `
 
-// ВСЕ принятые fleet, а не только текущие: принятый vpn_fleet_id не удаляется и
+// Все принятые fleet, а не только текущие: принятый vpn_fleet_id не удаляется и
 // обязан присутствовать в каждом следующем снапшоте.
 func (q *Queries) ListAcceptedFleetIDs(ctx context.Context) ([]int64, error) {
 	rows, err := q.db.Query(ctx, listAcceptedFleetIDs)
@@ -136,7 +136,7 @@ type ListAllBridgeRoutesRow struct {
 	Current     bool
 }
 
-// ВСЕ связи, включая удалённые: routing_key занят навсегда, и оживление его с
+// Все связи, включая удалённые: routing_key занят навсегда, и оживление его с
 // другой парой (entry, exit) запрещено.
 func (q *Queries) ListAllBridgeRoutes(ctx context.Context) ([]ListAllBridgeRoutesRow, error) {
 	rows, err := q.db.Query(ctx, listAllBridgeRoutes)

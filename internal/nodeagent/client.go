@@ -171,8 +171,8 @@ func (c *Client) EnsureUserPresent(
 
 // EnsureUserAbsent снимает юзера с ноды.
 //
-// credential_uuid здесь не передаётся вовсе: удаление матчится по accounting_id
-// (Xray email), и расшифровывать credential ради него незачем.
+// credential_uuid здесь не передаётся: удаление матчится по accounting_id
+// (Xray email), и расшифровывать credential ради него не нужно.
 func (c *Client) EnsureUserAbsent(
 	ctx context.Context,
 	endpoint Endpoint,

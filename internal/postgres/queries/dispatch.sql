@@ -59,10 +59,10 @@ WHERE a.access_id = o.access_id
 -- Payload собирается из актуальных строк access и ноды, а не из операции:
 -- хранить его в outbox запрещено. encrypted_client_uuid читается только для
 -- ENSURE_PRESENT — удаление матчится по accounting_id, и выносить ради него секрет
--- в память незачем.
+-- в память не нужно.
 --
 -- access_desired_version возвращается для проверки перед RPC: если версия уже ушла
--- вперёд, звонить агенту не нужно вовсе.
+-- вперёд, звонить агенту не нужно.
 -- name: LeaseNextOperation :one
 WITH leased AS (
     UPDATE agent_operations

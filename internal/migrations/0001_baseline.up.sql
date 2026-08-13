@@ -2,7 +2,7 @@
 -- Базовая схема: таблицы, индексы и порядок блокировок.
 --
 -- Соглашения:
---   * Все timestamps — UTC timestamptz.
+--   * все timestamps — UTC timestamptz.
 --   * uint64-значения с провода (байтовые counters, command_number, sequence спула,
 --     байты квоты) хранятся как numeric(20,0); int64/внутренние счётчики backend —
 --     как bigint.
@@ -65,10 +65,10 @@ CREATE TABLE vpn_nodes (
     -- worker'ом — единственным, кто с агентом разговаривает постоянно.
     needs_bootstrap            boolean     NOT NULL DEFAULT false,
 
-    -- Время последнего ПРИНЯТОГО reconcile. NULL — не было ни одного.
+    -- Время последнего принятого reconcile. NULL — не было ни одного.
     reconciled_at              timestamptz,
 
-    -- Время последней ПОПЫТКИ, а не последнего успеха: темп задаётся им, иначе
+    -- Время последней попытки, а не последнего успеха: темп задаётся им, иначе
     -- нода, у которой reconcile стабильно не удаётся, опрашивалась бы циклом без
     -- пауз (та же логика, что у node_usage_cursors.updated_at).
     reconcile_attempted_at     timestamptz,
@@ -221,7 +221,7 @@ CREATE TABLE manifest_materialization_jobs (
 -- worker, а отдельная таблица ради двух колонок избыточна. Строка
 -- заводится лениво при первом claim, до всякого успешного pull.
 --
--- updated_at означает «последняя ПОПЫТКА pull», а не «последний сдвиг курсора»:
+-- updated_at означает «последняя попытка pull», а не «последний сдвиг курсора»:
 -- иначе нода без трафика опрашивалась бы циклом без пауз.
 CREATE TABLE node_usage_cursors (
     node_id          text          PRIMARY KEY REFERENCES vpn_nodes (node_id),
@@ -290,7 +290,7 @@ CREATE UNIQUE INDEX quota_periods_one_open_per_customer
 CREATE INDEX quota_periods_customer_started_at
     ON quota_periods (customer_id, started_at DESC);
 
--- Пара (entry_node_id, exit_node_id) уникальна среди ТЕКУЩИХ связей fleet.
+-- Пара (entry_node_id, exit_node_id) уникальна среди текущих связей fleet.
 --
 -- Частичный индекс, а не табличное ограничение UNIQUE: удалённая связь физически
 -- остаётся строкой с current = false (история не удаляется), и полное
@@ -333,7 +333,7 @@ CREATE INDEX agent_operations_in_flight_lease
 -- Одновременно на одну ноду отправляется не более одной mutating operation.
 --
 -- Индекс, а не проверка в запросе dispatcher'а: гейт «на этой ноде нет IN_FLIGHT»
--- читает committed-снимок, поэтому два воркера, взявшие в один момент РАЗНЫЕ
+-- читает committed-снимок, поэтому два воркера, взявшие в один момент разные
 -- операции одной ноды, оба его проходят и оба коммитятся. Инвариант держится
 -- только структурно; проигравший получает unique violation и просто пробует
 -- позже.

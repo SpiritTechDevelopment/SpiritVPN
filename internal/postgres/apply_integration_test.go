@@ -182,7 +182,7 @@ func seedTopology(t *testing.T, pool *pgxpool.Pool, nodes []string, bridges [][4
 // command собирает команду так же, как её соберёт gRPC-хендлер: из
 // expires_at_epoch_sec, то есть с секундной точностью.
 //
-// Усечение здесь не косметика. timestamptz хранит МИКРОсекунды, поэтому время с
+// Усечение здесь не косметика. timestamptz хранит микросекунды, поэтому время с
 // наносекундами, записанное и прочитанное обратно, оказывается строго меньше
 // исходного — и точный повтор команды классифицировался бы как renewal:
 // открывался бы новый период квоты, а накопленный трафик сбрасывался. На проводе
@@ -377,7 +377,7 @@ func TestIntegrationApplyStaleCommand(t *testing.T) {
 	}
 }
 
-// Renewal закрывает текущий период и открывает новый ТЕМ ЖЕ timestamp: иначе дельта
+// Renewal закрывает текущий период и открывает новый тем ЖЕ timestamp: иначе дельта
 // трафика не попала бы ни в один период.
 func TestIntegrationApplyRenewalStitchesPeriods(t *testing.T) {
 	uc, pool := newFixture(t)

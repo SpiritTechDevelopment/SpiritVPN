@@ -30,7 +30,7 @@ type ApplyManifestResult struct {
 
 // ApplyFleetManifest — use case приёма infrastructure manifest.
 //
-// Весь снапшот применяется одной транзакцией либо не применяется вовсе. Fan-out
+// Весь снапшот применяется одной транзакцией либо не применяется совсем. Fan-out
 // customer access внутрь этой транзакции не входит: он идёт durable-джобой уже
 // после commit, потому что 50 000 customer в одной транзакции с RPC
 // нарушили бы требование о коротких транзакциях.

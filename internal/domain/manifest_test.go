@@ -318,7 +318,7 @@ func TestValidateManifestAllowsEmptyFleet(t *testing.T) {
 	}
 }
 
-// TestValidateManifestAllowsEmptyShortID — перечисляет обязательные поля
+// TestValidateManifestAllowsEmptyShortID — обязательные поля перечислены
 // явно, и short_id среди них нет: пустой sid — легальная конфигурация REALITY.
 func TestValidateManifestAllowsEmptyShortID(t *testing.T) {
 	snapshot := validSnapshot()

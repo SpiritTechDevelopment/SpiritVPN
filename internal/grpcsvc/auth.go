@@ -110,7 +110,7 @@ func (a *Authorizer) authorize(ctx context.Context, method string) error {
 	}
 
 	// Требуемая роль наружу не называется: подсказывать вызывающему, какого
-	// именно права ему не хватает, незачем.
+	// именно права ему не хватает, не нужно.
 	return newStatusError(codes.PermissionDenied, codePermissionDenied, "недостаточно прав")
 }
 

@@ -26,7 +26,7 @@ func NewExpireCustomers(repo ExpiryRepository, ids IDs) *ExpireCustomers {
 	return &ExpireCustomers{Repo: repo, IDs: ids}
 }
 
-// ProcessNext гасит доступ ОДНОГО истёкшего customer.
+// ProcessNext гасит доступ одного истёкшего customer.
 //
 // Шаг маленький по тем же соображениям, что и у материализации: «сначала row
 // lock корневой строки» выполняется тривиально, и не нужно упорядочивать блокировки
@@ -53,7 +53,7 @@ func (uc *ExpireCustomers) ProcessNext(ctx context.Context) (progressed bool, er
 			return fmt.Errorf("чтение access: %w", accessErr)
 		}
 
-		// expires_at берётся из строки, прочитанной ПОД locком, и план строится от
+		// expires_at берётся из строки, прочитанной под locком, и план строится от
 		// него: перепроверка нужна, чтобы expiry не снял доступ после
 		// уже закоммиченного renewal.
 		plan := domain.PlanExpiry(now, due.Entitlement, accesses)
@@ -113,7 +113,7 @@ func (uc *ExpireCustomers) materializeExpiryPlan(
 // остаётся видимым постфактум.
 //
 // Метаданные санитизированы: ни accounting ID, ни client_uuid, только счётчики.
-// customer_id допустим — разрешает его именно в audit records.
+// customer_id допустим именно в audit records.
 func expiryAudit(due *ExpiredCustomer, plan domain.ExpiryPlan) AuditEvent {
 	return AuditEvent{
 		ActorType:  auditActorTypeSystem,

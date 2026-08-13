@@ -31,7 +31,7 @@ type AcceptNodeReconcileParams struct {
 // desired_revision сдвинулась, пока мы ходили к агенту, — набор на проводе уже
 // устарел, принимать его нельзя.
 //
-// Ревизия сравнивается ЗДЕСЬ, а не приезжает от агента: вендорный контракт
+// Ревизия сравнивается здесь, а не приезжает от агента: вендорный контракт
 // ReconcileUsers её не передаёт и не возвращает.
 func (q *Queries) AcceptNodeReconcile(ctx context.Context, arg AcceptNodeReconcileParams) (int64, error) {
 	result, err := q.db.Exec(ctx, acceptNodeReconcile, arg.DesiredRevision, arg.NodeID)
@@ -135,7 +135,7 @@ type CompleteNodeOperationsByReconcileParams struct {
 // Завершает операции ноды, которые reconcile уже удовлетворил.
 //
 // Только ожидающие: IN_FLIGHT держит другая горутина диспетчера, и трогать её
-// строку значило бы дописывать результат за неё. Она завершится сама и увидит
+// строку означало бы дописывать результат за неё. Она завершится сама и увидит
 // собственную повторную проверку desired_version.
 //
 // Условие безопасно ровно потому, что вызывающий уже прошёл гейт по
@@ -183,7 +183,7 @@ type ListNodeDesiredUsersRow struct {
 // Полный набор desired PRESENT юзеров ноды.
 //
 // «Фактически разрешённые» означает три ограничения, а не одно. Истёкшие
-// entitlement и исчерпавшие node quota в набор не входят, ДАЖЕ если expiry или
+// entitlement и исчерпавшие node quota в набор не входят, даже если expiry или
 // usage worker ещё не успели перевести их access в ABSENT: это требуется
 // явно, а reconcile авторитетен — то, чего нет в наборе, агент удалит.
 //
@@ -261,7 +261,7 @@ type ReleaseNodeReconcileParams struct {
 // Снимает собственный lease reconcile.
 //
 // Собственный: чужой мог быть взят после того, как наш протух, и снимать его
-// значило бы пустить третьего к той же ноде.
+// пустило бы третьего к той же ноде.
 func (q *Queries) ReleaseNodeReconcile(ctx context.Context, arg ReleaseNodeReconcileParams) error {
 	_, err := q.db.Exec(ctx, releaseNodeReconcile, arg.NodeID, arg.Owner)
 	return err

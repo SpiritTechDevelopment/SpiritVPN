@@ -21,7 +21,7 @@ type ApplyInput struct {
 	// Topology — текущая проекция fleet из manifest.
 	Topology FleetTopology
 
-	// Accesses — ВСЕ access customer, включая ретайрнутые: они нужны для расчёта
+	// Accesses — все access customer, включая ретайрнутые: они нужны для расчёта
 	// поколения при повторном появлении ранее удалённой цели.
 	Accesses []Access
 
@@ -121,7 +121,7 @@ func PlanApply(in ApplyInput) (ApplyPlan, error) {
 		QuotaBytes:        in.Command.UsageQuotaBytes,
 	}
 
-	// Шаг 1. Состояние квоты, каким оно станет ПОСЛЕ этой транзакции. Именно оно,
+	// Шаг 1. Состояние квоты, каким оно станет после этой транзакции. Именно оно,
 	// а не сохранённое, определяет desired state: понижение и повышение лимита
 	// должны отражаться немедленно.
 	exhausted := make(map[NodeID]bool)

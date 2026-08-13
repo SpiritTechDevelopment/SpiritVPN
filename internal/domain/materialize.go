@@ -40,7 +40,7 @@ type RepointChange struct {
 	EntryNodeID  NodeID
 	NewEgressKey string
 	// DesiredState считается на общих основаниях: repoint истёкшего customer или
-	// исчерпанной ноды не обязан делать access присутствующим.
+	// исчерпанной ноды не делает access присутствующим.
 	DesiredState   DesiredState
 	DesiredVersion int64
 }
@@ -64,7 +64,7 @@ type MaterializationInput struct {
 	OpenPeriod *QuotaPeriod
 	NodeUsage  []NodeQuotaUsage
 
-	// LiveNodes — ноды, присутствующие в текущем манифесте ГЛОБАЛЬНО, а не только
+	// LiveNodes — ноды, присутствующие в текущем манифесте глобально, а не только
 	// во fleet этого customer. Именно глобальное отсутствие означает, что runtime
 	// ноды больше не используется.
 	LiveNodes []NodeID
@@ -96,8 +96,7 @@ type MaterializationPlan struct {
 }
 
 // IsNoOp сообщает, что топология и набор access уже согласованы. Повторная
-// материализация одной revision обязана быть идемпотентной, и именно это
-// свойство делает её таковой.
+// материализация одной revision идемпотентна, и это свойство делает её такой.
 func (p MaterializationPlan) IsNoOp() bool {
 	return len(p.CreateAccesses) == 0 &&
 		len(p.DesiredChanges) == 0 &&
@@ -110,13 +109,13 @@ func (p MaterializationPlan) IsNoOp() bool {
 //
 // Отличия от PlanApply, задающие всю структуру функции:
 //
-//   - используются ВСЕ четыре списка PlanAccessSet, а не только Create. Retire и
+//   - используются все четыре списка PlanAccessSet, а не только Create. Retire и
 //     Repoint принадлежат именно этому срезу — Apply их вычисляет, но не
 //     применяет;
 //   - expiry и квота не меняются, а только читаются: они определяют desired state
 //     создаваемых и существующих access, но джоба их не пересчитывает;
 //   - истёкший customer не получает новых access, но ретайр его касается наравне
-//     со всеми: исчезнувшая цель обязана быть ретайрнута независимо от срока
+//     со всеми: исчезнувшая цель ретайрится независимо от срока
 //     (ограничение «только неистёкшим» касается лишь создания).
 func PlanMaterialize(in MaterializationInput) (MaterializationPlan, error) {
 	if in.OpenPeriod == nil {
@@ -137,7 +136,7 @@ func PlanMaterialize(in MaterializationInput) (MaterializationPlan, error) {
 		NodeQuotaInits: missingUsageNodes(in, expired),
 	}
 
-	// Новые цели. Истёкшему customer access не создаются вовсе: он их всё равно
+	// Новые цели. Истёкшему customer access не создаются: он их всё равно
 	// не получит, а создание оставило бы за собой credentials, которые никогда не
 	// будут доставлены.
 	if !expired {
@@ -249,7 +248,7 @@ func planRetire(accesses []Access, live map[NodeID]struct{}) []RetireSpec {
 //
 // Не затрагивают ноду: новый access, родившийся ABSENT (юзера на ноде не было и
 // не будет) и ретайр без операции — у глобально удалённой ноды
-// увеличивать desired_revision бессмысленно, доставлять на неё нечего.
+// увеличивать desired_revision не нужно, доставлять на неё нечего.
 func materializedTouchedNodes(plan MaterializationPlan) []NodeID {
 	seen := make(map[NodeID]struct{})
 

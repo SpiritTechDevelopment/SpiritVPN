@@ -45,8 +45,8 @@ type Outcome struct {
 	// Code — стабильный код для наблюдаемости.
 	Code string
 	// Message — санитизированная диагностика агента либо текст ошибки транспорта.
-	// Секретов не содержит: агент обязан их вычищать, а мы ничего своего сюда не
-	// добавляем.
+	// Секретов не содержит: агент их вычищает, а backend ничего своего сюда не
+	// добавляет.
 	Message string
 	// Alert отмечает исход, который поднимается оператору: подмена
 	// идентичности и неопознанные transport/internal ошибки.
@@ -81,7 +81,7 @@ func classify(result *nodeagentv1.OperationResult, err error) Outcome {
 
 	default:
 		// UNSPECIFIED при gRPC OK. Агент не назвал исход, значит договориться с
-		// ним нельзя: ретраить бессмысленно, и это дефект его версии — alert.
+		// ним нельзя: повтор ничего не даст, и это дефект его версии — alert.
 		return Outcome{
 			Result:  domain.AttemptPermanent,
 			Code:    CodeAgentUnknown,

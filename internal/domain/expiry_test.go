@@ -134,7 +134,7 @@ func TestPlanExpiryAtExactSecond(t *testing.T) {
 }
 
 // TestPlanExpiryIgnoresRetired — ретайрнутый access уже ABSENT, второй раз его
-// гасить нечем и незачем.
+// гасить нечего.
 func TestPlanExpiryIgnoresRetired(t *testing.T) {
 	retired := expiryAccess("node-a", DesiredStateAbsent)
 	retired.Retired = true

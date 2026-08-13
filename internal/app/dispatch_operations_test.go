@@ -267,7 +267,7 @@ func TestDispatchDeliversPayloadFromAccessRow(t *testing.T) {
 }
 
 // TestDispatchAbsentSendsNoCredential — удаление матчится по accounting_id,
-// и расшифровывать credential ради него незачем.
+// и расшифровывать credential ради него не нужно.
 func TestDispatchAbsentSendsNoCredential(t *testing.T) {
 	operation := presentOperation(t)
 	operation.DesiredState = domain.DesiredStateAbsent
@@ -288,7 +288,7 @@ func TestDispatchAbsentSendsNoCredential(t *testing.T) {
 }
 
 // TestDispatchRetryableSchedulesNextAttempt — временный отказ повторяется с
-// backoff от времени БАЗЫ, а не от часов процесса.
+// backoff от времени базы, а не от часов процесса.
 func TestDispatchRetryableSchedulesNextAttempt(t *testing.T) {
 	uc, repo, _ := newDispatchHarness(t, presentOperation(t), nodeagent.Outcome{
 		Result: domain.AttemptRetryable,
@@ -429,7 +429,7 @@ func TestDispatchIdleReportsNoProgress(t *testing.T) {
 }
 
 // TestDispatchReapedLeaseIsProgress — собранный протухший lease вернул операцию в
-// очередь, и следующий шаг её заберёт: ждать незачем.
+// очередь, и следующий шаг её заберёт: ждать нечего.
 func TestDispatchReapedLeaseIsProgress(t *testing.T) {
 	uc, repo, _ := newDispatchHarness(t, nil, applied())
 	repo.reaped = 3
@@ -491,7 +491,7 @@ func TestDispatchUnreadableCredentialRetriesWithAlert(t *testing.T) {
 	}
 }
 
-// TestDispatchPropagatesRepositoryErrors — отказ БАЗЫ обязан дойти до цикла: это
+// TestDispatchPropagatesRepositoryErrors — отказ базы обязан дойти до цикла: это
 // не исход операции, а сбой шага.
 func TestDispatchPropagatesRepositoryErrors(t *testing.T) {
 	broken := errors.New("база недоступна")

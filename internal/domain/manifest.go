@@ -106,7 +106,7 @@ func ValidateManifest(s ManifestSnapshot) error {
 }
 
 // validateManifestSize проверяет лимиты размера до всего остального: разбирать по
-// косточкам снапшот, который заведомо не будет принят, незачем.
+// косточкам снапшот, который заведомо не будет принят, не нужно.
 func validateManifestSize(s ManifestSnapshot) error {
 	if len(s.Nodes) > MaxManifestNodes {
 		return manifestError(ErrManifestTooLarge, "нод %d, предел %d", len(s.Nodes), MaxManifestNodes)
@@ -277,7 +277,7 @@ type pairKey struct {
 // уникальным индексом не учитывается, поэтому освободившуюся пару может занять
 // новый routing_key. Это и есть перенос route.
 //
-// А вот неизменяемость пары у СУЩЕСТВУЮЩЕГО routing_key сравнивает снапшот с
+// А неизменяемость пары у существующего routing_key сравнивает снапшот с
 // принятым состоянием и потому живёт в PlanManifest.
 func validateFleetBridges(fleet ManifestFleet, known, members map[NodeID]struct{}) error {
 	seenKeys := make(map[string]struct{}, len(fleet.Bridges))

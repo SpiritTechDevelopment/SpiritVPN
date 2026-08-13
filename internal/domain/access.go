@@ -93,7 +93,7 @@ type RepointSpec struct {
 // AccessSetPlan — расхождение между текущим набором access customer и целями
 // топологии.
 //
-// Retire и Repoint здесь ВЫЧИСЛЯЮТСЯ, но ApplyCustomerAccess их не применяет: он
+// Retire и Repoint здесь вычисляются, но ApplyCustomerAccess их не применяет: он
 // использует их только как признак «access рассогласован с manifest, не трогать».
 // Оба действия принадлежат manifest materialization job, где ретайр
 // ветвится по тому, жива ли нода: глобально удалённая нода получает
@@ -118,7 +118,7 @@ type targetKey struct {
 
 // PlanAccessSet сопоставляет цели топологии с текущими access customer.
 //
-// accesses должен содержать ВСЕ access customer, включая ретайрнутые: без них
+// accesses должен содержать все access customer, включая ретайрнутые: без них
 // нельзя вычислить поколение при повторном появлении ранее удалённой цели.
 func PlanAccessSet(topology FleetTopology, accesses []Access) AccessSetPlan {
 	// Действующий access на цель ровно один — это гарантирует partial unique

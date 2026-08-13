@@ -48,7 +48,7 @@ func TestPruneUsageDedupReportsMoreWorkOnFullBatch(t *testing.T) {
 }
 
 // Неполная пачка означает, что удалять больше нечего. Признать её прогрессом
-// значило бы крутить цикл без пауз, снося по нескольку строк, только что
+// заставило бы цикл крутиться без пауз, снося по нескольку строк, только что
 // перевалившихся за окно.
 func TestPruneUsageDedupSleepsOnPartialBatch(t *testing.T) {
 	for _, deleted := range []int{0, 99} {

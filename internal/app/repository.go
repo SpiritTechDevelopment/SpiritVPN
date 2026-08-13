@@ -13,10 +13,9 @@ import (
 
 // ApplyRepository открывает короткую транзакцию под одну команду customer.
 //
-// Транзакцией владеет адаптер (он знает про READ COMMITTED, commit и rollback), а
-// порядок шагов внутри неё задаёт use case: именно порядок, а не отдельные запросы,
-// является нормативным требованием, и держать его в SQL-слое значило бы
-// сделать его непроверяемым без базы.
+// Транзакцией владеет адаптер (он знает про READ COMMITTED, commit и rollback),
+// а порядок шагов внутри неё задаёт use case. Нормативен именно порядок, а не
+// отдельные запросы, и в SQL-слое он стал бы непроверяемым без базы.
 type ApplyRepository interface {
 	// WithinTx выполняет fn в одной транзакции: nil коммитит, ошибка откатывает.
 	WithinTx(ctx context.Context, fn func(ApplyTx) error) error
@@ -24,11 +23,11 @@ type ApplyRepository interface {
 
 // ApplyTx — шаги одной транзакции ApplyCustomerAccess в порядке блокировок.
 //
-// Методы разделены по строкам, которые они блокируют, чтобы порядок вызовов в use
-// case читался как нормативный список: entitlement → quota_periods →
+// Методы разделены по строкам, которые они блокируют, чтобы порядок вызовов в
+// use case читался как нормативный список: entitlement → quota_periods →
 // node_quota_usage → vpn_nodes → vpn_accesses → agent_operations. Последние три
-// группы записываются одним WritePlan: они пишутся всегда вместе, и разбивать их
-// значило бы дать вызывающему возможность нарушить порядок.
+// группы записываются одним WritePlan: они пишутся всегда вместе, а по
+// отдельности вызывающий мог бы нарушить порядок.
 type ApplyTx interface {
 	// Now — время начала транзакции (SELECT now()). Первый оператор транзакции;
 	// единственный источник времени для доменных решений.
@@ -52,7 +51,7 @@ type ApplyTx interface {
 	// LoadTopology читает текущую проекцию топологии fleet. Row locks не берёт.
 	LoadTopology(ctx context.Context, fleetID int64) (domain.FleetTopology, error)
 
-	// LoadAccesses читает ВСЕ access customer, включая ретайрнутые. Row locks
+	// LoadAccesses читает все access customer, включая ретайрнутые. Row locks
 	// не берёт: конкурирующий writer невозможен под lock корневой строки.
 	LoadAccesses(ctx context.Context, customerID string) ([]domain.Access, error)
 
@@ -71,9 +70,9 @@ type ApplyTx interface {
 
 // LinksRepository читает всё, из чего строится ответ GetCustomerAccessLinks.
 //
-// Порт из одного метода, а не набор шагов транзакции как у ApplyRepository:
-// нормативного порядка блокировок у read-пути нет (он их вовсе не берёт), и
-// согласованность нескольких операторов — забота адаптера, а не use case.
+// Порт из одного метода, а не набор шагов транзакции как у ApplyRepository.
+// Read-путь блокировок не берёт, нормативного порядка у него нет, а
+// согласованность нескольких операторов — забота адаптера.
 type LinksRepository interface {
 	// LoadCustomerLinks возвращает один согласованный снимок состояния customer.
 	// Отсутствие корневой строки — domain.ErrCustomerNotFound.
@@ -82,9 +81,9 @@ type LinksRepository interface {
 
 // CustomerLinks — снимок, из которого выводятся состояния всех ссылок customer.
 //
-// Now и ExpiresAt лежат здесь, а не в каждой строке: срок действия применяется ко
-// всему customer сразу, и раздать его по строкам значило бы допустить снимок,
-// в котором одна ссылка истекла, а другая нет.
+// Now и ExpiresAt лежат здесь, а не в каждой строке: срок действия применяется
+// ко всему customer сразу. Разложенный по строкам, он допускал бы снимок, где
+// одна ссылка истекла, а другая нет.
 type CustomerLinks struct {
 	// Now — время PostgreSQL того же снимка, что и остальные поля.
 	Now       time.Time
@@ -98,8 +97,8 @@ type CustomerLinks struct {
 
 // AccessLinkSource — сырые факты об одном access, из которых выводится ссылка.
 //
-// Готового состояния здесь нет намеренно: отдельный
-// effective/block state не хранится, и выводить его обязан домен, а не SQL.
+// Готового состояния здесь нет намеренно: отдельный effective/block state не
+// хранится, и выводит его домен, а не SQL.
 type AccessLinkSource struct {
 	Kind         domain.AccessKind
 	DesiredState domain.DesiredState
@@ -131,17 +130,17 @@ type ManifestRepository interface {
 
 // ManifestTx — шаги приёма манифеста.
 //
-// Порядок записи внутри WritePlan нормативным списком не описан: тот
-// перечисляет строки состояния customer, а приём манифеста их не трогает вовсе.
-// Поэтому шагов здесь три, а не по одному на таблицу: разделять их значило бы
-// изобретать порядок, которого спека не требует.
+// Порядок записи внутри WritePlan нормативным списком не описан: тот перечисляет
+// строки состояния customer, которых приём манифеста не касается. Поэтому шагов
+// здесь три, а не по одному на таблицу — иначе пришлось бы изобретать порядок,
+// которого никто не требует.
 type ManifestTx interface {
 	// LoadProjection читает принятое состояние целиком: ≤100 нод и ≤900 связей
 	// читаются одним заходом дешевле, чем выборочно.
 	LoadProjection(ctx context.Context) (domain.ManifestProjection, error)
 
 	// WritePlan проецирует снапшот и ставит джобу материализации. На
-	// идемпотентном повторе не вызывается вовсе.
+	// идемпотентном повторе не вызывается.
 	WritePlan(ctx context.Context, plan domain.ManifestPlan) error
 
 	// AppendAudit добавляет запись в audit_events.
@@ -165,10 +164,9 @@ type MaterializationJob struct {
 // MaterializationTx — шаги одного шага воркера.
 //
 // Чтения состояния customer перечислены поимённо, а не свёрнуты в один
-// LoadCustomerState, по той же причине, что и в ApplyTx: их порядок нормативен,
-// и спрятав его в SQL-слой, мы сделали бы его непроверяемым без базы.
-// Порядок здесь тот же самый — entitlement, период, расход, затем чтения без
-// locks.
+// LoadCustomerState, по той же причине, что и в ApplyTx: их порядок нормативен и
+// в SQL-слое стал бы непроверяемым без базы. Порядок тот же — entitlement,
+// период, расход, затем чтения без locks.
 type MaterializationTx interface {
 	// Now — время начала транзакции.
 	Now(ctx context.Context) (time.Time, error)
@@ -263,7 +261,7 @@ type UsageRepository interface {
 // вызовом между ними, потому что держать транзакцию открытой запрещено во
 // время обращения к агенту.
 type ReconcileRepository interface {
-	// ClaimNodeForReconcile берёт lease ноды и её полный набор ОДНОЙ
+	// ClaimNodeForReconcile берёт lease ноды и её полный набор одной
 	// транзакцией. nil означает, что reconcile-ить сейчас нечего.
 	//
 	// Набор возвращается вместе с lease намеренно: нужно фиксировать
@@ -279,7 +277,7 @@ type ReconcileRepository interface {
 	ReleaseNodeReconcile(ctx context.Context, nodeID domain.NodeID, owner string) error
 
 	// AcceptReconcile применяет результат, если desired_revision ноды не
-	// сдвинулась. accepted=false означает, что desired state уехал, пока мы
+	// сдвинулась. accepted=false означает, что desired state уехал, пока шёл
 	// ходили к агенту: набор на проводе устарел и принимать его нельзя.
 	AcceptReconcile(ctx context.Context, acceptance ReconcileAcceptance) (accepted bool, err error)
 }
@@ -329,9 +327,9 @@ type ReconcileAcceptance struct {
 // UsageRetentionRepository — ретенция реестра дедупа.
 //
 // Отдельный порт от UsageRepository, хотя адаптер у них один: у ретенции нет
-// ничего общего с опросом ноды, кроме таблицы. Прунеру незачем уметь брать
-// lease и разрешать accounting_id, а расширять UsageRepository седьмым методом
-// значило бы дать ему всё это.
+// ничего общего с опросом ноды, кроме таблицы. Брать lease и разрешать
+// accounting_id прунеру не нужно, а седьмой метод в UsageRepository выдал бы ему
+// и то, и другое.
 type UsageRetentionRepository interface {
 	// PruneProcessedUsageItems удаляет до limit записей, которые агент заведомо
 	// не пришлёт повторно, и возвращает число удалённых.
@@ -353,7 +351,7 @@ type UsageGroupTx interface {
 	LockEntitlement(ctx context.Context, customerID string) (*domain.Entitlement, error)
 
 	// LockPeriodAt берёт FOR UPDATE период, в который попадает момент сбора batch
-	// (шаг 2). nil означает, что подходящего периода нет вовсе.
+	// (шаг 2). nil означает, что подходящего периода нет.
 	LockPeriodAt(ctx context.Context, customerID string, collectedAt time.Time) (*UsagePeriod, error)
 
 	// LockNodeUsage берёт FOR UPDATE строку расхода ноды, заводя её при
@@ -361,7 +359,7 @@ type UsageGroupTx interface {
 	// customer на одной ноде, поэтому порог активируется один раз.
 	LockNodeUsage(ctx context.Context, periodID uuid.UUID, nodeID domain.NodeID) (domain.NodeQuotaUsage, error)
 
-	// RegisterProcessed идемпотентно регистрирует items и возвращает только НОВЫЕ
+	// RegisterProcessed идемпотентно регистрирует items и возвращает только новые
 	// (шаг 4). Уже зарегистрированные не возвращаются и не начисляются.
 	RegisterProcessed(
 		ctx context.Context,
@@ -371,7 +369,7 @@ type UsageGroupTx interface {
 		items []domain.UsageItem,
 	) ([]domain.UsageItem, error)
 
-	// LoadNodeAccesses читает ВСЕ нератайрнутые access customer на этой ноде.
+	// LoadNodeAccesses читает все нератайрнутые access customer на этой ноде.
 	// Row locks не берёт: корневая строка уже заблокирована.
 	LoadNodeAccesses(ctx context.Context, customerID string, nodeID domain.NodeID) ([]domain.Access, error)
 
@@ -446,7 +444,7 @@ type ExpiryTx interface {
 	// Джобы и lease у воркера нет: row lock — вся его координация.
 	LockNextDueCustomer(ctx context.Context) (*ExpiredCustomer, error)
 
-	// LoadAccesses читает ВСЕ access customer. Row locks не берёт: конкурирующий
+	// LoadAccesses читает все access customer. Row locks не берёт: конкурирующий
 	// writer невозможен под lock корневой строки.
 	LoadAccesses(ctx context.Context, customerID string) ([]domain.Access, error)
 
@@ -476,9 +474,10 @@ type MaterializedExpiryPlan struct {
 
 // DispatchRepository — состояние outbox для диспетчера операций.
 //
-// Форма отличается от остальных репозиториев, потому что шаг диспетчера состоит из
-// ДВУХ транзакций с сетевым вызовом между ними: нельзя держать транзакцию
-// открытой во время обращения к node-agent. Единый WithinTx выразить это не может.
+// Форма отличается от остальных репозиториев: шаг диспетчера состоит из двух
+// транзакций с сетевым вызовом между ними, потому что держать транзакцию
+// открытой во время обращения к node-agent нельзя. Единый WithinTx этого не
+// выражает.
 type DispatchRepository interface {
 	// ReapExpiredLeases возвращает в оборот операции умерших воркеров и сообщает,
 	// сколько собрал. Устаревшая desired_version переводится в SUPERSEDED,
@@ -488,8 +487,8 @@ type DispatchRepository interface {
 	// LeaseNext берёт lease готовой операции и собирает payload из актуальных строк
 	// access и ноды. nil означает, что отправлять нечего.
 	//
-	// Метод один, а не набор шагов транзакции как у ApplyTx: выбора порядка тут нет
-	// — это один оператор, трогающий одну таблицу.
+	// Метод один, а не набор шагов транзакции как у ApplyTx: это один оператор по
+	// одной таблице, и выбирать порядок не из чего.
 	LeaseNext(ctx context.Context, owner string, leaseTTL time.Duration) (*LeasedOperation, error)
 
 	// WithinResultTx выполняет fn в транзакции записи результата. Шагов два, и их
@@ -500,8 +499,8 @@ type DispatchRepository interface {
 // ResultTx — шаги транзакции записи исхода доставки в порядке блокировок.
 type ResultTx interface {
 	// Now — время начала транзакции. Первый оператор, как и в остальных путях:
-	// next_attempt_at сравнивается с now() базы, и считать его от часов процесса
-	// значило бы разъехаться с тем, кто его читает.
+	// next_attempt_at сравнивается с now() базы, и от часов процесса он разъехался
+	// бы с тем, кто его читает.
 	Now(ctx context.Context) (time.Time, error)
 
 	// SetAccessApplyState проецирует исход на строку access и возвращает false,
@@ -533,7 +532,7 @@ type LeasedOperation struct {
 	DesiredState domain.DesiredState
 
 	// AccessDesiredVersion — версия строки access на момент взятия lease. Больше
-	// DesiredVersion означает, что звонить агенту уже незачем.
+	// DesiredVersion означает, что звонить агенту уже не нужно.
 	AccessDesiredVersion int64
 
 	Endpoint     nodeagent.Endpoint
@@ -543,7 +542,7 @@ type LeasedOperation struct {
 	Flow string
 
 	// Credential заполнен только для PRESENT: удаление матчится по accounting_id, и
-	// расшифровывать ради него секрет незачем.
+	// расшифровывать ради него секрет не нужно.
 	Credential crypto.SealedCredential
 }
 

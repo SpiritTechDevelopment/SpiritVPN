@@ -13,17 +13,17 @@ import (
 
 // connectTimeout ограничивает первую проверку связи с базой.
 //
-// Без него недоступная база превращает старт в бесконечное ожидание, и процесс
-// не отвечает ни на readiness, ни на SIGTERM — под остаётся висеть до grace
-// period вместо того, чтобы честно упасть и перезапуститься.
+// Без него недоступная база превращает старт в бесконечное ожидание: процесс не
+// отвечает ни на readiness, ни на SIGTERM, и под висит до конца grace period
+// вместо того, чтобы упасть и перезапуститься.
 const connectTimeout = 10 * time.Second
 
 // newPool открывает пул соединений с PostgreSQL.
 func newPool(ctx context.Context, cfg config.Config, logger *slog.Logger) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(cfg.Postgres.URL)
 	if err != nil {
-		// Текст ошибки pgx содержит разобранный DSN вместе с паролем, поэтому
-		// наружу он не идёт: имя переменной достаточно, чтобы понять, что чинить.
+		// Текст ошибки pgx содержит разобранный DSN вместе с паролем и наружу не
+		// идёт. Имени переменной достаточно, чтобы понять, что чинить.
 		return nil, fmt.Errorf("%s не разбирается как DSN PostgreSQL", config.EnvDatabaseURL)
 	}
 
@@ -35,9 +35,9 @@ func newPool(ctx context.Context, cfg config.Config, logger *slog.Logger) (*pgxp
 		return nil, fmt.Errorf("пул PostgreSQL: %w", err)
 	}
 
-	// pgxpool.New соединение не открывает: без явной проверки процесс объявил бы
-	// себя поднявшимся, а первая же команда упала бы. Readiness это поймает и
-	// потом, но узнавать о неверном DSN на старте дешевле.
+	// pgxpool.New соединение не открывает. Без явной проверки процесс объявил бы
+	// себя поднявшимся, а упала бы первая же команда; readiness поймает это и
+	// позже, но узнавать о неверном DSN на старте дешевле.
 	pingCtx, cancel := context.WithTimeout(ctx, connectTimeout)
 	defer cancel()
 

@@ -35,7 +35,7 @@ var (
 	ErrCustomerNotFound = errors.New("domain: customer не найден")
 
 	// ErrFleetNotFound — fleet отсутствует в текущем manifest.
-	// Проверяется вызывающим слоем и только ПОСЛЕ отсечения устаревшей команды по
+	// Проверяется вызывающим слоем и только после отсечения устаревшей команды по
 	// command_number, иначе повтор старой команды получил бы NOT_FOUND вместо OK.
 	ErrFleetNotFound = errors.New("domain: fleet не найден")
 

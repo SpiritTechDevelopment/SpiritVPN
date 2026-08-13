@@ -18,7 +18,7 @@ import (
 
 // ClaimNode берёт lease ноды, которую пора опросить.
 //
-// Строки курсора заводятся тем же вызовом: claim обязан брать строку под
+// Строки курсора заводятся тем же вызовом: claim берёт строку под
 // FOR UPDATE SKIP LOCKED, а несуществующую заблокировать нельзя. Вставка
 // идемпотентна и почти всегда не делает ничего.
 func (r *Repository) ClaimNode(
@@ -169,9 +169,9 @@ func (r *Repository) AdvanceCursor(
 
 // PruneProcessedUsageItems удаляет одну пачку дедуп-записей (ретенция).
 //
-// Вне транзакции: удаление пачки и есть вся работа шага, а объединять пачки
-// значило бы держать длинную транзакцию ровно на той таблице, которая растёт
-// быстрее всех.
+// Вне транзакции: удаление пачки и есть вся работа шага. Объединённые пачки
+// держали бы длинную транзакцию ровно на той таблице, которая растёт быстрее
+// всех.
 func (r *Repository) PruneProcessedUsageItems(
 	ctx context.Context,
 	retention time.Duration,
@@ -211,7 +211,7 @@ type usageGroupTx struct {
 	applyTx
 }
 
-// LockPeriodAt возвращает nil, когда подходящего периода нет вовсе.
+// LockPeriodAt возвращает nil, когда подходящего периода нет.
 func (t *usageGroupTx) LockPeriodAt(
 	ctx context.Context,
 	customerID string,
@@ -319,8 +319,8 @@ func (t *usageGroupTx) RegisterProcessed(
 		fresh[accountingID] = struct{}{}
 	}
 
-	// Порядок items сохраняется: он задан доменной группировкой, и менять его
-	// здесь значило бы сделать план зависимым от порядка строк RETURNING.
+	// Порядок items сохраняется: он задан доменной группировкой, а перестановка
+	// здесь сделала бы план зависимым от порядка строк RETURNING.
 	accrued := make([]domain.UsageItem, 0, len(inserted))
 	for _, item := range items {
 		if _, ok := fresh[item.AccountingID]; ok {

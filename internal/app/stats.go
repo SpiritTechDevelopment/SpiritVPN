@@ -51,8 +51,8 @@ type Stats struct {
 	// Прямая мера задержки expiry worker.
 	ExpiryLagSeconds float64
 
-	// ExhaustedNodeQuotas — ноды с исчерпанной квотой в ОТКРЫТЫХ периодах.
-	// Закрытые периоды считать бессмысленно: их exhausted_at — история, а не
+	// ExhaustedNodeQuotas — ноды с исчерпанной квотой в открытых периодах.
+	// Закрытые периоды не считаются: их exhausted_at — история, а не
 	// действующая блокировка.
 	ExhaustedNodeQuotas int64
 
@@ -88,7 +88,7 @@ type AccessStat struct {
 // NodeCursorStat — состояние опроса одной ноды.
 type NodeCursorStat struct {
 	NodeID string
-	// LastPullAgeSeconds — время с последней ПОПЫТКИ опроса, а не с последнего
+	// LastPullAgeSeconds — время с последней попытки опроса, а не с последнего
 	// сдвига курсора. Растёт, когда воркер до ноды не доходит.
 	LastPullAgeSeconds float64
 	// AckedSequence — подтверждённая позиция в спуле. Само по себе число ни о чём

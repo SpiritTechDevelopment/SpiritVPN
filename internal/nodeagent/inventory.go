@@ -26,7 +26,7 @@ type ActualUser struct {
 type Inventory struct {
 	Users []ActualUser
 
-	// ObservedAt — момент наблюдения НА НОДЕ, а не получения ответа. Нулевой
+	// ObservedAt — момент наблюдения НА ноде, а не получения ответа. Нулевой
 	// означает, что полного наблюдения у агента не существует.
 	ObservedAt time.Time
 
@@ -38,7 +38,7 @@ type Inventory struct {
 // InventoryOutcome — исход наблюдения.
 //
 // Отдельный тип по той же причине, что и PullOutcome: у чтения нет строки в
-// agent_operations, и исходы доставки ему бессмысленны.
+// agent_operations, и исходы доставки к нему не применимы.
 type InventoryOutcome struct {
 	Inventory *Inventory
 
@@ -62,7 +62,7 @@ func (o InventoryOutcome) OK() bool { return o.Inventory != nil }
 // удаляет, и те же batch'и штатно приедут к usage-воркеру.
 //
 // Второе: acknowledged_usage_through уходит пустым. Курсор принадлежит
-// usage-воркеру, и подтверждать здесь чужую позицию значило бы разрешить агенту
+// usage-воркеру, и подтверждение чужой позиции здесь разрешило бы агенту
 // удалить то, что backend ещё не закоммитил.
 func (c *Client) ObserveUsers(ctx context.Context, endpoint Endpoint) InventoryOutcome {
 	agent, err := c.connFor(endpoint)

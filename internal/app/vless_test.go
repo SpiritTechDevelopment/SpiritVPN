@@ -58,7 +58,7 @@ func TestBuildVLESSURIKeepsEmptyShortID(t *testing.T) {
 	}
 }
 
-// TestBuildVLESSURIEncodesFragment — требует url-encoded display_name.
+// TestBuildVLESSURIEncodesFragment — display_name уходит url-encoded.
 // Фрагмент разбирается обратно и обязан совпасть с исходным именем.
 func TestBuildVLESSURIEncodesFragment(t *testing.T) {
 	names := []string{
@@ -122,7 +122,7 @@ func TestBuildVLESSURICarriesCredential(t *testing.T) {
 	}
 }
 
-// TestNodePublicUsable — валидирует параметры до записи, поэтому непригодная
+// TestNodePublicUsable — параметры валидируются до записи, поэтому непригодная
 // нода означает рассогласованную проекцию. Список обязательных полей здесь и
 // есть определение «пригодна».
 func TestNodePublicUsable(t *testing.T) {

@@ -57,7 +57,7 @@ func (uc *GetCustomerAccessLinks) Execute(ctx context.Context, customerID string
 //
 // Расшифровка выполняется исключительно на этой ветке: у заблокированной или
 // недоставленной ссылки URI всё равно не будет, и вносить ради неё открытый
-// секрет в память незачем.
+// секрет в память не нужно.
 func (uc *GetCustomerAccessLinks) link(snapshot CustomerLinks, access AccessLinkSource) CustomerAccessLink {
 	status := domain.LinkStatusOf(domain.LinkInput{
 		Now:            snapshot.Now,

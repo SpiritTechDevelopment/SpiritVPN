@@ -16,7 +16,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
-// Тесты use case проверяют то, чего не видно ни в домене, ни в SQL: ПОРЯДОК шагов
+// Тесты use case проверяют то, чего не видно ни в домене, ни в SQL: порядок шагов
 // внутри транзакции. Порядок нормативен, и нарушения дают тихие
 // баги — например, повтор старой команды для исчезнувшего fleet вернул бы
 // NOT_FOUND вместо идемпотентного OK.
@@ -664,7 +664,7 @@ func applyForAudit(t *testing.T, tx *fakeTx, cmd domain.ApplyCommand) []app.Audi
 	return tx.audits
 }
 
-// TestApplyAuditsDecision — перечисляет «Apply/renewal» раздельно, поэтому
+// TestApplyAuditsDecision — Apply и renewal журналируются раздельно, поэтому
 // решение домена попадает в action, а не в метаданные: фильтр по колонке дешевле
 // и надёжнее разбора jsonb.
 func TestApplyAuditsDecision(t *testing.T) {
@@ -772,9 +772,9 @@ func TestApplyAuditCarriesCaller(t *testing.T) {
 	}
 }
 
-// TestApplyAuditMetadataCarriesNoSecrets — запрещает секреты в журнале.
+// TestApplyAuditMetadataCarriesNoSecrets — секреты в журнале запрещены.
 //
-// Проверка идёт по ЗНАЧЕНИЯМ, а не по именам ключей: accounting_id и client_uuid
+// Проверка идёт по значениям, а не по именам ключей: accounting_id и client_uuid
 // опасны именно как значения, и попасть туда они могут под любым именем.
 func TestApplyAuditMetadataCarriesNoSecrets(t *testing.T) {
 	tx := newCustomerTx()

@@ -318,7 +318,7 @@ func TestIntegrationManifestRevivesRow(t *testing.T) {
 }
 
 // TestIntegrationManifestRouteTransfer — ради этого правился baseline: пара
-// (entry, exit) уникальна только среди ТЕКУЩИХ связей, поэтому перенос route на
+// (entry, exit) уникальна только среди текущих связей, поэтому перенос route на
 // новый routing_key проходит.
 func TestIntegrationManifestRouteTransfer(t *testing.T) {
 	uc, pool := newManifestFixture(t)

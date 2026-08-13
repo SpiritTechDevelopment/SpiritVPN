@@ -75,7 +75,7 @@ func TestPlanUsageGroupClosedPeriodChangesNothing(t *testing.T) {
 }
 
 // TestPlanUsageGroupCrossesThresholdAtEquality — доступ существует, пока
-// расход СТРОГО меньше лимита, поэтому равенство уже исчерпание.
+// расход строго меньше лимита, поэтому равенство уже исчерпание.
 func TestPlanUsageGroupCrossesThresholdAtEquality(t *testing.T) {
 	plan := PlanUsageGroup(UsageGroupInput{
 		Now:            tNow,
@@ -94,7 +94,7 @@ func TestPlanUsageGroupCrossesThresholdAtEquality(t *testing.T) {
 	if !plan.ExhaustedAt.Equal(tNow) {
 		t.Errorf("отметка %v, ожидалась %v", plan.ExhaustedAt, tNow)
 	}
-	// Гасятся ВСЕ access customer на этой ноде.
+	// Гасятся Все access customer на этой ноде.
 	if len(plan.DesiredChanges) != 2 {
 		t.Fatalf("погашено access %d, ожидалось 2", len(plan.DesiredChanges))
 	}

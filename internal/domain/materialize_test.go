@@ -260,7 +260,7 @@ func TestPlanMaterializeExhaustedNodeBornAbsent(t *testing.T) {
 	}
 }
 
-// TestPlanMaterializeExpiredCustomer — ограничивает создание неистёкшими
+// TestPlanMaterializeExpiredCustomer — создание ограничено неистёкшими
 // customer, но ретайр касается всех: исчезнувшая цель обязана уйти независимо от
 // срока.
 func TestPlanMaterializeExpiredCustomer(t *testing.T) {

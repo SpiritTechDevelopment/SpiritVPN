@@ -364,7 +364,7 @@ func TestIntegrationUsageThresholdFiresOnce(t *testing.T) {
 		t.Errorf("операций стало %d, было %d — порог сработал повторно", got, operationsAfterFirst)
 	}
 
-	// Отметка исчерпания принадлежит моменту ПЕРВОГО пересечения и не должна
+	// Отметка исчерпания принадлежит моменту первого пересечения и не должна
 	// переставляться каждой следующей пачкой: по ней видно, когда нода встала.
 	if got := scalar[time.Time](t, stack.pool,
 		`SELECT exhausted_at FROM node_quota_usage u
@@ -793,7 +793,7 @@ func TestIntegrationRetentionKeepsFreshItems(t *testing.T) {
 // TestIntegrationRetentionDropsVanishedSpool — строки исчезнувшего спула
 // удаляются, даже если их sequence выше подтверждённого.
 //
-// Сравнивать их с acked_sequence бессмысленно: новый спул начинает нумерацию с
+// Сравнивать их с acked_sequence нельзя: новый спул начинает нумерацию с
 // нуля, поэтому по одному только sequence такие строки лежали бы вечно.
 func TestIntegrationRetentionDropsVanishedSpool(t *testing.T) {
 	stack := newUsageStack(t)
@@ -811,7 +811,7 @@ func TestIntegrationRetentionDropsVanishedSpool(t *testing.T) {
 }
 
 // TestIntegrationRetentionLateRetryReaccrues — fault test: очень поздний
-// повтор после очистки дедупа начисляет трафик ВТОРОЙ раз.
+// повтор после очистки дедупа начисляет трафик второй раз.
 //
 // Тест закрепляет принятую погрешность, а не желаемое поведение. Она названа
 // положительной (в пользу сервиса) и допустимой; цена альтернативы — реестр,

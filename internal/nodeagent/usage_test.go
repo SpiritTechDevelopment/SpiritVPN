@@ -33,9 +33,9 @@ func pbBatch(spoolID string, sequence uint64, collectedAtMs int64) *nodeagentv1.
 	}
 }
 
-// TestNodeStateFromRejectsForeignNodeID — запрещает принимать node_id из
-// запроса; здесь та же логика для ответа. Нода определяется mTLS-идентичностью, и
-// расхождение означает, что соединение ведёт не туда, куда мы думаем.
+// TestNodeStateFromRejectsForeignNodeID — принимать node_id из запроса
+// запрещено; здесь та же логика для ответа. Нода определяется
+// mTLS-идентичностью, и расхождение означает, что соединение ведёт не туда.
 //
 // Это не сверка ради аккуратности: приняв чужой node_id, воркер начислил бы
 // трафик и подтвердил спул не той ноде.
@@ -56,7 +56,7 @@ func TestNodeStateFromRejectsForeignNodeID(t *testing.T) {
 }
 
 // TestNodeStateFromRejectsEmptyNodeID — пустой node_id это тоже расхождение, а не
-// «поле не заполнено»: молча принять его значило бы принимать ответ от кого угодно.
+// «поле не заполнено»: принятый молча, он открыл бы приём ответа от кого угодно.
 func TestNodeStateFromRejectsEmptyNodeID(t *testing.T) {
 	if _, err := nodeStateFrom(pulledEndpoint(), &nodeagentv1.GetNodeStateResponse{}); err == nil {
 		t.Fatal("ответ без node_id принят")
@@ -153,7 +153,7 @@ func TestNodeStateFromMapsBatch(t *testing.T) {
 // (spool_id, sequence). Пустой spool_id сделал бы её неотличимой между спулами, а
 // нулевого sequence у выданного batch не бывает: агент нумерует с единицы.
 //
-// Принять такой batch значило бы начислить трафик с ключом, по которому дедуп
+// Принятый batch начислил бы трафик с ключом, по которому дедуп
 // потом не сработает.
 func TestNodeStateFromRejectsBadCursor(t *testing.T) {
 	for _, tc := range []struct {
@@ -169,7 +169,7 @@ func TestNodeStateFromRejectsBadCursor(t *testing.T) {
 			batch: pbBatch("spool-1", 0, 0),
 		},
 		{
-			name:  "курсора нет вовсе",
+			name:  "курсора нет совсем",
 			batch: &nodeagentv1.UsageBatch{CollectedAtUnixMs: 0},
 		},
 	} {
@@ -190,7 +190,7 @@ func TestNodeStateFromRejectsBadCursor(t *testing.T) {
 }
 
 // TestNodeStateFromRejectsWholeResponseOnBadBatch — один испорченный batch
-// отвергает ВЕСЬ ответ, а не пропускается.
+// отвергает весь ответ, а не пропускается.
 //
 // Иначе курсор уехал бы за пропущенный batch, агент удалил бы его из спула как
 // подтверждённый, и трафик пропал бы безвозвратно. Потерять весь опрос дешевле:

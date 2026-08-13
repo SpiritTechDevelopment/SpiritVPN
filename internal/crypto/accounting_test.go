@@ -16,7 +16,7 @@ var errNoEntropy = errors.New("тест: источник энтропии не�
 
 func (failingReader) Read([]byte) (int, error) { return 0, errNoEntropy }
 
-// Отображение байта в символ проверяется на ВСЕХ 256 значениях сразу: так
+// Отображение байта в символ проверяется на всех 256 значениях сразу: так
 // равномерность доказывается по построению (каждому символу ровно 8 байт), а не
 // статистикой на выборке.
 func TestNewAccountingIDMapsEveryByteValue(t *testing.T) {

@@ -92,7 +92,7 @@ type ClaimMaterializationJobRow struct {
 //
 // SKIP LOCKED, чтобы вторая реплика не ждала на уже занятой строке, а сразу
 // взяла следующую. Условие на lease разрешает три случая: джоба ещё ничья,
-// чужой lease протух (воркер упал — требует восстановления), либо lease наш
+// чужой lease протух (воркер упал, джобу надо подхватить), либо lease наш
 // собственный. Последнее обязательно: каждый шаг ProcessNext идёт отдельной
 // транзакцией, и без него воркер не смог бы продолжить собственную джобу.
 func (q *Queries) ClaimMaterializationJob(ctx context.Context, arg ClaimMaterializationJobParams) (ClaimMaterializationJobRow, error) {
@@ -128,7 +128,7 @@ LIMIT 1
 // Следующий customer в порядке customer_id. Ноль строк означает, что обход
 // завершён.
 //
-// Обходятся ВСЕ customer, а не только затронутые манифестом: удаления по
+// Обходятся Все customer, а не только затронутые манифестом: удаления по
 // manifest_revision не находятся — у ретайрнутых строк остаётся прежняя revision.
 func (q *Queries) NextCustomerAfter(ctx context.Context, afterCustomerID string) (string, error) {
 	row := q.db.QueryRow(ctx, nextCustomerAfter, afterCustomerID)

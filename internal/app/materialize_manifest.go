@@ -43,7 +43,7 @@ func NewMaterializeManifest(
 	return &MaterializeManifest{Repo: repo, IDs: ids, Sealer: sealer, Owner: owner, LeaseTTL: leaseTTL}
 }
 
-// ProcessNext выполняет один шаг: берёт джобу и обрабатывает ОДНОГО customer.
+// ProcessNext выполняет один шаг: берёт джобу и обрабатывает одного customer.
 //
 // Шаг маленький намеренно. Потолок пакета — 500 строк, но это именно потолок:
 // у customer максимум ~100 access (≤10 нод и ≤90 связей на fleet), поэтому один
@@ -62,7 +62,7 @@ func (uc *MaterializeManifest) ProcessNext(ctx context.Context) (progressed bool
 			return nil
 		}
 
-		// Обход идёт по ВСЕМ customer в порядке customer_id:
+		// Обход идёт по всем customer в порядке customer_id:
 		// затронутые fleet из manifest_revision не вычисляются — у удалённых строк
 		// остаётся прежняя revision, и удаления таким фильтром не
 		// находятся.

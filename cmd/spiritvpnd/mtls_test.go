@@ -339,7 +339,7 @@ func (s *testServer) manifestClient(t *testing.T, identity string) manifestv1.Ma
 }
 
 // conn поднимает соединение с указанной идентичностью. Пустой identity означает
-// вызов вовсе без клиентского сертификата.
+// вызов совсем без клиентского сертификата.
 func (s *testServer) conn(t *testing.T, identity string) *grpc.ClientConn {
 	t.Helper()
 

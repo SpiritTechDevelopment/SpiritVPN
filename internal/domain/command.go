@@ -35,7 +35,7 @@ func (d ApplyDecision) String() string {
 
 // ValidateCustomerID проверяет непрозрачную product-идентичность: 1..256 байт.
 // Правило общее для обоих методов, поэтому вынесено отдельно:
-// GetCustomerAccessLinks обязан отличать пустой customer_id (INVALID_ARGUMENT)
+// GetCustomerAccessLinks отличает пустой customer_id (INVALID_ARGUMENT)
 // от неизвестного (NOT_FOUND), а не искать пустую строку в базе.
 func ValidateCustomerID(customerID string) error {
 	if customerID == "" || len(customerID) > maxCustomerIDBytes {

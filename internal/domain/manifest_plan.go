@@ -24,7 +24,7 @@ type ProjectedBridge struct {
 	ExitNodeID  NodeID
 	// Current отличает связь текущего снапшота от удалённой. Удалённые нужны
 	// потому, что routing_key остаётся занятым навсегда: строка не удаляется, и
-	// повторное появление того же ключа обязано описывать ту же пару.
+	// повторное появление того же ключа описывает ту же пару.
 	Current bool
 }
 
@@ -50,20 +50,20 @@ type ManifestProjection struct {
 	CurrentNodes       []NodeID
 	CurrentMemberships []FleetNodeKey
 
-	// Fleets — ВСЕ принятые fleet. Разделения на текущие и нет здесь нет
+	// Fleets — все принятые fleet. Разделения на текущие и нет здесь нет
 	// намеренно: принятый fleet не удаляется и не переиспользуется, а
 	// его отсутствие в снапшоте отклоняет весь манифест.
 	Fleets []int64
 
-	// Bridges — ВСЕ связи, включая удалённые (см. ProjectedBridge.Current).
+	// Bridges — все связи, включая удалённые (см. ProjectedBridge.Current).
 	Bridges []ProjectedBridge
 }
 
 // ManifestInput — вход планировщика приёма манифеста.
 //
-// Digest сюда не передаётся: его считает сам PlanManifest. Принимать его
-// параметром значило бы допустить вызов, где digest не соответствует снапшоту, —
-// а именно на равенстве digest держится вся идемпотентность приёма.
+// Digest сюда не передаётся, его считает сам PlanManifest. Параметром он
+// допускал бы вызов, где digest не соответствует снапшоту, а на равенстве digest
+// держится вся идемпотентность приёма.
 type ManifestInput struct {
 	Snapshot ManifestSnapshot
 	// AllowDestructive действует только на этот вызов и не сохраняется как
@@ -76,7 +76,7 @@ type ManifestInput struct {
 //
 // Списки Nodes/FleetIDs/Memberships/Bridges — строки, которые становятся
 // текущими; Removed* — строки, которые перестают ими быть. Физических удалений в
-// плане нет вовсе: история не удаляется.
+// плане нет: история не удаляется.
 type ManifestPlan struct {
 	Revision int64
 	Digest   string
@@ -85,7 +85,7 @@ type ManifestPlan struct {
 	Payload []byte
 
 	// Idempotent — та же revision с тем же digest. План пуст, писать нечего
-	// вовсе, включая строку materialization job.
+	// нечего, включая строку materialization job.
 	Idempotent bool
 
 	// Destructive — снапшот что-то удаляет. Гейт по AllowDestructive уже пройден;
@@ -105,7 +105,7 @@ type ManifestPlan struct {
 // PlanManifest сверяет снапшот с принятым состоянием и раскладывает его в план
 // записи.
 //
-// Снапшот обязан быть уже проверен ValidateManifest: здесь только те правила,
+// Снапшот уже проверен ValidateManifest: здесь только те правила,
 // которым нужно принятое состояние.
 //
 // Порядок проверок нормативен:
@@ -164,7 +164,7 @@ func PlanManifest(in ManifestInput) (ManifestPlan, error) {
 // checkRevision реализует гейт revision: повтор той же revision с тем же digest
 // идемпотентен, с другим digest отклоняется, более старая revision отклоняется.
 //
-// Идемпотентность распространяется только на ПОСЛЕДНЮЮ принятую revision. Повтор
+// Идемпотентность распространяется только на последнюю принятую revision. Повтор
 // более раннего номера — устаревшая доставка, и он отклоняется даже при
 // совпадающем digest: более специальное правило про старую revision
 // перекрывает общее про повтор.
@@ -185,9 +185,9 @@ func checkRevision(in ManifestInput, digest string) (idempotent bool, err error)
 	}
 }
 
-// checkAcceptedFleets — все fleet ID из предыдущего принятого снапшота
-// обязаны присутствовать; отсутствие хотя бы одного отклоняет весь манифест
-// независимо от allow_destructive.
+// checkAcceptedFleets — все fleet ID из предыдущего принятого снапшота должны
+// присутствовать; отсутствие хотя бы одного отклоняет весь манифест независимо
+// от allow_destructive.
 func checkAcceptedFleets(in ManifestInput) error {
 	present := make(map[int64]struct{}, len(in.Snapshot.Fleets))
 	for _, fleet := range in.Snapshot.Fleets {
@@ -211,7 +211,7 @@ func checkAcceptedFleets(in ManifestInput) error {
 // checkBridgePairs — пара (entry, exit) неизменяема для существующего
 // routing_key.
 //
-// Сверка идёт со ВСЕМИ строками, включая удалённые. Строка живёт вечно, и
+// Сверка идёт со всеми строками, включая удалённые. Строка живёт вечно, и
 // оживление её с другой парой означало бы, что одна и та же логическая цель
 // (logical_target_key = routing_key) вдруг указывает в другое место, унося за
 // собой входную ноду всех уже выданных access. Перенос требует именно
@@ -244,7 +244,7 @@ func checkBridgePairs(in ManifestInput) error {
 }
 
 // sortedNodesByID упорядочивает ноды по node_id: в этом порядке транзакция
-// обязана брать их row locks.
+// берёт их row locks.
 func sortedNodesByID(nodes []ManifestNode) []ManifestNode {
 	sorted := slices.Clone(nodes)
 	slices.SortFunc(sorted, func(a, b ManifestNode) int {

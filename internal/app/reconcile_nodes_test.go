@@ -33,7 +33,7 @@ func (fixedClock) Now() time.Time { return observationNow }
 var observationNow = time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
 
 // fakeReconcileRepo ведёт журнал шагов: без него «набор отправлен и не принят» не
-// отличить от «не отправлен вовсе», а снятие lease — от его отсутствия.
+// отличить от «не отправлен совсем», а снятие lease — от его отсутствия.
 type fakeReconcileRepo struct {
 	journal []string
 
@@ -206,7 +206,7 @@ func TestReconcileSendsFullSet(t *testing.T) {
 }
 
 // TestReconcileSendsEmptySet — пустой набор легален и означает
-// «backend-owned юзеров на ноде нет». Не отправить его значило бы оставить на
+// «backend-owned юзеров на ноде нет». Без него на ноде остались бы
 // ноде всех, кого backend уже снял.
 func TestReconcileSendsEmptySet(t *testing.T) {
 	uc, _, agent := newReconcileHarness(t, reconcileNode(t), reconcileApplied())
@@ -225,7 +225,7 @@ func TestReconcileSendsEmptySet(t *testing.T) {
 
 // TestReconcileAbortsOnUnreadableCredential — самое важное утверждение среза.
 //
-// Набор авторитетен: юзер, которого в нём нет, будет с ноды УДАЛЁН. Поэтому
+// Набор авторитетен: юзер, которого в нём нет, будет с ноды удалён. Поэтому
 // нерасшифровавшийся credential обязан остановить весь шаг, а не быть пропущен, —
 // иначе отказ ключа превратился бы в снятие рабочего доступа нашими руками.
 func TestReconcileAbortsOnUnreadableCredential(t *testing.T) {
@@ -448,7 +448,7 @@ func TestReconcileSendsFullSetOnDrift(t *testing.T) {
 	if agent.calls != 1 {
 		t.Fatalf("полный набор отправлен %d раз, ожидался 1", agent.calls)
 	}
-	// Чинит набор по desired state, а не по инвентарю: на ноду уезжают ОБА
+	// Чинит набор по desired state, а не по инвентарю: на ноду уезжают оба
 	// юзера, включая того, который там уже есть.
 	if got := len(agent.users); got != 2 {
 		t.Errorf("в наборе %d юзеров, ожидалось 2 — набор собран из инвентаря, а не из desired", got)
@@ -500,7 +500,7 @@ func TestReconcileSkipsFullSetOnUnusableInventory(t *testing.T) {
 				t.Fatalf("ProcessNext: %v", err)
 			}
 			if !progressed {
-				t.Error("шаг не засчитан прогрессом: нода была взята, и повторять её немедленно незачем")
+				t.Error("шаг не засчитан прогрессом: нода была взята, повторять её немедленно нечего")
 			}
 			if agent.calls != 0 {
 				t.Errorf("полный набор отправлен %d раз, ожидалось 0", agent.calls)
@@ -513,7 +513,7 @@ func TestReconcileSkipsFullSetOnUnusableInventory(t *testing.T) {
 // нужен целиком, и сверяться с ней не о чем.
 //
 // Агент с needs_bootstrap не имеет права удалять юзеров и сам из этого состояния
-// не выйдет. Спрашивать у него инвентарь значило бы тратить лишний RPC на то,
+// не выйдет. Запрос инвентаря потратил бы лишний RPC на то,
 // чтобы всё равно отправить полный набор.
 func TestReconcileBootstrapSkipsInventory(t *testing.T) {
 	node := reconcileNode(t, reconcileUser(t, "acc-1"))

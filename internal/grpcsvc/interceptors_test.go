@@ -242,7 +242,7 @@ func TestAuthorizeRejectsEmptyIdentity(t *testing.T) {
 	}
 }
 
-// TestAuthorizeWriterIsNotReader — Чтение отдаёт VLESS URI с
+// TestAuthorizeWriterIsNotReader — чтение отдаёт VLESS URI с
 // client_uuid, поэтому право писать не даёт права читать.
 func TestAuthorizeWriterIsNotReader(t *testing.T) {
 	reached := false
@@ -394,7 +394,7 @@ func TestLoggingNeverRecordsRequestBody(t *testing.T) {
 // TestLoggingNeverRecordsResponseBody — ответ с URI не логируется.
 //
 // Регрессионный guard, а не проверка текущего поведения: interceptor тела ответа
-// сейчас не пишет вовсе. Стоит кому-нибудь добавить в запись resp «для удобства
+// сейчас не пишет. Стоит кому-нибудь добавить в запись resp «для удобства
 // отладки» — и открытый client_uuid каждого READY-access окажется в логах,
 // откуда его уже не отозвать. Защита типа crypto.ClientUUID на готовой URI не
 // работает: внутри неё обычная строка.

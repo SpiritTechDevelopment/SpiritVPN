@@ -21,9 +21,9 @@ import (
 
 // applyUseCase — то, что транспорту нужно от use case.
 //
-// Интерфейс, а не *app.ApplyCustomerAccess, ровно ради одного: интеграционный
-// тест mTLS поднимает настоящий сервер с настоящим рукопожатием, и тащить в него
-// пул PostgreSQL только чтобы проверить границу безопасности незачем.
+// Интерфейс, а не *app.ApplyCustomerAccess: интеграционный тест mTLS поднимает
+// настоящий сервер с настоящим рукопожатием, и пул PostgreSQL ему для проверки
+// границы безопасности не нужен.
 type applyUseCase interface {
 	Execute(ctx context.Context, cmd app.ApplyCustomerCommand) error
 }
@@ -83,10 +83,10 @@ func newGRPCServer(
 
 // transportCredentials собирает mTLS.
 //
-// Insecure-режима нет и не будет. Второй путь исполнения, в котором
-// авторизация не выполняется, означал бы, что вся локальная разработка идёт
-// мимо неё, а ошибки в сопоставлении идентичностей и ролей всплывают только в
-// production. Локально те же самые сертификаты выпускает `make dev-certs`.
+// Insecure-режима нет. На втором пути исполнения, где авторизация не
+// выполняется, шла бы вся локальная разработка, и ошибки в сопоставлении
+// идентичностей и ролей всплывали бы только в production. Локально те же самые
+// сертификаты выпускает `make dev-certs`.
 func transportCredentials(cfg config.GRPC) (credentials.TransportCredentials, error) {
 	cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
 	if err != nil {
@@ -101,8 +101,8 @@ func transportCredentials(cfg config.GRPC) (credentials.TransportCredentials, er
 	clientCAs := x509.NewCertPool()
 	if !clientCAs.AppendCertsFromPEM(caPEM) {
 		// AppendCertsFromPEM молча игнорирует мусор и возвращает false. Без этой
-		// проверки процесс поднялся бы с пустым пулом и отверг бы вообще всех —
-		// с диагностикой «недостаточно прав» вместо «CA не прочитан».
+		// проверки процесс поднялся бы с пустым пулом и отвергал бы всех подряд с
+		// диагностикой «недостаточно прав» вместо «CA не прочитан».
 		return nil, fmt.Errorf("CA клиентов: %s не содержит ни одного сертификата", cfg.ClientCAFile)
 	}
 

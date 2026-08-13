@@ -24,7 +24,7 @@ var sampleTime = time.Unix(1_700_000_000, 0).UTC()
 
 // fakeAgent — заранее заданные исходы. Настоящего gRPC здесь не поднимается: у
 // декоратора нет своей сетевой логики, и поддельный агент проверял бы nodeagent,
-// а не метрики (тот же принцип, что и в решении 53).
+// а не метрики.
 type fakeAgent struct {
 	present   nodeagent.Outcome
 	absent    nodeagent.Outcome
@@ -197,8 +197,8 @@ func TestAgentAlertsCounted(t *testing.T) {
 	}
 }
 
-// TestPullPublishesNodeHealth — требует health ноды, и до этого среза
-// XrayReachable, XrayUptime и NeedsBootstrap не читал никто.
+// TestPullPublishesNodeHealth — health ноды публикуется в метриках; до этого
+// среза XrayReachable, XrayUptime и NeedsBootstrap не читал никто.
 func TestPullPublishesNodeHealth(t *testing.T) {
 	registry := New()
 	agent := wrapAgent(t, registry, &fakeAgent{pull: nodeagent.PullOutcome{

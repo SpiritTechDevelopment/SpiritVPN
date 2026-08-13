@@ -77,7 +77,7 @@ func NewPullUsage(
 	}
 }
 
-// ProcessNext опрашивает ОДНУ ноду.
+// ProcessNext опрашивает одну ноду.
 //
 // progressed=false означает, что опрашивать сейчас нечего. Недоступная нода
 // прогрессом считается: работа была проделана, и повторять её немедленно не надо —
@@ -159,7 +159,7 @@ func (uc *PullUsage) consumeBatch(ctx context.Context, nodeID domain.NodeID, bat
 	}
 
 	if len(unknown) > 0 {
-		// Карантин отдельной транзакцией и ПЕРВЫМ: он ничего не блокирует, а
+		// Карантин идёт первым и отдельной транзакцией: он ничего не блокирует, а
 		// упавшая следом группа не должна оставлять плохие items неотмеченными.
 		if err := uc.Repo.QuarantineItems(ctx, ref, domain.QuarantineUnknownAccountingID, unknown); err != nil {
 			return fmt.Errorf("карантин неизвестных accounting_id: %w", err)
@@ -248,7 +248,7 @@ func (uc *PullUsage) consumeGroup(
 			return fmt.Errorf("блокировка периода: %w", err)
 		}
 		if period == nil {
-			// Подходящего периода нет вовсе — не «закрыт», а не существует.
+			// Подходящего периода нет: не «закрыт», а не существует.
 			// Начислять некуда, и молча терять трафик нельзя.
 			quarantine = group.Items
 			return nil
@@ -346,7 +346,7 @@ func (uc *PullUsage) materializeGroup(
 // release снимает lease, не заслоняя основную ошибку шага.
 func (uc *PullUsage) release(ctx context.Context, nodeID domain.NodeID) {
 	// Контекст мог быть отменён вместе с процессом. Тогда снимать lease нечем и
-	// незачем: он протухнет сам, и ноду подберёт следующая реплика.
+	// не нужно: он протухнет сам, и ноду подберёт следующий воркер.
 	if ctx.Err() != nil {
 		return
 	}

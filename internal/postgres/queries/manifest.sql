@@ -31,7 +31,7 @@ FROM vpn_nodes
 WHERE current
 ORDER BY node_id;
 
--- ВСЕ принятые fleet, а не только текущие: принятый vpn_fleet_id не удаляется и
+-- Все принятые fleet, а не только текущие: принятый vpn_fleet_id не удаляется и
 -- обязан присутствовать в каждом следующем снапшоте.
 -- name: ListAcceptedFleetIDs :many
 SELECT vpn_fleet_id
@@ -44,7 +44,7 @@ FROM vpn_fleet_nodes
 WHERE current
 ORDER BY vpn_fleet_id, node_id;
 
--- ВСЕ связи, включая удалённые: routing_key занят навсегда, и оживление его с
+-- Все связи, включая удалённые: routing_key занят навсегда, и оживление его с
 -- другой парой (entry, exit) запрещено.
 -- name: ListAllBridgeRoutes :many
 SELECT vpn_fleet_id, routing_key, entry_node_id, exit_node_id, current

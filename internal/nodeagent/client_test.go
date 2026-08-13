@@ -29,7 +29,7 @@ import (
 	nodeagentv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/nodeagent/v1"
 )
 
-// Тесты идут против поддельного агента с НАСТОЯЩИМ mTLS-рукопожатием: смысл
+// Тесты идут против поддельного агента с настоящим mTLS-рукопожатием: смысл
 // этого пакета целиком в границе доверия, и подделка credentials.TLSInfo не
 // проверила бы ни цепочку, ни сверку идентичности — то есть ровно тот код,
 // ошибка в котором означает выданные чужой ноде credentials.
@@ -335,7 +335,7 @@ func TestEnsureUserPresentDeliversPayload(t *testing.T) {
 }
 
 // TestEnsureUserAbsentSendsNoCredential — удаление матчится по accounting_id, и
-// расшифровывать client_uuid ради него незачем.
+// расшифровывать client_uuid ради него не нужно.
 func TestEnsureUserAbsentSendsNoCredential(t *testing.T) {
 	agent := &fakeAgent{result: applied()}
 	client, endpoint := newHarness(t, agent)

@@ -16,7 +16,7 @@ import (
 )
 
 // Тесты read-пути проверяют то, чего не видно ни в домене, ни в SQL: что
-// открытый client_uuid извлекается РОВНО для готовых ссылок. Домен состояний не
+// открытый client_uuid извлекается ровно для готовых ссылок. Домен состояний не
 // расшифровывает, запрос отдаёт только ciphertext, и решение «открывать или нет»
 // принимает единственно use case.
 
@@ -119,7 +119,7 @@ func TestExecuteReturnsURIOnlyForReady(t *testing.T) {
 }
 
 // TestExecuteNeverOpensBlockedCredential — заблокированный customer не должен
-// приводить к появлению открытого секрета в памяти вовсе.
+// приводить к появлению открытого секрета в памяти.
 func TestExecuteNeverOpensBlockedCredential(t *testing.T) {
 	uc, repo, sealer := newLinksHarness(readySource(), readySource())
 	repo.snapshot.ExpiresAt = linksNow.Add(-time.Hour)

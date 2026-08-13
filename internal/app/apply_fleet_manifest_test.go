@@ -10,7 +10,7 @@ import (
 )
 
 // Тесты приёма манифеста проверяют то, чего не видно ни в домене, ни в SQL:
-// ЧТО именно пишется при каждом исходе. Идемпотентный повтор не пишет ничего,
+// Что именно пишется при каждом исходе. Идемпотентный повтор не пишет ничего,
 // обычный приём пишет проекцию без аудита, destructive — проекцию и аудит.
 
 // fakeManifestTx ведёт журнал вызовов: порядок и состав важнее аргументов.
@@ -136,7 +136,7 @@ func TestApplyManifestWritesProjection(t *testing.T) {
 	}
 }
 
-// TestApplyManifestIdempotentWritesNothing — повтор не пишет вовсе
+// TestApplyManifestIdempotentWritesNothing — повтор не пишет ничего
 // ничего, включая джобу материализации.
 func TestApplyManifestIdempotentWritesNothing(t *testing.T) {
 	snapshot := manifestSnapshot()
@@ -209,7 +209,7 @@ func TestApplyManifestAuditsDestructive(t *testing.T) {
 	}
 }
 
-// TestApplyManifestNoAuditWithoutRemovals — требует аудит только для
+// TestApplyManifestNoAuditWithoutRemovals — аудит нужен только для
 // destructive; обычный приём журнал не засоряет.
 func TestApplyManifestNoAuditWithoutRemovals(t *testing.T) {
 	tx := &fakeManifestTx{}

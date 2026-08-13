@@ -67,7 +67,7 @@ func (t *expiryTx) LockNextDueCustomer(ctx context.Context) (*app.ExpiredCustome
 //  7. agent_operations
 //
 // Шаги 1–3 пропущены: корневая строка уже заблокирована выборкой due customer, а
-// quota_periods и node_quota_usage истечение не трогает вовсе — desired state
+// quota_periods и node_quota_usage истечение не трогает — desired state
 // истёкшего customer равен ABSENT независимо от расхода.
 func (t *expiryTx) WriteExpiry(ctx context.Context, plan app.MaterializedExpiryPlan) error {
 	if err := t.queries.BumpEntitlementDesiredVersion(ctx, db.BumpEntitlementDesiredVersionParams{
@@ -107,7 +107,7 @@ func (t *expiryTx) writeExpiredNodes(ctx context.Context, nodes []domain.NodeID)
 	if err != nil {
 		return err
 	}
-	// Нода, на которой стоит живой access, обязана существовать в vpn_nodes:
+	// Нода, на которой стоит живой access, существует в vpn_nodes:
 	// строки оттуда не удаляются никогда, исчезнувшие лишь помечаются
 	// current=false. Расхождение означает рассогласованную проекцию.
 	if len(locked) != len(nodeIDs) {

@@ -264,7 +264,7 @@ func (t *applyTx) writeTouchedNodes(ctx context.Context, plan app.MaterializedPl
 	if err != nil {
 		return err
 	}
-	// Нода из текущей топологии обязана существовать в vpn_nodes: manifest
+	// Нода из текущей топологии существует в vpn_nodes: manifest
 	// валидируется на существование всех node references. Расхождение означает
 	// рассогласованную проекцию, и продолжать с ним нельзя — FK всё равно уронит
 	// вставку access, но уже без внятной причины.

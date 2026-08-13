@@ -246,7 +246,7 @@ func TestIntegrationDispatchOneInFlightPerNode(t *testing.T) {
 		t.Fatal("первая операция не взята")
 	}
 
-	// Пока первая IN_FLIGHT, вторая операция ТОЙ ЖЕ ноды браться не должна.
+	// Пока первая IN_FLIGHT, вторая операция той ЖЕ ноды браться не должна.
 	for range 5 {
 		next, err := repo.LeaseNext(context.Background(), testDispatchOwner, time.Minute)
 		if err != nil {
@@ -272,7 +272,7 @@ func TestIntegrationDispatchOneInFlightPerNode(t *testing.T) {
 //
 // Гейт читает committed-снимок, поэтому два воркера, взявшие в один момент разные
 // операции одной ноды, оба его проходят. Здесь эта гонка воспроизводится точно:
-// первая операция уже IN_FLIGHT в НЕЗАКОММИЧЕНной транзакции, и для второй
+// первая операция уже IN_FLIGHT в незакоммиченной транзакции, и для второй
 // попытки её как будто нет.
 func TestIntegrationDispatchRefusesSecondInFlightOnNode(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
@@ -285,7 +285,7 @@ func TestIntegrationDispatchRefusesSecondInFlightOnNode(t *testing.T) {
 
 	// Операции остальных нод убираются из выборки. Без этого ORDER BY отдаёт
 	// глобально первую готовую операцию, она оказывается на свободной ноде, и
-	// конкуренции за busy не возникает вовсе — тест проходил бы и без индекса.
+	// конкуренции за busy не возникает — тест проходил бы и без индекса.
 	exec(t, stack.pool,
 		`UPDATE agent_operations SET next_attempt_at = now() + interval '1 hour' WHERE node_id <> $1`, busy)
 
@@ -450,7 +450,7 @@ func TestIntegrationDispatchLostResponseIsSafe(t *testing.T) {
 	operationID := scalar[uuid.UUID](t, stack.pool,
 		`SELECT operation_id FROM agent_operations WHERE status = 'RETRY_WAIT'`)
 
-	// Пауза прошла. Повтор идёт ТОЙ ЖЕ операцией: operation_id стабилен между
+	// Пауза прошла. Повтор идёт той ЖЕ операцией: operation_id стабилен между
 	// попытками, и агент опознаёт повтор по нему.
 	exec(t, stack.pool,
 		`UPDATE agent_operations SET next_attempt_at = now() WHERE operation_id = $1`, operationID)
@@ -477,7 +477,7 @@ func TestIntegrationDispatchLostResponseIsSafe(t *testing.T) {
 }
 
 // TestIntegrationDispatchStaleResultDoesNotOverwrite — результат операции,
-// чья desired_version устарела ПОКА ШЁЛ RPC, не меняет apply_state актуальной
+// чья desired_version устарела пока Шёл RPC, не меняет apply_state актуальной
 // версии, а сама операция становится SUPERSEDED.
 func TestIntegrationDispatchStaleResultDoesNotOverwrite(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
@@ -513,7 +513,7 @@ func TestIntegrationDispatchStaleResultDoesNotOverwrite(t *testing.T) {
 }
 
 // TestIntegrationDispatchSkipsSupersededBeforeRPC — устаревшая операция не
-// уезжает агенту вовсе и снимается с очереди как SUPERSEDED.
+// уезжает агенту и снимается с очереди как SUPERSEDED.
 func TestIntegrationDispatchSkipsSupersededBeforeRPC(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
 	seedDispatchQueue(t, stack)
@@ -536,7 +536,7 @@ func TestIntegrationDispatchSkipsSupersededBeforeRPC(t *testing.T) {
 		t.Error("SUPERSEDED не терминален: осталась запланированная попытка")
 	}
 
-	// Агент получил команды по всем access, КРОМЕ устаревшего.
+	// Агент получил команды по всем access, кроме устаревшего.
 	if got := len(stack.agent.calls); got != seedOperationCount-1 {
 		t.Errorf("вызовов агента %d, ожидалось %d: устаревшая операция не должна уезжать",
 			got, seedOperationCount-1)
@@ -605,7 +605,7 @@ func TestIntegrationDispatchReapsExpiredLease(t *testing.T) {
 }
 
 // TestIntegrationDispatchLoadsEndpointFromManifest — payload собирается из
-// АКТУАЛЬНОЙ строки ноды, а испорченный agent_config даёт нулевой endpoint,
+// Актуальной строки ноды, а испорченный agent_config даёт нулевой endpoint,
 // который отвергнет уже клиент агента.
 //
 // Классификацию этого исхода проверяют юнит-тесты nodeagent: здесь важно ровно то,

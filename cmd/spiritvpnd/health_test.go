@@ -93,7 +93,7 @@ func TestReadinessHidesCheckDetails(t *testing.T) {
 	}
 }
 
-// TestMetricsServesRegistry — требует /metrics на служебном порту рядом с
+// TestMetricsServesRegistry — /metrics живёт на служебном порту рядом с
 // health. Проверяется именно проводка: что endpoint зарегистрирован и отдаёт
 // переданный реестр, а не пустой ответ и не глобальный DefaultRegisterer.
 func TestMetricsServesRegistry(t *testing.T) {
@@ -128,7 +128,7 @@ func TestMetricsIsNotServedOnHealthPaths(t *testing.T) {
 const namespacePrefix = "spiritvpn_"
 
 // TestReadinessStopsAtFirstFailure — проверки идут по возрастанию стоимости, и
-// спрашивать схему у недоступной базы незачем.
+// спрашивать схему у недоступной базы не нужно.
 func TestReadinessStopsAtFirstFailure(t *testing.T) {
 	reachedSchema := false
 

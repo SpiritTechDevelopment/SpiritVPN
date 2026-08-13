@@ -101,7 +101,7 @@ func TestInventoryFromKeepsBrokenCredentialComparable(t *testing.T) {
 // TestInventoryFromWithoutObservation — снимка ещё не делали.
 //
 // Ноль в users_observed_at_unix_ms по контракту означает «наблюдения нет», а не
-// «наблюдение сделано в 1970 году»: превращать его в дату значило бы вечно
+// «наблюдение сделано в 1970 году»: как дата он вечно
 // считать такой снимок протухшим вместо «его просто не существует».
 func TestInventoryFromWithoutObservation(t *testing.T) {
 	inventory := inventoryFrom(&nodeagentv1.GetNodeStateResponse{NodeId: pulledNodeID})
@@ -156,7 +156,7 @@ func TestObserveUsersRequestsInventory(t *testing.T) {
 
 // TestObserveUsersRejectsForeignNode — инвентарь чужой ноды опаснее его
 // отсутствия: сверка нашла бы расхождение по всему набору и запустила полный
-// reconcile, который привёл бы ноду к ЧУЖОМУ desired state.
+// reconcile, который привёл бы ноду к чужому desired state.
 func TestObserveUsersRejectsForeignNode(t *testing.T) {
 	ca := newTestCA(t)
 	client, err := New(ca.issueBackendFiles(t))
