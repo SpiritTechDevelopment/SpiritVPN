@@ -173,8 +173,8 @@ func TestPlanUsageGroupQuotaIsPerNode(t *testing.T) {
 	}
 }
 
-// TestGroupUsageItemsSplitsByCustomerAndNode — batch обрабатывается
-// группами (customer_id, node_id, quota_period_id), а не одной транзакцией.
+// TestGroupUsageItemsSplitsByCustomerAndNode — batch обрабатывается группами
+// (customer_id, node_id), а не одной транзакцией.
 func TestGroupUsageItemsSplitsByCustomerAndNode(t *testing.T) {
 	groups := GroupUsageItems([]UsageItem{
 		usageItem("c2", "node-b", 1, 1),

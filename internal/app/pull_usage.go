@@ -216,8 +216,8 @@ func (uc *PullUsage) resolve(
 	return known, unknown, nil
 }
 
-// consumeGroup обрабатывает одну группу (customer_id, node_id, quota_period_id) в
-// одной транзакции.
+// consumeGroup обрабатывает одну группу (customer_id, node_id) в одной транзакции.
+// Период выбирается здесь же, по времени сбора batch.
 func (uc *PullUsage) consumeGroup(
 	ctx context.Context,
 	ref UsageBatchRef,

@@ -240,7 +240,8 @@ type UsageRepository interface {
 	QuarantineItems(ctx context.Context, batch UsageBatchRef, reason string, items []domain.UsageItem) error
 
 	// WithinUsageGroupTx выполняет fn в транзакции одной группы
-	// (customer_id, node_id, quota_period_id).
+	// (customer_id, node_id). Период в ключ группы не входит, его выбирает сама
+	// транзакция шагом LockPeriodAt.
 	WithinUsageGroupTx(ctx context.Context, fn func(UsageGroupTx) error) error
 
 	// AdvanceCursor подтверждает позицию спула. Вызывается только после durable

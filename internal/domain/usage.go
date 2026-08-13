@@ -56,8 +56,9 @@ type UsageAccrual struct {
 	Items []UsageItem
 }
 
-// UsageGroupPlan — что сделать с одной группой (customer_id, node_id,
-// quota_period_id) в одной короткой транзакции.
+// UsageGroupPlan — что сделать с одной группой (customer_id, node_id) в одной
+// короткой транзакции. Период у группы один, и выбирает его вызывающий по времени
+// сбора batch.
 type UsageGroupPlan struct {
 	// Accrual непусто только для открытого периода.
 	Accrual UsageAccrual
