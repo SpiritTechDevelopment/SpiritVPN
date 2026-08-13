@@ -206,3 +206,147 @@ jobs:
       run: |
         go tool sqlc generate
         git diff --exit-code -- internal/postgres/db
+
+  images:
+    name: Images
+    runs-on: ubuntu-latest
+    needs: [build]
+
+    # Только ветки сред и релизные теги. Триггер workflow — push в любую ветку,
+    # и без этого условия каждая feature-ветка складывала бы в registry по паре
+    # образов.
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/develop' ||
+      startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      tag: ${{ steps.names.outputs.tag }}
+      owner: ${{ steps.names.outputs.owner }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Compute image names
+      id: names
+      run: |
+        # Имена образов в ghcr обязаны быть строчными, а владелец репозитория
+        # записан как SpiritTechDevelopment.
+        echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+        echo "tag=sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to ghcr
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    # Оба образа выходят из одной стадии сборки и несут один тег. Разъехавшиеся
+    # теги дают процесс, застрявший в `not ready: schema`, причём ни одна
+    # миграция при этом не падает: он требует схему не ниже встроенной в него.
+    - name: Build and push migrate
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        target: migrate
+        push: true
+        tags: ghcr.io/${{ steps.names.outputs.owner }}/spiritvpn-migrate:${{ steps.names.outputs.tag }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push spiritvpnd
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        target: spiritvpnd
+        push: true
+        tags: ghcr.io/${{ steps.names.outputs.owner }}/spiritvpn-spiritvpnd:${{ steps.names.outputs.tag }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Выкатка обеих сред идёт отсюда, на серверы никто не заходит руками.
+  #
+  # Доступы разведены по GitHub Environments: секреты с одинаковыми именами
+  # разрешаются в разные значения, и ключ от production недоступен job'у,
+  # который выкатывает develop.
+  #
+  # deploy.sh на сервере держит порядок трёх шагов — схему раньше процесса.
+
+  deploy-develop:
+    name: Deploy develop
+    runs-on: ubuntu-latest
+    needs: [images]
+    if: github.ref == 'refs/heads/develop'
+    environment: develop
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    # Compose-файл и скрипт едут на сервер каждой выкаткой. Иначе их правки в
+    # репозитории нужно было бы разносить по серверам отдельно, и версия скрипта
+    # там расходилась бы с версией образа молча. Заполненный .env и каталог
+    # secrets/ лежат только на сервере, копирование их не трогает.
+    - name: Copy deploy files
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        source: deploy/docker-compose.yml,deploy/deploy.sh
+        target: /srv/spiritvpn
+        strip_components: 1
+
+    - name: Run deploy.sh over SSH
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        script: |
+          chmod +x /srv/spiritvpn/deploy.sh
+          /srv/spiritvpn/deploy.sh ${{ needs.images.outputs.tag }}
+
+  # Продакшн выкатывается тегом v*, а не мержем в main: экземпляр один, замена
+  # контейнера означает недоступность gRPC, и момент простоя выбирается тегом.
+  deploy-production:
+    name: Deploy production
+    runs-on: ubuntu-latest
+    needs: [images]
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment: production
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    # Compose-файл и скрипт едут на сервер каждой выкаткой. Иначе их правки в
+    # репозитории нужно было бы разносить по серверам отдельно, и версия скрипта
+    # там расходилась бы с версией образа молча. Заполненный .env и каталог
+    # secrets/ лежат только на сервере, копирование их не трогает.
+    - name: Copy deploy files
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        source: deploy/docker-compose.yml,deploy/deploy.sh
+        target: /srv/spiritvpn
+        strip_components: 1
+
+    - name: Run deploy.sh over SSH
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        script: |
+          chmod +x /srv/spiritvpn/deploy.sh
+          /srv/spiritvpn/deploy.sh ${{ needs.images.outputs.tag }}
