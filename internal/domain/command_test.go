@@ -84,7 +84,7 @@ func TestValidateApplyCommand(t *testing.T) {
 	}
 }
 
-// Правило 2 §5: команда с номером не больше сохранённого поглощается без side
+// Команда с номером не больше сохранённого поглощается без side
 // effects. Правило симметрично защищает и от переупорядочивания, и от повтора.
 func TestIsStaleCommand(t *testing.T) {
 	tests := []struct {
@@ -131,7 +131,7 @@ func TestIsStaleCommand(t *testing.T) {
 	}
 }
 
-// Правила 5, 7, 8, 9 §5.
+// Классификация принятой команды: создание, продление, смена квоты.
 func TestClassifyApply(t *testing.T) {
 	tests := []struct {
 		name         string

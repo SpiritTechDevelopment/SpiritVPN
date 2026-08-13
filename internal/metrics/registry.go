@@ -1,4 +1,4 @@
-// Package metrics — реестр метрик Prometheus и инструментирование адаптеров (§15).
+// Package metrics — реестр метрик Prometheus и инструментирование адаптеров.
 //
 // Устроен так, чтобы ни domain, ни app про Prometheus не знали. Метрики делятся
 // на две половины по источнику, и у каждой свой механизм:
@@ -11,8 +11,8 @@
 //	Не на scrape: иначе стоимость наблюдения задавал бы Prometheus снаружи
 //	процесса, а /metrics зависал бы вместе с базой.
 //
-// Метки customer_id нет ни у одной метрики и быть не может: §15 разрешает customer
-// ID только в audit records и прямо запрещает как metric label. Это проверяется
+// Метки customer_id нет ни у одной метрики и быть не может: customer ID
+// допустим только в audit records и запрещён как metric label. Это проверяется
 // тестом, а не соблюдается на глаз.
 package metrics
 
@@ -154,8 +154,8 @@ func New() *Registry {
 
 	// Метка node есть у счётчика, но не у гистограммы: у гистограммы серий в
 	// число корзин больше, и добавление ноды третьим измерением умножило бы их на
-	// размер fleet. §15 требует latency и «последний успешный вызов по node»;
-	// измерение по нодам отдано счётчику и метке последнего успеха.
+	// размер fleet. Наблюдаемость требует latency и «последний успешный вызов по
+	// node»; измерение по нодам отдано счётчику и метке последнего успеха.
 	r.agentCalls = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: namespace,
 		Name:      "agent_calls_total",
@@ -171,11 +171,11 @@ func New() *Registry {
 	// Отдельный счётчик, а не фильтр по коду: Outcome.Alert выставляют исходы с
 	// РАЗНЫМИ кодами (подмена идентичности, неопознанный transport, непригодный
 	// agent_config), и правило alert'а не должно перечислять их руками. Он же
-	// закрывает решение 52, где alert был временно подменён логом уровня ERROR.
+	// закрывает случай, когда alert был временно подменён логом уровня ERROR.
 	r.agentAlerts = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: namespace,
 		Name:      "agent_alert_outcomes_total",
-		Help:      "RPC outcomes to node-agent that require operator attention (spec §9).",
+		Help:      "RPC outcomes to node-agent that require operator attention.",
 	}, []string{labelNode, labelCode})
 
 	r.usagePullCapped = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -208,12 +208,12 @@ func New() *Registry {
 	r.nodeNeedsBootstrap = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
 		Name:      "node_needs_bootstrap",
-		Help:      "Agent needs authoritative reconcile before it may remove users (spec §10): 1 or 0.",
+		Help:      "Agent needs authoritative reconcile before it may remove users: 1 or 0.",
 	}, []string{labelNode})
 
 	// Без меток: и место расшифровки (диспетчер или выдача ссылок), и причина —
 	// инфраструктурные, а нода тут ни при чём. Любое ненулевое значение означает
-	// расхождение ключа и требует вмешательства (§15).
+	// расхождение ключа и требует вмешательства.
 	r.credentialOpenErrors = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: namespace,
 		Name:      "credential_open_errors_total",
@@ -238,7 +238,7 @@ func New() *Registry {
 	// Пригодность инвентаря считается отдельно от успеха вызова: агент, который
 	// исправно отвечает усечённым снимком, из сверки выпадает молча. Такая нода
 	// не показывает расхождений просто потому, что сравнивать не с чем, и без
-	// этой серии выглядела бы благополучнее исправной (§10).
+	// этой серии выглядела бы благополучнее исправной.
 	r.inventoryObserved = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: namespace,
 		Name:      "inventory_observations_total",
@@ -391,7 +391,7 @@ func (r *Registry) Handler() http.Handler {
 	return promhttp.HandlerFor(r.reg, promhttp.HandlerOpts{ErrorHandling: promhttp.ContinueOnError})
 }
 
-// SetBinarySchemaVersion фиксирует версию миграций, встроенных в бинарь (§15).
+// SetBinarySchemaVersion фиксирует версию миграций, встроенных в бинарь.
 //
 // Константа процесса, в базе её нет, поэтому со снимком она не приезжает.
 func (r *Registry) SetBinarySchemaVersion(version uint) {

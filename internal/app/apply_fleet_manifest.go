@@ -11,7 +11,7 @@ import (
 // аудиту.
 //
 // Actor и RequestID приходят с транспорта, а не добываются из контекста внутри:
-// use case не должен знать ни про mTLS, ни про метадату gRPC, а §15 требует
+// use case не должен знать ни про mTLS, ни про метадату gRPC, а аудиту нужны
 // в audit records и того, и другого.
 type ApplyManifestCommand struct {
 	Snapshot         domain.ManifestSnapshot
@@ -20,7 +20,7 @@ type ApplyManifestCommand struct {
 	RequestID        string
 }
 
-// ApplyManifestResult — исход приёма (§6).
+// ApplyManifestResult — исход приёма.
 type ApplyManifestResult struct {
 	// Revision, ставшая текущей; на идемпотентном повторе — эхо запроса.
 	Revision int64
@@ -28,12 +28,12 @@ type ApplyManifestResult struct {
 	Idempotent bool
 }
 
-// ApplyFleetManifest — use case приёма infrastructure manifest (§6).
+// ApplyFleetManifest — use case приёма infrastructure manifest.
 //
 // Весь снапшот применяется одной транзакцией либо не применяется вовсе. Fan-out
 // customer access внутрь этой транзакции не входит: он идёт durable-джобой уже
-// после commit (§6, §13), потому что 50 000 customer в одной транзакции с RPC
-// нарушили бы требование §11.1 о коротких транзакциях.
+// после commit, потому что 50 000 customer в одной транзакции с RPC
+// нарушили бы требование о коротких транзакциях.
 type ApplyFleetManifest struct {
 	Repo ManifestRepository
 }
@@ -43,7 +43,7 @@ func NewApplyFleetManifest(repo ManifestRepository) *ApplyFleetManifest {
 	return &ApplyFleetManifest{Repo: repo}
 }
 
-// Execute валидирует и применяет снапшот (§6).
+// Execute валидирует и применяет снапшот.
 //
 // Порядок шагов нормативен:
 //
@@ -51,8 +51,8 @@ func NewApplyFleetManifest(repo ManifestRepository) *ApplyFleetManifest {
 //     брать advisory lock, ни читать проекцию целиком;
 //  2. чтение принятого состояния и планирование — под lock приёма;
 //  3. запись; на идемпотентном повторе не пишется ничего, включая джобу
-//     материализации (решение 21);
-//  4. аудит destructive-приёма в той же транзакции (§15): запись, пережившая
+//     материализации;
+//  4. аудит destructive-приёма в той же транзакции: запись, пережившая
 //     откат проекции, соврала бы о том, что удаление состоялось.
 func (uc *ApplyFleetManifest) Execute(
 	ctx context.Context,
@@ -107,10 +107,10 @@ func (uc *ApplyFleetManifest) Execute(
 	return result, nil
 }
 
-// destructiveAudit собирает запись о принятом destructive-манифесте (§15).
+// destructiveAudit собирает запись о принятом destructive-манифесте.
 //
 // В метаданных только счётчики и идентификаторы топологии: секретов и customer ID
-// здесь нет и быть не может — приём манифеста их вообще не видит (§15 допускает
+// здесь нет и быть не может — приём манифеста их вообще не видит (customer_id допустим
 // customer ID лишь в ограниченных audit records, и этот к ним не относится).
 func destructiveAudit(cmd ApplyManifestCommand, plan domain.ManifestPlan) AuditEvent {
 	return AuditEvent{

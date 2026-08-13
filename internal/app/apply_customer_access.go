@@ -10,25 +10,25 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
-// ApplyCustomerCommand — доменная команда вместе с тем, что нужно аудиту (§15).
+// ApplyCustomerCommand — доменная команда вместе с тем, что нужно аудиту.
 //
 // Actor и RequestID не входят в domain.ApplyCommand намеренно: домен от них не
 // зависит ни одним правилом, а попав туда, они стали бы частью значения, по
-// которому §5 сравнивает повторы команд. Та же форма, что и у
+// которому сравниваются повторы команд. Та же форма, что и у
 // ApplyManifestCommand.
 type ApplyCustomerCommand struct {
 	Command domain.ApplyCommand
-	// Actor — идентичность вызывающего из mTLS (§14). Пустая допустима: тесты и
+	// Actor — идентичность вызывающего из mTLS. Пустая допустима: тесты и
 	// будущие внутренние вызовы актора не имеют, а колонка nullable.
 	Actor string
-	// RequestID связывает запись журнала с логами того же запроса (§15).
+	// RequestID связывает запись журнала с логами того же запроса.
 	RequestID string
 }
 
-// ApplyCustomerAccess — use case команды ApplyCustomerAccess (§5).
+// ApplyCustomerAccess — use case команды ApplyCustomerAccess.
 //
 // Одна короткая транзакция без единого сетевого вызова агентам: операции только
-// кладутся в outbox, а отправляет их dispatcher уже после commit (§9). Успешный
+// кладутся в outbox, а отправляет их dispatcher уже после commit. Успешный
 // ответ означает, что desired state и durable operations зафиксированы в
 // PostgreSQL, но не то, что агенты их уже применили.
 type ApplyCustomerAccess struct {
@@ -44,7 +44,7 @@ func NewApplyCustomerAccess(repo ApplyRepository, ids IDs, sealer CredentialSeal
 
 // Execute применяет одну команду.
 //
-// Порядок шагов нормативен (§5, правила 1–9 и §11.1) и держится здесь, а не в SQL:
+// Порядок шагов нормативен и держится здесь, а не в SQL:
 //
 //  1. валидация формы — до любого обращения к БД, чтобы невалидный запрос не
 //     блокировал корневую строку и не двигал last_command_number;
@@ -55,7 +55,7 @@ func NewApplyCustomerAccess(repo ApplyRepository, ids IDs, sealer CredentialSeal
 //     исчезнувшего из manifest fleet вернул бы NOT_FOUND вместо OK;
 //  6. планирование и запись; last_command_number двигается при успешном commit,
 //     в том числе на валидном no-op;
-//  7. запись аудита — в той же транзакции, поэтому откат уносит и её (§15).
+//  7. запись аудита — в той же транзакции, поэтому откат уносит и её.
 func (uc *ApplyCustomerAccess) Execute(ctx context.Context, request ApplyCustomerCommand) error {
 	cmd := request.Command
 
@@ -78,7 +78,7 @@ func (uc *ApplyCustomerAccess) Execute(ctx context.Context, request ApplyCustome
 		}
 
 		// Шаг 4. Возврат nil коммитит пустую транзакцию: команда уже применена или
-		// переупорядочена, и повторять её side effects нельзя (§5, правило 2).
+		// переупорядочена, и повторять её side effects нельзя.
 		if domain.IsStaleCommand(cmd, entitlement) {
 			return nil
 		}
@@ -92,7 +92,7 @@ func (uc *ApplyCustomerAccess) Execute(ctx context.Context, request ApplyCustome
 			return domain.ErrFleetNotFound
 		}
 
-		// Шаг 6. Порядок чтений совпадает с порядком блокировок §11.1: период и
+		// Шаг 6. Порядок чтений совпадает с порядком блокировок: период и
 		// расход берутся FOR UPDATE до того, как транзакция дойдёт до нод, access и
 		// операций в WritePlan.
 		input := domain.ApplyInput{
@@ -156,7 +156,7 @@ func (uc *ApplyCustomerAccess) Execute(ctx context.Context, request ApplyCustome
 	})
 }
 
-// customerActions — действие журнала по решению домена (§15).
+// customerActions — действие журнала по решению домена.
 //
 // Словарь, а не switch с default: промах означает, что домен завёл четвёртое
 // решение, а запись с action "UNKNOWN" молча увезла бы это расхождение в журнал,
@@ -167,9 +167,9 @@ var customerActions = map[domain.ApplyDecision]string{
 	domain.ApplyDecisionQuotaChange: auditActionCustomerQuotaChanged,
 }
 
-// customerAudit собирает запись о принятой команде customer (§15).
+// customerAudit собирает запись о принятой команде customer.
 //
-// В метаданных только счётчики и лимиты. Ни accounting_id, ни client_uuid: §15
+// В метаданных только счётчики и лимиты. Ни accounting_id, ни client_uuid:
 // запрещает секреты в журнале, а customer_id, наоборот, разрешён именно здесь и
 // уезжает в target_id.
 func customerAudit(request ApplyCustomerCommand, plan domain.ApplyPlan) (AuditEvent, error) {
@@ -200,13 +200,13 @@ func customerAudit(request ApplyCustomerCommand, plan domain.ApplyPlan) (AuditEv
 
 // materialize дополняет доменный план идентификаторами и credentials.
 //
-// Sealing выполняется внутри транзакции. §11.1 требует выносить криптографию
+// Sealing выполняется внутри транзакции. Криптографию положено выносить
 // наружу, но число создаваемых access известно только после чтения топологии и
 // текущего набора под lock, поэтому без гонки вынести Seal нельзя. Фактическая
-// цена — AES-GCM над 16 байтами не более (nodes + relations) раз на команду (§13:
-// ≤10 нод и ≤90 связей на fleet), то есть единицы микросекунд против сетевого RTT
-// до PostgreSQL в той же транзакции. Смысл требования §11.1 — никаких сетевых
-// вызовов и тяжёлой работы под lock — при этом не нарушен (решение 8).
+// цена — AES-GCM над 16 байтами не более (nodes + relations) раз на команду, то
+// есть при ≤10 нод и ≤90 связей на fleet это единицы микросекунд против сетевого
+// RTT до PostgreSQL в той же транзакции. Смысл требования — никаких сетевых
+// вызовов и тяжёлой работы под lock — при этом не нарушен.
 func (uc *ApplyCustomerAccess) materialize(
 	cmd domain.ApplyCommand,
 	plan domain.ApplyPlan,
@@ -233,7 +233,7 @@ func (uc *ApplyCustomerAccess) materialize(
 		materialized.NewAccesses = append(materialized.NewAccesses, access)
 
 		// Операция создаётся только для PRESENT: юзера на ноде ещё не было, и
-		// отсутствие уже является состоянием Xray по умолчанию (решение 3.2).
+		// отсутствие уже является состоянием Xray по умолчанию.
 		if spec.DesiredState != domain.DesiredStatePresent {
 			continue
 		}
@@ -245,7 +245,7 @@ func (uc *ApplyCustomerAccess) materialize(
 	}
 
 	// Смена desired state существующего access всегда порождает операцию: и
-	// EnsureUserPresent, и EnsureUserAbsent (§9).
+	// EnsureUserPresent, и EnsureUserAbsent.
 	for _, change := range plan.DesiredChanges {
 		operation, opErr := uc.newOperation(change.EntryNodeID, change.AccessID, change.DesiredState, change.DesiredVersion)
 		if opErr != nil {
@@ -258,7 +258,7 @@ func (uc *ApplyCustomerAccess) materialize(
 }
 
 // periodID выбирает период, в который пишутся изменения квоты: новый при renewal и
-// создании, уже открытый при изменении лимита (§5, правила 7 и 8).
+// создании, уже открытый при изменении лимита.
 func (uc *ApplyCustomerAccess) periodID(plan domain.ApplyPlan, openPeriod *domain.QuotaPeriod) (uuid.UUID, error) {
 	if plan.OpenNewPeriod {
 		id, err := uc.IDs.NewQuotaPeriodID()
@@ -279,7 +279,7 @@ func (uc *ApplyCustomerAccess) periodID(plan domain.ApplyPlan, openPeriod *domai
 
 // newAccess выдаёт создаваемому access идентичность и credential. Каждое новое
 // поколение цели получает новые client_uuid и accounting_id; существующие access их
-// сохраняют (§4, §6).
+// сохраняют.
 func (uc *ApplyCustomerAccess) newAccess(spec domain.NewAccessSpec) (NewAccess, error) {
 	accessID, err := uc.IDs.NewAccessID()
 	if err != nil {

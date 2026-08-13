@@ -30,7 +30,7 @@ func quotaAccess(node NodeID, state DesiredState) Access {
 	}
 }
 
-// TestPlanUsageGroupAccrues — §12, шаг 4: дельты новых items складываются.
+// TestPlanUsageGroupAccrues — дельты новых items складываются.
 func TestPlanUsageGroupAccrues(t *testing.T) {
 	plan := PlanUsageGroup(UsageGroupInput{
 		Now: tNow,
@@ -54,7 +54,7 @@ func TestPlanUsageGroupAccrues(t *testing.T) {
 	}
 }
 
-// TestPlanUsageGroupClosedPeriodChangesNothing — §11.1: закрытый период не меняет
+// TestPlanUsageGroupClosedPeriodChangesNothing — закрытый период не меняет
 // ни counters, ни exhausted_at, ни access; items только регистрируются.
 func TestPlanUsageGroupClosedPeriodChangesNothing(t *testing.T) {
 	plan := PlanUsageGroup(UsageGroupInput{
@@ -74,7 +74,7 @@ func TestPlanUsageGroupClosedPeriodChangesNothing(t *testing.T) {
 	}
 }
 
-// TestPlanUsageGroupCrossesThresholdAtEquality — §4: доступ существует, пока
+// TestPlanUsageGroupCrossesThresholdAtEquality — доступ существует, пока
 // расход СТРОГО меньше лимита, поэтому равенство уже исчерпание.
 func TestPlanUsageGroupCrossesThresholdAtEquality(t *testing.T) {
 	plan := PlanUsageGroup(UsageGroupInput{
@@ -94,7 +94,7 @@ func TestPlanUsageGroupCrossesThresholdAtEquality(t *testing.T) {
 	if !plan.ExhaustedAt.Equal(tNow) {
 		t.Errorf("отметка %v, ожидалась %v", plan.ExhaustedAt, tNow)
 	}
-	// §12, шаг 5: гасятся ВСЕ access customer на этой ноде.
+	// Гасятся ВСЕ access customer на этой ноде.
 	if len(plan.DesiredChanges) != 2 {
 		t.Fatalf("погашено access %d, ожидалось 2", len(plan.DesiredChanges))
 	}
@@ -108,7 +108,7 @@ func TestPlanUsageGroupCrossesThresholdAtEquality(t *testing.T) {
 	}
 }
 
-// TestPlanUsageGroupThresholdFiresOnce — §12: порог активируется один раз. Иначе
+// TestPlanUsageGroupThresholdFiresOnce — порог активируется один раз. Иначе
 // каждая следующая пачка заново гасила бы уже погашенные access и плодила Remove.
 func TestPlanUsageGroupThresholdFiresOnce(t *testing.T) {
 	exhausted := tNow.Add(-time.Hour)
@@ -122,7 +122,7 @@ func TestPlanUsageGroupThresholdFiresOnce(t *testing.T) {
 		NodeAccesses:    []Access{quotaAccess("node-a", DesiredStateAbsent)},
 	})
 
-	// Начисление продолжается: §12 разрешает учитывать items и после блокировки.
+	// Начисление продолжается: items учитываются и после блокировки.
 	if plan.Accrual.UplinkBytes != 500 {
 		t.Errorf("начисление прекратилось после исчерпания: %+v", plan.Accrual)
 	}
@@ -153,7 +153,7 @@ func TestPlanUsageGroupIgnoresExpiredAccesses(t *testing.T) {
 	}
 }
 
-// TestPlanUsageGroupQuotaIsPerNode — §4: превышение на одной ноде не влияет на
+// TestPlanUsageGroupQuotaIsPerNode — превышение на одной ноде не влияет на
 // access того же customer на других.
 func TestPlanUsageGroupQuotaIsPerNode(t *testing.T) {
 	plan := PlanUsageGroup(UsageGroupInput{
@@ -173,7 +173,7 @@ func TestPlanUsageGroupQuotaIsPerNode(t *testing.T) {
 	}
 }
 
-// TestGroupUsageItemsSplitsByCustomerAndNode — §11.1: batch обрабатывается
+// TestGroupUsageItemsSplitsByCustomerAndNode — batch обрабатывается
 // группами (customer_id, node_id, quota_period_id), а не одной транзакцией.
 func TestGroupUsageItemsSplitsByCustomerAndNode(t *testing.T) {
 	groups := GroupUsageItems([]UsageItem{

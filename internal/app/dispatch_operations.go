@@ -13,14 +13,14 @@ import (
 //
 // Потолок, а не цель: обычно строк ноль. Он нужен на случай перезапуска реплики,
 // после которого разом протухают все её lease — собирать их одним неограниченным
-// UPDATE значило бы держать длинную транзакцию вопреки §11.1.
+// UPDATE держал бы длинную транзакцию.
 const maxReapedPerStep = 100
 
 // Коды исходов, которые производит сам диспетчер, а не агент и не транспорт.
 //
 // Стоят здесь, а не рядом с набором nodeagent, по принципу «код принадлежит тому,
 // кто его порождает»: этих двух отказов агент не видел вовсе. Как и там,
-// переименование любого из них — изменение контракта наблюдаемости §15.
+// переименование любого из них — изменение контракта наблюдаемости.
 const (
 	// CodeSuperseded — desired state сменился, пока операция ждала в очереди.
 	CodeSuperseded = "SUPERSEDED"
@@ -28,10 +28,10 @@ const (
 	CodeCredentialUnreadable = "CREDENTIAL_UNREADABLE"
 )
 
-// DispatchOperations — диспетчер agent-операций (§9).
+// DispatchOperations — диспетчер agent-операций.
 //
 // Единственное место, откуда backend ходит в сеть. Шаг состоит из двух транзакций
-// с RPC между ними: §11.1 требует, чтобы ни одна транзакция не оставалась открытой
+// с RPC между ними: ни одна транзакция не остаётся открытой
 // во время обращения к node-agent.
 //
 //	tx1  lease + payload из АКТУАЛЬНЫХ строк access и ноды
@@ -39,16 +39,16 @@ const (
 //	tx2  результат с повторной проверкой desired_version
 //
 // Payload не хранится в outbox и собирается перед каждой попыткой заново: за время
-// ожидания в очереди egress_key access мог смениться (§6, §9).
+// ожидания в очереди egress_key access мог смениться.
 type DispatchOperations struct {
 	Repo   DispatchRepository
 	Agent  AgentDispatcher
 	Sealer CredentialSealer
 	Jitter Jitter
 
-	// Owner попадает в lease_owner: по нему видно, чей lease протух (§15).
+	// Owner попадает в lease_owner: по нему видно, чей lease протух.
 	Owner string
-	// LeaseTTL должен с запасом перекрывать deadline вызова (§9): lease, истёкший
+	// LeaseTTL должен с запасом перекрывать deadline вызова: lease, истёкший
 	// раньше ответа агента, дал бы вторую параллельную операцию на ту же ноду.
 	LeaseTTL time.Duration
 }
@@ -94,7 +94,7 @@ func (uc *DispatchOperations) ProcessNext(ctx context.Context) (progressed bool,
 	outcome, sent := uc.deliver(ctx, *operation)
 	if !sent {
 		// Контекст отменён до или во время вызова. Записывать нечего: операция
-		// остаётся IN_FLIGHT, и её подберёт сборщик по истечении lease (решение 51).
+		// остаётся IN_FLIGHT, и её подберёт сборщик по истечении lease.
 		// Попытка записать результат отменённой транзакцией дала бы вторую ошибку
 		// поверх первой и ничего не сохранила бы.
 		return false, nil
@@ -116,14 +116,14 @@ func (uc *DispatchOperations) deliver(
 		return nodeagent.Outcome{}, false
 	}
 
-	// Проверка перед RPC (§11.1): desired state мог смениться, пока операция ждала
+	// Проверка перед RPC: desired state мог смениться, пока операция ждала
 	// в очереди. Звонить агенту незачем — результат всё равно не был бы применён к
 	// строке access, а на ноду уехало бы уже неверное состояние.
 	//
 	// Терминальный статус этой операции назначать здесь не нужно: в tx2
 	// SetAccessApplyState по той же несовпавшей версии вернёт fresh=false, и
 	// RETRYABLE станет SUPERSEDED тем же механизмом, что и при смене версии уже
-	// после RPC (решение 47). Двух путей к одному состоянию не заводим.
+	// после RPC. Двух путей к одному состоянию не заводим.
 	if operation.AccessDesiredVersion > operation.DesiredVersion {
 		return nodeagent.Outcome{
 			Result:  domain.AttemptRetryable,
@@ -138,13 +138,13 @@ func (uc *DispatchOperations) deliver(
 	}
 
 	// Открытый client_uuid живёт только внутри этого вызова и в план/лог не
-	// попадает (§7, §9).
+	// попадает.
 	clientUUID, err := uc.Sealer.Open(operation.Credential)
 	if err != nil {
 		// Ключ шифрования не расходится сам собой, и повтор его не починит. Но
 		// permanent здесь означал бы, что access не восстановить и сменой desired
 		// state: расшифровка провалится и в следующем поколении тоже. Ретраим с
-		// alert — по той же логике, что и непригодный agent_config (решение 50).
+		// alert — по той же логике, что и непригодный agent_config.
 		return nodeagent.Outcome{
 			Result:  domain.AttemptRetryable,
 			Code:    CodeCredentialUnreadable,
@@ -162,7 +162,7 @@ func (uc *DispatchOperations) deliver(
 }
 
 // record записывает исход отдельной транзакцией с повторной проверкой
-// desired_version (§11.1).
+// desired_version.
 func (uc *DispatchOperations) record(
 	ctx context.Context,
 	operation LeasedOperation,
@@ -184,7 +184,7 @@ func (uc *DispatchOperations) record(
 		}
 		if !fresh {
 			// desired_version ушла вперёд между RPC и записью: строка access не
-			// тронута, а повторять операцию устаревшей версии нельзя (решение 47).
+			// тронута, а повторять операцию устаревшей версии нельзя.
 			plan = plan.Superseded()
 		}
 

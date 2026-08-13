@@ -1,6 +1,6 @@
 // Package config собирает конфигурацию процесса из окружения.
 //
-// Правила §14, которым подчинён весь пакет:
+// Правила, которым подчинён весь пакет:
 //
 //   - секреты не имеют значений по умолчанию. Отсутствие обязательной переменной
 //     обязано провалить старт, а не подставить «разумный» дефолт: тихо
@@ -44,7 +44,7 @@ const (
 	EnvHTTPListen    = "SPIRIT_HTTP_LISTEN"
 	EnvClientUUIDKey = "SPIRIT_CLIENT_UUID_KEY"
 
-	// Клиентская пара для походов к агентам — отдельная от серверной (решение 44).
+	// Клиентская пара для походов к агентам — отдельная от серверной.
 	EnvAgentCertFile = "SPIRIT_AGENT_TLS_CERT_FILE"
 	EnvAgentKeyFile  = "SPIRIT_AGENT_TLS_KEY_FILE"
 	EnvAgentCAFile   = "SPIRIT_AGENT_TLS_CA_FILE"
@@ -77,7 +77,7 @@ type Config struct {
 	HTTP     HTTP
 	Agent    Agent
 
-	// ClientUUIDKey — единственный active encryption key (§7, §14). Ротация и
+	// ClientUUIDKey — единственный active encryption key. Ротация и
 	// decrypt-only ключи в v1 не поддерживаются.
 	ClientUUIDKey crypto.Key
 }
@@ -94,12 +94,12 @@ type Postgres struct {
 	// LogValue вмещающего Config.
 	URL string
 
-	// MaxConns — верхняя граница пула. Транзакции короткие (§11.1), поэтому пул
+	// MaxConns — верхняя граница пула. Транзакции короткие, поэтому пул
 	// упирается не в длительность работы, а в число одновременных команд.
 	MaxConns int32
 }
 
-// GRPC — внешняя командно-запросная поверхность (§5) и её mTLS (§14).
+// GRPC — внешняя командно-запросная поверхность и её mTLS.
 type GRPC struct {
 	Listen string
 
@@ -110,29 +110,29 @@ type GRPC struct {
 	KeyFile      string
 	ClientCAFile string
 
-	// Идентичности по ролям §14. Роли независимы: writer НЕ подразумевает
+	// Идентичности по ролям. Роли независимы: writer не подразумевает
 	// reader, потому что чтение отдаёт VLESS URI с client_uuid, то есть сами
-	// credentials (§5, §8). Сервис, которому нужно и то и другое, перечисляется
-	// в обоих списках явно (решение 14).
+	// credentials. Сервис, которому нужно и то и другое, перечисляется
+	// в обоих списках явно.
 	CustomerAccessWriters []string
 	CustomerAccessReaders []string
 
-	// ManifestWriters — identity infrastructure CI/CD (§14). Роль отдельная от
+	// ManifestWriters — identity infrastructure CI/CD. Роль отдельная от
 	// customer-ролей: манифест переписывает топологию целиком, и продуктовому
 	// сервису она не нужна ни в каком виде.
 	ManifestWriters []string
 }
 
-// HTTP — служебная поверхность: health, readiness и метрики (§15). Отдельный
+// HTTP — служебная поверхность: health, readiness и метрики. Отдельный
 // порт от gRPC намеренно: liveness обязан отвечать, даже когда gRPC не принимает
 // соединения, и наружу этот порт не публикуется.
 type HTTP struct {
 	Listen string
 }
 
-// Agent — mTLS до node-agent'ов поверх management WireGuard overlay (§9, §14).
+// Agent — mTLS до node-agent'ов поверх management WireGuard overlay.
 //
-// Пара отдельная от GRPC намеренно (решение 44): там backend принимает
+// Пара отдельная от GRPC намеренно: там backend принимает
 // product-сервис и предъявляет себя ему, здесь — сам приходит клиентом к агенту.
 // Общий сертификат смешал бы две роли, и компрометация одной автоматически
 // означала бы компрометацию другой. CAFile — CA инфраструктуры, которым подписаны
@@ -272,7 +272,7 @@ func listenAddr(raw, name string, errs *[]error) string {
 // Пустые элементы отбрасываются, и это не косметика. Лишняя запятая в
 // SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER=product-svc, даёт элемент "", а пустую
 // идентичность вернёт сертификат без DNS SAN. Пустое совпало бы с пустым, и роль
-// получил бы любой клиент с валидным сертификатом (решение 13).
+// получил бы любой клиент с валидным сертификатом.
 func identities(raw string) []string {
 	var out []string
 	for _, part := range strings.Split(raw, ",") {

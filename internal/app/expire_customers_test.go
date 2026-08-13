@@ -14,7 +14,7 @@ import (
 
 // Юнит-тесты воркера истечения. Смысл слоя — порядок шагов и то, что план
 // строится от expires_at, прочитанного ПОД locком: выборка воркера могла устареть,
-// пока он ждал блокировку (§11.1).
+// пока он ждал блокировку.
 
 // fakeExpiryTx ведёт журнал шагов и отдаёт заготовленное состояние.
 type fakeExpiryTx struct {
@@ -105,8 +105,8 @@ func newExpiryHarness(tx *fakeExpiryTx) (*app.ExpireCustomers, *fakeExpiryRepo) 
 	return app.NewExpireCustomers(repo, &countingIDs{}), repo
 }
 
-// TestExpireRevokesAccessAndAudits — §13: воркер переводит access в ABSENT и
-// создаёт Remove в ОДНОЙ транзакции; §15 требует аудит истечения.
+// TestExpireRevokesAccessAndAudits — воркер переводит access в ABSENT и
+// создаёт Remove в одной транзакции; истечение журналируется.
 func TestExpireRevokesAccessAndAudits(t *testing.T) {
 	tx := &fakeExpiryTx{
 		due:      expiredDue(),
@@ -168,7 +168,7 @@ func TestExpireRevokesAccessAndAudits(t *testing.T) {
 	}
 }
 
-// TestExpireSparesRenewedCustomer — §11.1: expires_at перечитывается под locком,
+// TestExpireSparesRenewedCustomer — expires_at перечитывается под locком,
 // поэтому уже закоммиченный renewal отменяет снятие. Ни записи, ни аудита.
 func TestExpireSparesRenewedCustomer(t *testing.T) {
 	due := expiredDue()
@@ -210,7 +210,7 @@ func TestExpireIdleReportsNoProgress(t *testing.T) {
 	}
 }
 
-// TestExpireAlreadyRevokedWritesNothing — §13: повторный проход не создаёт вторых
+// TestExpireAlreadyRevokedWritesNothing — повторный проход не создаёт вторых
 // Remove. В базе такой customer отсекается выборкой, но воркер обязан выдержать и
 // его: между выборкой и locком его мог погасить конкурент.
 func TestExpireAlreadyRevokedWritesNothing(t *testing.T) {

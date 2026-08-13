@@ -14,7 +14,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 )
 
-// Интеграционные тесты authoritative reconcile (§10). Смысл слоя в SQL: предикат
+// Интеграционные тесты authoritative reconcile. Смысл слоя в SQL: предикат
 // захвата, состав набора «фактически разрешённых» юзеров и гейт по
 // desired_revision, который решает, принимать ли результат.
 
@@ -88,7 +88,7 @@ func TestIntegrationReconcileSkipsSettledNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationReconcileClaimsBootstrapNode — §10: needs_bootstrap берёт ноду
+// TestIntegrationReconcileClaimsBootstrapNode — needs_bootstrap берёт ноду
 // вне очереди. Агент с новым или повреждённым локальным состоянием не имеет
 // права удалять юзеров и сам из этого состояния не выйдет, поэтому ждать
 // таймера здесь нельзя.
@@ -110,7 +110,7 @@ func TestIntegrationReconcileClaimsBootstrapNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationReconcileSetExcludesExpiredAndExhausted — §10: истёкшие
+// TestIntegrationReconcileSetExcludesExpiredAndExhausted — истёкшие
 // entitlement и исчерпавшие квоту в набор не входят, ДАЖЕ если expiry или usage
 // worker ещё не перевели их access в ABSENT.
 //
@@ -178,7 +178,7 @@ func releaseAndReclaim(t *testing.T, stack usageStack) {
 		`UPDATE vpn_nodes SET reconcile_attempted_at = now() WHERE node_id <> 'NL-1'`)
 }
 
-// TestIntegrationReconcileAcceptMarksAppliedAndClosesOperations — §10: принятый
+// TestIntegrationReconcileAcceptMarksAppliedAndClosesOperations — принятый
 // результат отмечает desired states применёнными и завершает операции, которые
 // полный набор уже удовлетворил.
 func TestIntegrationReconcileAcceptMarksAppliedAndClosesOperations(t *testing.T) {
@@ -187,7 +187,7 @@ func TestIntegrationReconcileAcceptMarksAppliedAndClosesOperations(t *testing.T)
 
 	// Истечение переводит access в ABSENT и создаёт Remove-операции. Доставлять их
 	// диспетчером не будем: их удовлетворит полный набор, в котором этих юзеров
-	// уже нет, — и это ровно тот случай, ради которого §10 велит завершать
+	// уже нет, — и это ровно тот случай, ради которого положено завершать
 	// удовлетворённые операции.
 	exec(t, stack.pool, `UPDATE customer_entitlements SET expires_at = now() - interval '1 minute'`)
 	drainExpiry(t, app.NewExpireCustomers(New(stack.pool), crypto.NewGenerator()))
@@ -237,7 +237,7 @@ func TestIntegrationReconcileAcceptMarksAppliedAndClosesOperations(t *testing.T)
 	}
 }
 
-// TestIntegrationReconcileRejectsStaleRevision — §10: если desired_revision
+// TestIntegrationReconcileRejectsStaleRevision — если desired_revision
 // сдвинулась, пока набор был на проводе, результат не принимается и НИЧЕГО не
 // пишет. Набор на ноде уже не тот, который заказан.
 func TestIntegrationReconcileRejectsStaleRevision(t *testing.T) {
@@ -277,7 +277,7 @@ func TestIntegrationReconcileRejectsStaleRevision(t *testing.T) {
 	}
 }
 
-// TestIntegrationReconcileLeaseIsExclusive — §10 и §13: пока нода взята, второй
+// TestIntegrationReconcileLeaseIsExclusive — пока нода взята, второй
 // воркер её не получает. Два полных набора на одну ноду одновременно означали бы
 // гонку двух авторитетных истин.
 func TestIntegrationReconcileLeaseIsExclusive(t *testing.T) {
@@ -320,7 +320,7 @@ func TestIntegrationReconcileLeaseIsExclusive(t *testing.T) {
 	}
 }
 
-// Сверка с фактическим инвентарём Xray (§10). Смысл здесь не в SQL, а в стыке:
+// Сверка с фактическим инвентарём Xray. Смысл здесь не в SQL, а в стыке:
 // desired-набор читается из БД и расшифровывается, а сравнивается с тем, что
 // «показала» нода. Юнит-тест сверки этот стык проверить не может — он оперирует
 // уже готовыми наборами.
@@ -411,7 +411,7 @@ func observedFrom(users []nodeagent.User) nodeagent.InventoryOutcome {
 	}
 }
 
-// TestIntegrationReconcileSkipsFullSetWhenInventoryMatches — §10: нода, чей
+// TestIntegrationReconcileSkipsFullSetWhenInventoryMatches — нода, чей
 // инвентарь совпал с desired state, полного набора не получает.
 //
 // Это главный эффект среза: до него набор летел на каждую ноду каждый интервал.
@@ -424,7 +424,7 @@ func TestIntegrationReconcileSkipsFullSetWhenInventoryMatches(t *testing.T) {
 	if agent.calls != 1 {
 		t.Fatalf("подготовка: полных наборов %d, ожидался 1", agent.calls)
 	}
-	// На NL-1 два access: FREEDOM и BRIDGE, где она входная (§4).
+	// На NL-1 два access: FREEDOM и BRIDGE, где она входная.
 	if got := len(agent.users); got != 2 {
 		t.Fatalf("подготовка: в наборе %d юзеров, ожидалось 2", got)
 	}
@@ -444,8 +444,8 @@ func TestIntegrationReconcileSkipsFullSetWhenInventoryMatches(t *testing.T) {
 	}
 }
 
-// TestIntegrationReconcileSendsFullSetOnInventoryDrift — §10: расхождение с
-// фактическим состоянием чинится полным набором (решение 86).
+// TestIntegrationReconcileSendsFullSetOnInventoryDrift — расхождение с
+// фактическим состоянием чинится полным набором.
 func TestIntegrationReconcileSendsFullSetOnInventoryDrift(t *testing.T) {
 	stack := newUsageStack(t)
 	seedUsageCustomer(t, stack, 1<<30)
@@ -473,7 +473,7 @@ func TestIntegrationReconcileSendsFullSetOnInventoryDrift(t *testing.T) {
 	}
 }
 
-// TestIntegrationReconcileIgnoresForeignNamespace — §10: инфраструктурные юзеры
+// TestIntegrationReconcileIgnoresForeignNamespace — инфраструктурные юзеры
 // на ноде расхождением не являются.
 //
 // Агент не удаляет их даже при complete-наборе, поэтому реагировать на них

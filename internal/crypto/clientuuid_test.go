@@ -134,7 +134,7 @@ func TestClientUUIDDoesNotLeakInSlog(t *testing.T) {
 }
 
 // Reveal — единственный путь наружу, и он обязан отдавать исходное значение:
-// иначе VLESS URI (§8) окажется нерабочей.
+// иначе VLESS URI окажется нерабочей.
 func TestClientUUIDReveal(t *testing.T) {
 	secret := NewClientUUID(secretUUID)
 

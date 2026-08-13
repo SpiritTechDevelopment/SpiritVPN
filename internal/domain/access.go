@@ -9,15 +9,15 @@ import (
 )
 
 // Target — одна логическая цель текущей топологии fleet, под которую у
-// действующего customer должен существовать access (§4).
+// действующего customer должен существовать access.
 type Target struct {
 	Kind             AccessKind
 	LogicalTargetKey LogicalTargetKey
 	// EntryNodeID — нода, на которую ставится Xray user. Для FREEDOM это сама
-	// нода, для BRIDGE — entry_node_id связи (§4).
+	// нода, для BRIDGE — entry_node_id связи.
 	EntryNodeID NodeID
 	// EgressKey передаётся агенту дословно: "" (локальный выход) для FREEDOM,
-	// egress_tag связи для BRIDGE (§6, §7).
+	// egress_tag связи для BRIDGE.
 	EgressKey string
 }
 
@@ -26,8 +26,8 @@ type Target struct {
 //	link_count = fleet_node_count + bridge_relation_count
 //
 // На одной ноде у customer всегда не более одного FREEDOM, но может быть
-// несколько BRIDGE — по одному на каждую связь, где эта нода является входной
-// (§4). Результат отсортирован по (kind, logical_target_key), чтобы план не
+// несколько BRIDGE — по одному на каждую связь, где эта нода является входной.
+// Результат отсортирован по (kind, logical_target_key), чтобы план не
 // зависел от порядка строк проекции.
 func TargetsOf(topology FleetTopology) []Target {
 	targets := make([]Target, 0, len(topology.Nodes)+len(topology.Bridges))
@@ -67,7 +67,7 @@ type NewAccessSpec struct {
 	LogicalTargetKey LogicalTargetKey
 	// Generation — поколение цели: 1 для первого появления, max+1 при повторном
 	// добавлении ранее удалённой цели. Новое поколение получает новые
-	// client_uuid и accounting_id (§4).
+	// client_uuid и accounting_id.
 	Generation  int32
 	EntryNodeID NodeID
 	EgressKey   string
@@ -75,7 +75,7 @@ type NewAccessSpec struct {
 	// DesiredState вычисляется PlanApply; access может родиться сразу ABSENT,
 	// если customer истёк или квота его ноды исчерпана. Операция создаётся только
 	// для PRESENT: юзера на ноде ещё не было, и отсутствие — состояние Xray по
-	// умолчанию (решение 3.2).
+	// умолчанию.
 	DesiredState DesiredState
 	// DesiredVersion нового access всегда 1, независимо от DesiredState.
 	DesiredVersion int64
@@ -84,7 +84,7 @@ type NewAccessSpec struct {
 // RepointSpec — у существующей связи сменился egress_tag при неизменных
 // routing_key и паре (entry, exit). Это не destructive: backend обновляет
 // egress_key access и переиздаёт routing rule без смены client_uuid,
-// accounting_id и без нового поколения (§6).
+// accounting_id и без нового поколения.
 type RepointSpec struct {
 	Access       Access
 	NewEgressKey string
@@ -95,7 +95,7 @@ type RepointSpec struct {
 //
 // Retire и Repoint здесь ВЫЧИСЛЯЮТСЯ, но ApplyCustomerAccess их не применяет: он
 // использует их только как признак «access рассогласован с manifest, не трогать».
-// Оба действия принадлежат manifest materialization job (§6), где ретайр
+// Оба действия принадлежат manifest materialization job, где ретайр
 // ветвится по тому, жива ли нода: глобально удалённая нода получает
 // RETIRED/ABSENT с supersede операций и без единого вызова на endpoint, а
 // удаление связи при живой входной ноде — обычный EnsureUserAbsent. Держать эту
@@ -105,13 +105,12 @@ type AccessSetPlan struct {
 	Retire  []Access
 	Repoint []RepointSpec
 	// InSync — текущие access, согласованные с топологией. Только по ним Apply
-	// пересчитывает desired state и выпускает операции (§5: «для всех актуальных
-	// access»).
+	// пересчитывает desired state и выпускает операции.
 	InSync []Access
 }
 
-// targetKey — ключ уникальности цели внутри customer (§11: unique
-// (customer_id, kind, logical_target_key) among not retired).
+// targetKey — ключ уникальности цели внутри customer: unique
+// (customer_id, kind, logical_target_key) among not retired.
 type targetKey struct {
 	kind AccessKind
 	key  LogicalTargetKey
@@ -120,7 +119,7 @@ type targetKey struct {
 // PlanAccessSet сопоставляет цели топологии с текущими access customer.
 //
 // accesses должен содержать ВСЕ access customer, включая ретайрнутые: без них
-// нельзя вычислить поколение при повторном появлении ранее удалённой цели (§4).
+// нельзя вычислить поколение при повторном появлении ранее удалённой цели.
 func PlanAccessSet(topology FleetTopology, accesses []Access) AccessSetPlan {
 	// Действующий access на цель ровно один — это гарантирует partial unique
 	// index по (customer_id, kind, logical_target_key) WHERE retired_at IS NULL.
@@ -160,7 +159,7 @@ func PlanAccessSet(topology FleetTopology, accesses []Access) AccessSetPlan {
 
 		// Единственный источник дрейфа — egress_tag. Входная нода дрейфовать не
 		// может: пара (entry_node_id, exit_node_id) неизменяема для существующего
-		// routing_key (§6), а у FREEDOM входная нода совпадает с самой целью.
+		// routing_key, а у FREEDOM входная нода совпадает с самой целью.
 		if access.EgressKey != target.EgressKey {
 			plan.Repoint = append(plan.Repoint, RepointSpec{
 				Access:       access,
@@ -185,7 +184,7 @@ func PlanAccessSet(topology FleetTopology, accesses []Access) AccessSetPlan {
 }
 
 // compareAccessByTarget упорядочивает access по (kind, logical_target_key,
-// access_id) — тому же внутреннему порядку, что §5 задаёт для ответов Customer
+// access_id) — тому же порядку, в котором access уходят в ответах Customer
 // API. Здесь он нужен, чтобы план не зависел от обхода map.
 func compareAccessByTarget(a, b Access) int {
 	return cmp.Or(
@@ -195,8 +194,8 @@ func compareAccessByTarget(a, b Access) int {
 	)
 }
 
-// compareUUID упорядочивает по access_id — порядок блокировок vpn_accesses
-// (§11.1). Отдельная функция, потому что сравнение идёт по байтам значения, а не
+// compareUUID упорядочивает по access_id — порядок блокировок vpn_accesses.
+// Отдельная функция, потому что сравнение идёт по байтам значения, а не
 // по его строковому представлению.
 func compareUUID(a, b uuid.UUID) int {
 	return bytes.Compare(a[:], b[:])

@@ -86,7 +86,7 @@ func runWorkerUntilDone(t *testing.T, steps []workerStep) (*scriptedWorker, stri
 }
 
 // TestWorkerRunsWithoutPauseWhileProgressing — пока работа есть, цикл идёт без
-// пауз: обход 50 000 customer (§13) иначе растянулся бы на часы ожидания.
+// пауз: обход 50 000 customer иначе растянулся бы на часы ожидания.
 func TestWorkerRunsWithoutPauseWhileProgressing(t *testing.T) {
 	steps := make([]workerStep, 5)
 	for i := range steps {

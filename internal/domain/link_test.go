@@ -22,7 +22,7 @@ func TestLinkStatusOf(t *testing.T) {
 		want   LinkStatus
 	}{
 		{
-			name:   "конъюнкция §8 выполнена целиком",
+			name:   "конъюнкция условий пригодности выполнена целиком",
 			mutate: func(*LinkInput) {},
 			want:   LinkStatus{State: LinkStateReady},
 		},
@@ -32,7 +32,7 @@ func TestLinkStatusOf(t *testing.T) {
 			want:   LinkStatus{State: LinkStateBlocked, Reason: BlockReasonTimeExpired},
 		},
 		{
-			// §4: эффективность access требует current_time < expires_at, поэтому
+			// Эффективность access требует current_time < expires_at, поэтому
 			// момент истечения уже является блокировкой.
 			name:   "момент истечения — уже блокировка",
 			mutate: func(in *LinkInput) { in.ExpiresAt = tNow },
@@ -44,7 +44,7 @@ func TestLinkStatusOf(t *testing.T) {
 			want:   LinkStatus{State: LinkStateBlocked, Reason: BlockReasonTrafficQuotaExhausted},
 		},
 		{
-			// §5: при одновременно применимых причинах наружу уходит TIME_EXPIRED.
+			// При одновременно применимых причинах наружу уходит TIME_EXPIRED.
 			name: "expiry побеждает quota",
 			mutate: func(in *LinkInput) {
 				in.ExpiresAt = tPast
@@ -58,7 +58,7 @@ func TestLinkStatusOf(t *testing.T) {
 			want:   LinkStatus{State: LinkStateFailed},
 		},
 		{
-			// Решение 18: рассогласованная проекция ломает одну ссылку, а не ответ.
+			// Рассогласованная проекция ломает одну ссылку, а не ответ.
 			name:   "непригодная входная нода",
 			mutate: func(in *LinkInput) { in.EntryUsable = false },
 			want:   LinkStatus{State: LinkStateFailed},
@@ -109,7 +109,7 @@ func TestLinkStatusOf(t *testing.T) {
 	}
 }
 
-// Причина существует только у BLOCKED (§5). Проверяется отдельно от таблицы:
+// Причина существует только у BLOCKED. Проверяется отдельно от таблицы:
 // требование сформулировано над всеми состояниями сразу, а не над конкретным
 // входом.
 func TestLinkStatusReasonOnlyWhenBlocked(t *testing.T) {

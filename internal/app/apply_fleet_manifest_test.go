@@ -56,7 +56,7 @@ func (r *fakeManifestRepo) WithinManifestTx(ctx context.Context, fn func(app.Man
 }
 
 // manifestNode повторяет фикстуру доменных тестов: идентификаторы ASCII, все
-// обязательные поля §6 заполнены.
+// обязательные поля заполнены.
 func manifestNode(id string) domain.ManifestNode {
 	return domain.ManifestNode{
 		NodeID: domain.NodeID(id),
@@ -105,7 +105,7 @@ func manifestCommand() app.ApplyManifestCommand {
 }
 
 // TestApplyManifestWritesProjection — обычный приём: проекция записана, аудита
-// нет (§15 требует его только для destructive).
+// нет (он нужен только для destructive).
 func TestApplyManifestWritesProjection(t *testing.T) {
 	tx := &fakeManifestTx{}
 	uc, repo := newManifestHarness(tx)
@@ -136,7 +136,7 @@ func TestApplyManifestWritesProjection(t *testing.T) {
 	}
 }
 
-// TestApplyManifestIdempotentWritesNothing — решение 21: повтор не пишет вовсе
+// TestApplyManifestIdempotentWritesNothing — повтор не пишет вовсе
 // ничего, включая джобу материализации.
 func TestApplyManifestIdempotentWritesNothing(t *testing.T) {
 	snapshot := manifestSnapshot()
@@ -169,7 +169,7 @@ func TestApplyManifestIdempotentWritesNothing(t *testing.T) {
 	}
 }
 
-// TestApplyManifestAuditsDestructive — §15: audit обязателен для destructive
+// TestApplyManifestAuditsDestructive — audit обязателен для destructive
 // manifest, и пишется он в той же транзакции, что и проекция.
 func TestApplyManifestAuditsDestructive(t *testing.T) {
 	accepted := manifestSnapshot()
@@ -209,7 +209,7 @@ func TestApplyManifestAuditsDestructive(t *testing.T) {
 	}
 }
 
-// TestApplyManifestNoAuditWithoutRemovals — §15 требует аудит только для
+// TestApplyManifestNoAuditWithoutRemovals — требует аудит только для
 // destructive; обычный приём журнал не засоряет.
 func TestApplyManifestNoAuditWithoutRemovals(t *testing.T) {
 	tx := &fakeManifestTx{}

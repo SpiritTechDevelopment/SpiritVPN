@@ -29,7 +29,7 @@ type AddNodeQuotaUsageParams struct {
 	NodeID        string
 }
 
-// Добавляет дельты к counters ноды (§12, шаг 4).
+// Добавляет дельты к counters ноды.
 //
 // Именно прибавление, а не запись: items приходят дельтами за интервал опроса, и
 // агент — единственный владелец reset'а Xray-счётчиков. total_bytes считается
@@ -58,14 +58,13 @@ type AdvanceUsageCursorParams struct {
 	NodeID        string
 }
 
-// Сдвигает подтверждённую позицию спула (§12).
+// Сдвигает подтверждённую позицию спула.
 //
 // Вызывается только после durable commit ВСЕХ групп batch: агент удаляет из спула
-// ровно подтверждённое, и опережающее подтверждение потеряло бы неучтённый трафик
-// (решение 63).
+// ровно подтверждённое, и опережающее подтверждение потеряло бы неучтённый трафик.
 //
 // spool_id пишется вместе с sequence: смена спула означает новую нумерацию с нуля,
-// и хранить старый id рядом с новым sequence нельзя (решение 64).
+// и хранить старый id рядом с новым sequence нельзя.
 func (q *Queries) AdvanceUsageCursor(ctx context.Context, arg AdvanceUsageCursorParams) error {
 	_, err := q.db.Exec(ctx, advanceUsageCursor, arg.SpoolID, arg.AckedSequence, arg.NodeID)
 	return err
@@ -105,16 +104,16 @@ type ClaimUsageNodeRow struct {
 	AgentConfig   []byte
 }
 
-// Берёт lease ноды, которую пора опросить (§12, решение 60).
+// Берёт lease ноды, которую пора опросить.
 //
 // Условие на lease разрешает три случая: ничей, чужой протухший (воркер упал) и
 // собственный. Последнее нужно, потому что каждый шаг идёт отдельной транзакцией.
 //
 // updated_at гейтит темп: чаще, чем агент опрашивает Xray, дёргать нечего — он
-// вернёт пустой ответ (§12, решение 61). Он же задаёт порядок, поэтому давно не
+// вернёт пустой ответ. Он же задаёт порядок, поэтому давно не
 // опрошенная нода идёт первой и ни одна не голодает.
 //
-// Ноды с current = false не опрашиваются: инфраструктура их уже погасила (§6).
+// Ноды с current = false не опрашиваются: инфраструктура их уже погасила.
 func (q *Queries) ClaimUsageNode(ctx context.Context, arg ClaimUsageNodeParams) (ClaimUsageNodeRow, error) {
 	row := q.db.QueryRow(ctx, claimUsageNode, arg.Owner, arg.LeaseSeconds, arg.MinIntervalSeconds)
 	var i ClaimUsageNodeRow
@@ -138,12 +137,12 @@ type EnsureNodeQuotaUsageRowParams struct {
 	NodeID        string
 }
 
-// Заводит строку расхода ноды, если её ещё нет (§12).
+// Заводит строку расхода ноды, если её ещё нет.
 //
 // Отдельный запрос, а не InsertNodeQuotaUsage: там отсутствие строки является
 // инвариантом и конфликт обязан провалить команду, а здесь наоборот — строки
-// может не быть штатно. Истёкшему customer материализация их не создаёт (§13), а
-// начислять его items §12 всё равно требует, и без строки байты потерялись бы.
+// может не быть штатно. Истёкшему customer материализация их не создаёт, а
+// начислять его items всё равно нужно, и без строки байты потерялись бы.
 func (q *Queries) EnsureNodeQuotaUsageRow(ctx context.Context, arg EnsureNodeQuotaUsageRowParams) error {
 	_, err := q.db.Exec(ctx, ensureNodeQuotaUsageRow, arg.QuotaPeriodID, arg.NodeID)
 	return err
@@ -158,20 +157,20 @@ WHERE current
 ON CONFLICT (node_id) DO NOTHING
 `
 
-// Учёт трафика через pull от агента (§12).
+// Учёт трафика через pull от агента.
 //
-// Транзакций у шага три, и между первой и остальными идёт сетевой вызов: §11.1
+// Транзакций у шага три, и между первой и остальными идёт сетевой вызов:
 // запрещает держать транзакцию открытой во время обращения к агенту. Batch
 // обрабатывается не одной большой транзакцией, а группами
 // (customer_id, node_id, quota_period_id) — по короткой транзакции на группу.
-// Заводит строки курсора всем текущим нодам (§12).
+// Заводит строки курсора всем текущим нодам.
 //
 // Отдельным оператором перед claim, потому что claim обязан брать строку под
 // FOR UPDATE SKIP LOCKED, а несуществующую строку заблокировать нельзя. Вставка
 // идемпотентна и почти всегда не делает ничего.
 //
-// updated_at = 'epoch', а не now(): колонка означает «последняя попытка pull»
-// (решение 61), и новая нода обязана опрашиваться сразу, а не через интервал.
+// updated_at = 'epoch', а не now(): колонка означает «последняя попытка pull»,
+// и новая нода обязана опрашиваться сразу, а не через интервал.
 // spool_id пустой — агент игнорирует подтверждение чужого spool_id, поэтому первый
 // pull безопасно уходит с ним.
 func (q *Queries) EnsureUsageCursors(ctx context.Context) error {
@@ -207,14 +206,14 @@ type ListCustomerNodeAccessesRow struct {
 	RetiredAt        *time.Time
 }
 
-// Все нератайрнутые access customer на одной входной ноде (§12, шаг 5).
+// Все нератайрнутые access customer на одной входной ноде.
 //
-// §12 требует гасить их ВСЕ, а не только тот, чей accounting_id приехал в batch:
+// Гасятся все, а не только тот, чей accounting_id приехал в batch:
 // квота применяется к ноде целиком, а трафик всех FREEDOM и BRIDGE этого customer
-// на ней суммируется в один node quota period (§4).
+// на ней суммируется в один node quota period.
 //
 // Без FOR UPDATE: корневая строка customer уже заблокирована, поэтому
-// конкурирующего writer'а этих строк не существует (§11.1).
+// конкурирующего writer'а этих строк не существует.
 func (q *Queries) ListCustomerNodeAccesses(ctx context.Context, arg ListCustomerNodeAccessesParams) ([]ListCustomerNodeAccessesRow, error) {
 	rows, err := q.db.Query(ctx, listCustomerNodeAccesses, arg.CustomerID, arg.EntryNodeID)
 	if err != nil {
@@ -265,10 +264,10 @@ type LockNodeQuotaUsageRowRow struct {
 	ExhaustedAt *time.Time
 }
 
-// Блокирует строку расхода одной ноды в периоде (§11.1, шаг 3).
+// Блокирует строку расхода одной ноды в периоде.
 //
 // Именно этот row lock сериализует несколько access одного customer на одной ноде,
-// поэтому порог активируется ровно один раз (§12).
+// поэтому порог активируется ровно один раз.
 func (q *Queries) LockNodeQuotaUsageRow(ctx context.Context, arg LockNodeQuotaUsageRowParams) (LockNodeQuotaUsageRowRow, error) {
 	row := q.db.QueryRow(ctx, lockNodeQuotaUsageRow, arg.QuotaPeriodID, arg.NodeID)
 	var i LockNodeQuotaUsageRowRow
@@ -290,12 +289,12 @@ type LockQuotaPeriodAtParams struct {
 	CollectedAt time.Time
 }
 
-// Блокирует период, в который попадает момент сбора batch (§12).
+// Блокирует период, в который попадает момент сбора batch.
 //
 // Границы полуоткрыты: started_at <= collected_at < closed_at. Открытый период
 // закрывающей границы не имеет. Ноль строк означает, что подходящего периода нет
 // вовсе, — такой item уходит в карантин, а не в IGNORED_CLOSED_PERIOD, потому что
-// период не закрыт, его не существует (решение 65).
+// период не закрыт, его не существует.
 func (q *Queries) LockQuotaPeriodAt(ctx context.Context, arg LockQuotaPeriodAtParams) (QuotaPeriod, error) {
 	row := q.db.QueryRow(ctx, lockQuotaPeriodAt, arg.CustomerID, arg.CollectedAt)
 	var i QuotaPeriod
@@ -329,7 +328,7 @@ type PruneProcessedUsageItemsParams struct {
 	MaxRows          int64
 }
 
-// Удаляет дедуп-записи, которые больше не могут понадобиться (§12, ретенция).
+// Удаляет дедуп-записи, которые больше не могут понадобиться (ретенция).
 //
 // Строка реестра нужна ровно до тех пор, пока агент способен прислать тот же
 // batch повторно. Способен он на это, пока не получил наше подтверждение:
@@ -343,7 +342,7 @@ type PruneProcessedUsageItemsParams struct {
 // Возраст — третье условие, и оно про НАС, а не про агента: подтверждение может
 // быть записано у нас, но ещё не доехать до ноды, если backend в этот момент
 // лежит. Окно должно перекрывать такой простой. Повтор, приехавший позже окна,
-// начислится второй раз — §12 называет это принятой положительной погрешностью.
+// начислится второй раз — называет это принятой положительной погрешностью.
 //
 // Пачками, а не одним оператором: таблица растёт на активного пользователя
 // каждые 15 секунд, и накопленное за сутки одним DELETE означало бы длинную
@@ -395,11 +394,11 @@ type QuarantineUsageItemsParams struct {
 	Downlinks     []pgtype.Numeric
 }
 
-// Кладёт items в карантин (§12, шаг 6).
+// Кладёт items в карантин.
 //
 // sanitized_payload собирается ЗДЕСЬ, а не приходит из Go: так в него физически не
 // может попасть ничего, кроме счётчиков байтов. Ни client_uuid, ни IP, ни
-// назначение в usage не приходят вовсе (§12), но карантин — последнее место, где
+// назначение в usage не приходят вовсе, но карантин — последнее место, где
 // стоит полагаться на дисциплину вызывающего.
 func (q *Queries) QuarantineUsageItems(ctx context.Context, arg QuarantineUsageItemsParams) error {
 	_, err := q.db.Exec(ctx, quarantineUsageItems,
@@ -436,8 +435,7 @@ type RegisterProcessedUsageItemsParams struct {
 	AccessIds     []uuid.UUID
 }
 
-// Регистрирует items в реестре идемпотентности и возвращает только НОВЫЕ
-// (§12, шаг 4).
+// Регистрирует items в реестре идемпотентности и возвращает только НОВЫЕ.
 //
 // ON CONFLICT DO NOTHING RETURNING — это и есть дедуп: попадание означает, что item
 // уже начислен, и повторный pull, перезапуск воркера или повтор batch его не
@@ -488,7 +486,7 @@ type RegisterQuarantinedUsageItemsParams struct {
 	AccountingIds []string
 }
 
-// Регистрирует карантинные items как обработанные (§12, шаг 6).
+// Регистрирует карантинные items как обработанные.
 //
 // access_id и quota_period_id остаются NULL: у неизвестного accounting_id владельца
 // нет, а у item без подходящего периода — периода. Отметка нужна, чтобы один плохой
@@ -541,12 +539,12 @@ type ResolveAccountingIDsRow struct {
 	EntryNodeID  string
 }
 
-// Сопоставляет accounting_id с их владельцами (§12, шаг 2).
+// Сопоставляет accounting_id с их владельцами.
 //
-// Ретайрнутые и погашенные access тоже возвращаются: §12 прямо разрешает учитывать
-// items после expiry/retire, а accounting_id уникален и не переиспользуется (§4),
+// Ретайрнутые и погашенные access тоже возвращаются: учитывать их разрешено
+// items после expiry/retire, а accounting_id уникален и не переиспользуется,
 // поэтому исторический маппинг — это просто чтение vpn_accesses без фильтров.
-// Ненайденные accounting_id уходят в карантин (§12, шаг 6).
+// Ненайденные accounting_id уходят в карантин.
 func (q *Queries) ResolveAccountingIDs(ctx context.Context, accountingIds []string) ([]ResolveAccountingIDsRow, error) {
 	rows, err := q.db.Query(ctx, resolveAccountingIDs, accountingIds)
 	if err != nil {

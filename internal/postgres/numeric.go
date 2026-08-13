@@ -17,7 +17,7 @@ import (
 // ErrNumericOutOfRange — значение колонки numeric(20,0) не является целым
 // беззнаковым числом, помещающимся в uint64.
 //
-// Схема гарантирует диапазон CHECK-ограничениями (§11: counters неотрицательны),
+// Схема гарантирует диапазон CHECK-ограничениями: counters неотрицательны,
 // поэтому такая ошибка означает повреждение данных или запись мимо backend, а не
 // ошибку вызывающего. Отдельный сентинел нужен, чтобы это было видно в логах, а не
 // сливалось с ошибками драйвера.
@@ -29,7 +29,7 @@ var bigTen = big.NewInt(10)
 // numericFromUint64 упаковывает uint64 в numeric(20,0).
 //
 // Именно numeric, а не bigint: uint64 не помещается в int64, и верхняя половина
-// диапазона байтовых counters и command_number обрезалась бы молча (§11).
+// диапазона байтовых counters и command_number обрезалась бы молча.
 func numericFromUint64(v uint64) pgtype.Numeric {
 	return pgtype.Numeric{
 		Int:   new(big.Int).SetUint64(v),

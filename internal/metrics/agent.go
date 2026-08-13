@@ -20,7 +20,7 @@ type Agent interface {
 	app.ReconcileAgent
 }
 
-// WrapAgent инструментирует вызовы к нодам (§15).
+// WrapAgent инструментирует вызовы к нодам.
 //
 // Декоратор, а не изменение nodeagent.Client: так ни один пакет ниже composition
 // root не узнаёт про Prometheus, и ни одна сигнатура use case не меняется. Всё,
@@ -71,8 +71,8 @@ func (a *observedAgent) EnsureUserAbsent(
 //
 // Ensure* вызываются только когда есть что доставлять, поэтому по ним нельзя
 // отличить исправную ноду от той, к которой давно не обращались. Опрос идёт по
-// каждой текущей ноде каждый интервал (§12), и именно он задаёт
-// agent_last_success_timestamp_seconds для §15.
+// каждой текущей ноде каждый интервал, и именно он задаёт
+// agent_last_success_timestamp_seconds.
 func (a *observedAgent) GetNodeState(
 	ctx context.Context,
 	endpoint nodeagent.Endpoint,
@@ -92,7 +92,7 @@ func (a *observedAgent) GetNodeState(
 	return outcome
 }
 
-// ReconcileUsers — полный набор ноды (§10).
+// ReconcileUsers — полный набор ноды.
 //
 // Счётчик удалённых юзеров живёт здесь, а не рядом с логом в use case: удаление
 // при reconcile означает найденный дрейф, то есть расхождение, о котором никто
@@ -117,7 +117,7 @@ func (a *observedAgent) ReconcileUsers(
 	return result
 }
 
-// ObserveUsers — сверка фактического инвентаря Xray (§10).
+// ObserveUsers — сверка фактического инвентаря Xray.
 //
 // Наблюдения считаются по исходу, а не только по успеху вызова: «агент ответил,
 // но снимок усечён» и «агент ответил полным снимком» — разные состояния с
@@ -177,7 +177,7 @@ func (a *observedAgent) observe(
 	}
 }
 
-// observeNodeHealth снимает liveness ноды из ответа агента (§15).
+// observeNodeHealth снимает liveness ноды из ответа агента.
 //
 // До этого среза XrayReachable, XrayUptime и NeedsBootstrap не читал никто: они
 // приезжали в NodeState и там же оставались.

@@ -4,11 +4,10 @@
 // - protoc             (unknown)
 // source: spiritvpn/customer/v1/customer.proto
 
-// Customer-facing control-plane API. Нормативный источник: BACKEND_DOMAIN_AGREEMENTS.md
-// §5 (Customer gRPC API) и §8 (VLESS URI). Сервис финальный по спеке.
+// Customer-facing control-plane API: приём команд доступа и выдача VLESS URI.
 //
 // Вызывающая сторона аутентифицируется по mTLS с ролью customer-access-writer
-// (Apply) или customer-access-reader (GetLinks); см. §14.
+// (Apply) или customer-access-reader (GetLinks).
 
 package customerv1
 
@@ -38,11 +37,11 @@ const (
 // возврата ответа.
 type CustomerAccessServiceClient interface {
 	// Идемпотентное создание/продление/смена квоты доступа customer к одному fleet.
-	// Порядок и защита от повторов — через command_number (§5). Успешный ответ
+	// Порядок и защита от повторов — через command_number. Успешный ответ
 	// означает, что desired state зафиксирован, а НЕ что агенты уже применили его.
 	ApplyCustomerAccess(ctx context.Context, in *ApplyCustomerAccessRequest, opts ...grpc.CallOption) (*ApplyCustomerAccessResponse, error)
 	// Возвращает все текущие (не retired) access customer с состоянием ссылки и
-	// готовую VLESS URI только для READY (§5, §8). Ответ с URI не кешируется и не
+	// готовую VLESS URI только для READY. Ответ с URI не кешируется и не
 	// логируется.
 	GetCustomerAccessLinks(ctx context.Context, in *GetCustomerAccessLinksRequest, opts ...grpc.CallOption) (*GetCustomerAccessLinksResponse, error)
 }
@@ -84,11 +83,11 @@ func (c *customerAccessServiceClient) GetCustomerAccessLinks(ctx context.Context
 // возврата ответа.
 type CustomerAccessServiceServer interface {
 	// Идемпотентное создание/продление/смена квоты доступа customer к одному fleet.
-	// Порядок и защита от повторов — через command_number (§5). Успешный ответ
+	// Порядок и защита от повторов — через command_number. Успешный ответ
 	// означает, что desired state зафиксирован, а НЕ что агенты уже применили его.
 	ApplyCustomerAccess(context.Context, *ApplyCustomerAccessRequest) (*ApplyCustomerAccessResponse, error)
 	// Возвращает все текущие (не retired) access customer с состоянием ссылки и
-	// готовую VLESS URI только для READY (§5, §8). Ответ с URI не кешируется и не
+	// готовую VLESS URI только для READY. Ответ с URI не кешируется и не
 	// логируется.
 	GetCustomerAccessLinks(context.Context, *GetCustomerAccessLinksRequest) (*GetCustomerAccessLinksResponse, error)
 	mustEmbedUnimplementedCustomerAccessServiceServer()

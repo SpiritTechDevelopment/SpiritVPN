@@ -16,7 +16,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/postgres/db"
 )
 
-// ClaimNode берёт lease ноды, которую пора опросить (§12).
+// ClaimNode берёт lease ноды, которую пора опросить.
 //
 // Строки курсора заводятся тем же вызовом: claim обязан брать строку под
 // FOR UPDATE SKIP LOCKED, а несуществующую заблокировать нельзя. Вставка
@@ -71,7 +71,7 @@ func (r *Repository) ReleaseNode(ctx context.Context, nodeID domain.NodeID, owne
 	})
 }
 
-// ResolveAccounting строит исторический маппинг accounting_id → владелец (§12).
+// ResolveAccounting строит исторический маппинг accounting_id → владелец.
 func (r *Repository) ResolveAccounting(
 	ctx context.Context,
 	accountingIDs []string,
@@ -96,7 +96,7 @@ func (r *Repository) ResolveAccounting(
 	return owners, nil
 }
 
-// QuarantineItems кладёт items в карантин и отмечает их обработанными (§12, шаг 6).
+// QuarantineItems кладёт items в карантин и отмечает их обработанными.
 //
 // Обе записи в одной транзакции: карантинная строка без отметки processed
 // означала бы, что item приедет снова и попадёт в карантин повторно.
@@ -167,7 +167,7 @@ func (r *Repository) AdvanceCursor(
 	})
 }
 
-// PruneProcessedUsageItems удаляет одну пачку дедуп-записей (§12, ретенция).
+// PruneProcessedUsageItems удаляет одну пачку дедуп-записей (ретенция).
 //
 // Вне транзакции: удаление пачки и есть вся работа шага, а объединять пачки
 // значило бы держать длинную транзакцию ровно на той таблице, которая растёт
@@ -187,7 +187,7 @@ func (r *Repository) PruneProcessedUsageItems(
 	return int(deleted), nil
 }
 
-// WithinUsageGroupTx выполняет обработку одной группы в одной транзакции (§11.1).
+// WithinUsageGroupTx выполняет обработку одной группы в одной транзакции.
 func (r *Repository) WithinUsageGroupTx(ctx context.Context, fn func(app.UsageGroupTx) error) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
@@ -211,7 +211,7 @@ type usageGroupTx struct {
 	applyTx
 }
 
-// LockPeriodAt возвращает nil, когда подходящего периода нет вовсе (решение 65).
+// LockPeriodAt возвращает nil, когда подходящего периода нет вовсе.
 func (t *usageGroupTx) LockPeriodAt(
 	ctx context.Context,
 	customerID string,
@@ -245,8 +245,8 @@ func (t *usageGroupTx) LockPeriodAt(
 // LockNodeUsage заводит строку расхода при отсутствии и берёт её FOR UPDATE.
 //
 // Заводит, потому что трафик мог прийти по ноде, которой строки не досталось:
-// истёкшему customer материализация их не создаёт (§13), а начислять его items
-// §12 всё равно требует. Без строки байты просто потерялись бы.
+// истёкшему customer материализация их не создаёт, а начислять его items
+// всё равно нужно. Без строки байты просто потерялись бы.
 func (t *usageGroupTx) LockNodeUsage(
 	ctx context.Context,
 	periodID uuid.UUID,
@@ -350,7 +350,7 @@ func (t *usageGroupTx) LoadNodeAccesses(
 	return accesses, nil
 }
 
-// WriteUsageGroup записывает план в нормативном порядке блокировок §11.1:
+// WriteUsageGroup записывает план в нормативном порядке блокировок:
 //
 //  3. node_quota_usage — начисление и отметка исчерпания
 //  5. vpn_nodes
@@ -387,7 +387,7 @@ func (t *usageGroupTx) WriteUsageGroup(ctx context.Context, plan app.Materialize
 	}
 
 	// Затронута ровно одна нода — та, чья квота исчерпана. desired_revision растёт
-	// один раз, сколько бы access на ней ни гасло (§11.1).
+	// один раз, сколько бы access на ней ни гасло.
 	nodeIDs := []string{string(plan.NodeID)}
 	locked, err := t.queries.LockNodesForUpdate(ctx, nodeIDs)
 	if err != nil {
@@ -411,7 +411,7 @@ func (t *usageGroupTx) WriteUsageGroup(ctx context.Context, plan app.Materialize
 	}
 
 	// Supersede по той же причине, что и у expiry: у гасимого access мог висеть
-	// недоставленный EnsureUserPresent прежней версии (§9).
+	// недоставленный EnsureUserPresent прежней версии.
 	for _, change := range plan.Plan.DesiredChanges {
 		if err := t.queries.SupersedeStaleOperations(ctx, db.SupersedeStaleOperationsParams{
 			AccessID:       change.AccessID,

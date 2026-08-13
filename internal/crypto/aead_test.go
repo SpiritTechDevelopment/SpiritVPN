@@ -145,7 +145,7 @@ func TestCipherOpenRejectsForeignKey(t *testing.T) {
 	}
 }
 
-// В v1 active key ровно один, decrypt-only ключей нет (§7): чужой key_id — это
+// В v1 active key ровно один, decrypt-only ключей нет: чужой key_id — это
 // подмена конфигурации, и её нужно отличать от повреждённых данных.
 func TestCipherOpenRejectsUnknownKeyID(t *testing.T) {
 	c := testCipher(t, "dev-1", 0x01)
@@ -180,7 +180,7 @@ func TestCipherKeyIDIsAuthenticated(t *testing.T) {
 	}
 }
 
-// Ошибка расшифрования уходит в логи и метрики (§15), поэтому не должна нести ни
+// Ошибка расшифрования уходит в логи и метрики, поэтому не должна нести ни
 // блоба, ни секрета.
 func TestCipherOpenErrorHasNoSecret(t *testing.T) {
 	c := testCipher(t, "dev-1", 0x01)

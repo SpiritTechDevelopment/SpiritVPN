@@ -16,8 +16,8 @@ import (
 )
 
 // Значения колонки operation_type. Словарь живёт здесь, а не в домене: домен
-// оперирует desired state, а тип операции однозначно из него выводится (§9).
-// Значения apply_state, наоборот, домену известны — их читает read-путь §5.
+// оперирует desired state, а тип операции однозначно из него выводится.
+// Значения apply_state, наоборот, домену известны — их читает read-путь.
 const (
 	operationTypePresent = "ENSURE_PRESENT"
 	operationTypeAbsent  = "ENSURE_ABSENT"
@@ -34,7 +34,7 @@ func New(pool *pgxpool.Pool) *Repository {
 }
 
 // WithinTx выполняет fn в одной READ COMMITTED транзакции с явными row locks:
-// SERIALIZABLE и distributed locks не требуются (§11.1).
+// SERIALIZABLE и distributed locks не требуются.
 func (r *Repository) WithinTx(ctx context.Context, fn func(app.ApplyTx) error) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
@@ -85,7 +85,7 @@ func (t *applyTx) FleetIsCurrent(ctx context.Context, fleetID int64) (bool, erro
 }
 
 // LockOpenQuotaPeriod возвращает nil, если открытого периода нет. Для
-// существующего customer это нарушение инварианта §11, и распознаёт его домен
+// существующего customer это нарушение инварианта, и распознаёт его домен
 // (ErrOpenPeriodMissing), а не адаптер.
 func (t *applyTx) LockOpenQuotaPeriod(ctx context.Context, customerID string) (*domain.QuotaPeriod, error) {
 	row, err := t.queries.LockOpenQuotaPeriod(ctx, customerID)
@@ -131,7 +131,7 @@ func (t *applyTx) LoadAccesses(ctx context.Context, customerID string) ([]domain
 	return accessesFromRows(rows), nil
 }
 
-// WritePlan записывает план в нормативном порядке блокировок §11.1:
+// WritePlan записывает план в нормативном порядке блокировок:
 //
 //  1. customer_entitlements
 //  2. quota_periods
@@ -143,7 +143,7 @@ func (t *applyTx) LoadAccesses(ctx context.Context, customerID string) ([]domain
 // Шаг 4 (traffic_usage_items_processed) принадлежит usage worker и здесь
 // пропускается; пропуск не затрагиваемых строк допустим, менять взаимный порядок
 // фактически берущихся locks — нет.
-// AppendAudit добавляет запись в append-only журнал (§15).
+// AppendAudit добавляет запись в append-only журнал.
 //
 // Живёт на applyTx, а не на каждом пути отдельно: expiryTx встраивает его и
 // получает метод даром, а отображение AuditEvent в колонки остаётся в одном
@@ -172,7 +172,7 @@ func (t *applyTx) WritePlan(ctx context.Context, plan app.MaterializedPlan) erro
 }
 
 // writeEntitlement фиксирует корневую строку. last_command_number двигается всегда,
-// включая валидный no-op (§5, правило 3).
+// включая валидный no-op.
 func (t *applyTx) writeEntitlement(ctx context.Context, plan app.MaterializedPlan) error {
 	commandNumber := numericFromUint64(plan.CommandNumber)
 
@@ -199,12 +199,12 @@ func (t *applyTx) writeEntitlement(ctx context.Context, plan app.MaterializedPla
 }
 
 // writeQuotaPeriod закрывает и открывает период при renewal либо меняет лимит
-// текущего (§5, правила 7 и 8).
+// текущего.
 func (t *applyTx) writeQuotaPeriod(ctx context.Context, plan app.MaterializedPlan) error {
 	switch {
 	case plan.Plan.OpenNewPeriod:
 		// closed_at и started_at берут одно и то же now(), поэтому периоды стыкуются
-		// без дыры (§11). У нового customer закрывать нечего, и UPDATE просто не
+		// без дыры. У нового customer закрывать нечего, и UPDATE просто не
 		// найдёт строк.
 		if err := t.queries.CloseOpenQuotaPeriod(ctx, plan.CustomerID); err != nil {
 			return err
@@ -227,7 +227,7 @@ func (t *applyTx) writeQuotaPeriod(ctx context.Context, plan app.MaterializedPla
 }
 
 // writeNodeQuotaUsage заводит нулевые строки нового периода и пересчитывает отметки
-// исчерпания в текущем. Списки отсортированы по node_id (§11.1).
+// исчерпания в текущем. Списки отсортированы по node_id.
 func (t *applyTx) writeNodeQuotaUsage(ctx context.Context, plan app.MaterializedPlan) error {
 	if len(plan.Plan.NodeQuotaInits) > 0 {
 		if err := t.queries.InsertNodeQuotaUsage(ctx, db.InsertNodeQuotaUsageParams{
@@ -252,7 +252,7 @@ func (t *applyTx) writeNodeQuotaUsage(ctx context.Context, plan app.Materialized
 }
 
 // writeTouchedNodes блокирует ноды в порядке node_id и ровно один раз увеличивает
-// каждой desired_revision независимо от числа затронутых access (§11.1).
+// каждой desired_revision независимо от числа затронутых access.
 func (t *applyTx) writeTouchedNodes(ctx context.Context, plan app.MaterializedPlan) error {
 	if len(plan.Plan.TouchedNodes) == 0 {
 		return nil
@@ -265,7 +265,7 @@ func (t *applyTx) writeTouchedNodes(ctx context.Context, plan app.MaterializedPl
 		return err
 	}
 	// Нода из текущей топологии обязана существовать в vpn_nodes: manifest
-	// валидируется на существование всех node references (§6). Расхождение означает
+	// валидируется на существование всех node references. Расхождение означает
 	// рассогласованную проекцию, и продолжать с ним нельзя — FK всё равно уронит
 	// вставку access, но уже без внятной причины.
 	if len(locked) != len(nodeIDs) {
@@ -277,7 +277,7 @@ func (t *applyTx) writeTouchedNodes(ctx context.Context, plan app.MaterializedPl
 }
 
 // writeAccesses создаёт недостающие access и переводит существующие в новое desired
-// state. Оба списка отсортированы по порядку блокировок §11.1.
+// state. Оба списка отсортированы по нормативному порядку блокировок.
 func (t *applyTx) writeAccesses(ctx context.Context, plan app.MaterializedPlan) error {
 	for _, access := range plan.NewAccesses {
 		if err := t.queries.InsertVpnAccess(ctx, db.InsertVpnAccessParams{
@@ -312,7 +312,7 @@ func (t *applyTx) writeAccesses(ctx context.Context, plan app.MaterializedPlan) 
 	return nil
 }
 
-// writeOperations кладёт операции в outbox (§9).
+// writeOperations кладёт операции в outbox.
 func (t *applyTx) writeOperations(ctx context.Context, plan app.MaterializedPlan) error {
 	// Устаревшие операции есть только у существующих access: у только что созданных
 	// прошлых версий не бывает. Порядок — по access_id, как отсортирован план.
@@ -345,7 +345,7 @@ func (t *applyTx) writeOperations(ctx context.Context, plan app.MaterializedPlan
 	return nil
 }
 
-// operationTypeFor выводит тип операции из desired state (§9).
+// operationTypeFor выводит тип операции из desired state.
 func operationTypeFor(state domain.DesiredState) (string, error) {
 	switch state {
 	case domain.DesiredStatePresent:
@@ -357,10 +357,10 @@ func operationTypeFor(state domain.DesiredState) (string, error) {
 	}
 }
 
-// applyStateForNewAccess — состояние доставки только что созданного access
-// (решение 6). ABSENT рождается APPLIED: операции у него нет, а отсутствие юзера
+// applyStateForNewAccess — состояние доставки только что созданного access.
+// ABSENT рождается APPLIED: операции у него нет, а отсутствие юзера
 // уже является состоянием Xray по умолчанию, и PENDING означал бы вечно висящую
-// недоставленную операцию в метрике §15.
+// недоставленную операцию в метрике.
 func applyStateForNewAccess(state domain.DesiredState) string {
 	if state == domain.DesiredStatePresent {
 		return string(domain.ApplyStatePending)

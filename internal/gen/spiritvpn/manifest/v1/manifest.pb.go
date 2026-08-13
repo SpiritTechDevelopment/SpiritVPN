@@ -4,18 +4,17 @@
 // 	protoc        (unknown)
 // source: spiritvpn/manifest/v1/manifest.proto
 
-// Приём infrastructure manifest. Нормативный источник: BACKEND_DOMAIN_AGREEMENTS.md
-// §6 (Infrastructure manifest) и §13 (materialization). Этот proto — wire-проекция
+// Приём infrastructure manifest и материализация топологии. Этот proto — wire-проекция
 // логического YAML-снапшота, который рендерит infra CI/CD. Со-owned с infra CI/CD.
 //
-// Вызывающая сторона аутентифицируется по mTLS с ролью manifest-writer (§14). Весь
+// Вызывающая сторона аутентифицируется по mTLS с ролью manifest-writer. Весь
 // снапшот применяется атомарно или не применяется вовсе; массовая материализация
-// customer access идёт асинхронно durable-джобой после commit (§6/§13).
+// customer access идёт асинхронно durable-джобой после commit.
 //
 // Ограничения полей, которые protobuf выразить не может (schema_version == 1,
 // revision > 0, регэксп fingerprint, transport == "tcp", flow == "xtls-rprx-vision",
 // уникальность, ссылочная целостность, destructive-guard), валидирует backend до
-// проекции; см. §6.
+// проекции.
 
 package manifestv1
 
@@ -303,7 +302,7 @@ func (x *NodeAgentConfig) GetCertificateIdentity() string {
 }
 
 // NodePublicConfig — публичные REALITY/VLESS-параметры для клиента, проецируются в
-// URI GetCustomerAccessLinks (§8). security=reality и encryption=none фиксированы
+// URI GetCustomerAccessLinks. security=reality и encryption=none фиксированы
 // протоколом v1 и намеренно отсутствуют здесь.
 type NodePublicConfig struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -478,7 +477,7 @@ type ManifestBridge struct {
 	EntryNodeId string                 `protobuf:"bytes,2,opt,name=entry_node_id,json=entryNodeId,proto3" json:"entry_node_id,omitempty"` // куда устанавливается customer VLESS user
 	ExitNodeId  string                 `protobuf:"bytes,3,opt,name=exit_node_id,json=exitNodeId,proto3" json:"exit_node_id,omitempty"`    // egress-нода (отлична от entry, тот же fleet)
 	// Статический тег Xray outbound на входной ноде для этой relation. Обязателен и
-	// непуст. Хранится и передаётся агенту дословно как User.egress_key (§7/§9);
+	// непуст. Хранится и передаётся агенту дословно как User.egress_key;
 	// неймингом владеет infra, backend его не деривит.
 	EgressTag string `protobuf:"bytes,4,opt,name=egress_tag,json=egressTag,proto3" json:"egress_tag,omitempty"`
 	// Человекочитаемое имя; используется как фрагмент VLESS URI для BRIDGE-ссылок.

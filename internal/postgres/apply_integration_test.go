@@ -80,7 +80,7 @@ func migrateUp(dsn string) error {
 const (
 	testFleetID    = 42
 	testCustomerID = "customer-integration"
-	// testApplyActor — идентичность product-сервиса из mTLS (§14); уезжает в
+	// testApplyActor — идентичность product-сервиса из mTLS; уезжает в
 	// actor_id записи аудита.
 	testApplyActor = "product-svc"
 )
@@ -180,7 +180,7 @@ func seedTopology(t *testing.T, pool *pgxpool.Pool, nodes []string, bridges [][4
 }
 
 // command собирает команду так же, как её соберёт gRPC-хендлер: из
-// expires_at_epoch_sec, то есть с секундной точностью (§5).
+// expires_at_epoch_sec, то есть с секундной точностью.
 //
 // Усечение здесь не косметика. timestamptz хранит МИКРОсекунды, поэтому время с
 // наносекундами, записанное и прочитанное обратно, оказывается строго меньше
@@ -190,7 +190,7 @@ func seedTopology(t *testing.T, pool *pgxpool.Pool, nodes []string, bridges [][4
 // как её строит граница системы, иначе он проверяет несуществующий сценарий.
 //
 // Возвращает app-команду, а не доменную: actor и request_id уезжают в
-// audit_events (§15), и тест обязан подавать их так же, как транспорт.
+// audit_events, и тест обязан подавать их так же, как транспорт.
 func command(commandNumber uint64, quotaBytes uint64, expiresAt time.Time) app.ApplyCustomerCommand {
 	return app.ApplyCustomerCommand{
 		Command: domain.ApplyCommand{
@@ -217,8 +217,7 @@ func scalar[T any](t *testing.T, pool *pgxpool.Pool, sqlText string, args ...any
 // --- тесты ------------------------------------------------------------------
 
 // Первый Apply создаёт корневую строку, открывает период, заводит нулевой расход на
-// каждой ноде fleet, материализует access под топологию и кладёт операции в outbox
-// (§5).
+// каждой ноде fleet, материализует access под топологию и кладёт операции в outbox.
 func TestIntegrationApplyCreatesCustomer(t *testing.T) {
 	uc, pool := newFixture(t)
 	seedTopology(t, pool, []string{"node-a", "node-b"}, [][4]string{
@@ -236,21 +235,21 @@ func TestIntegrationApplyCreatesCustomer(t *testing.T) {
 		t.Fatalf("last_command_number = %d, ожидалось 1", got)
 	}
 
-	// Ровно один открытый период; partial unique index это же и гарантирует (§11).
+	// Ровно один открытый период; partial unique index это же и гарантирует.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM quota_periods WHERE customer_id = $1 AND closed_at IS NULL`,
 		testCustomerID); got != 1 {
 		t.Fatalf("открытых периодов %d, ожидался 1", got)
 	}
 
-	// Нулевой расход на каждой ноде fleet (§5).
+	// Нулевой расход на каждой ноде fleet.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM node_quota_usage
 		 WHERE total_bytes = 0 AND exhausted_at IS NULL`); got != 2 {
 		t.Fatalf("строк расхода %d, ожидалось 2", got)
 	}
 
-	// link_count = fleet_node_count + bridge_relation_count (§4).
+	// link_count = fleet_node_count + bridge_relation_count.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM vpn_accesses WHERE customer_id = $1`, testCustomerID); got != 3 {
 		t.Fatalf("access %d, ожидалось 3", got)
@@ -262,7 +261,7 @@ func TestIntegrationApplyCreatesCustomer(t *testing.T) {
 		t.Fatalf("PRESENT/PENDING access %d, ожидалось 3", got)
 	}
 
-	// BRIDGE несёт egress_tag дословно, FREEDOM — локальный выход (§6, §7).
+	// BRIDGE несёт egress_tag дословно, FREEDOM — локальный выход.
 	if got := scalar[string](t, pool,
 		`SELECT egress_key FROM vpn_accesses WHERE customer_id = $1 AND kind = 'BRIDGE'`,
 		testCustomerID); got != "exit-b" {
@@ -273,7 +272,7 @@ func TestIntegrationApplyCreatesCustomer(t *testing.T) {
 		t.Fatalf("FREEDOM с локальным выходом %d, ожидалось 2", got)
 	}
 
-	// Операции лежат в outbox готовыми к отправке (§9, решение 10).
+	// Операции лежат в outbox готовыми к отправке.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM agent_operations
 		 WHERE operation_type = 'ENSURE_PRESENT' AND status = 'PENDING'
@@ -282,13 +281,13 @@ func TestIntegrationApplyCreatesCustomer(t *testing.T) {
 	}
 
 	// desired_revision увеличен ровно один раз на ноду, несмотря на два access у
-	// node-a: FREEDOM и BRIDGE (§11.1).
+	// node-a: FREEDOM и BRIDGE.
 	if got := scalar[int64](t, pool,
 		`SELECT desired_revision FROM vpn_nodes WHERE node_id = 'node-a'`); got != 2 {
 		t.Fatalf("desired_revision node-a = %d, ожидалось 2 (1 стартовое + 1)", got)
 	}
 
-	// client_uuid хранится только зашифрованным (§7).
+	// client_uuid хранится только зашифрованным.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM vpn_accesses
 		 WHERE octet_length(encrypted_client_uuid) = $1 AND encryption_key_id = 'test-key'`,
@@ -298,7 +297,7 @@ func TestIntegrationApplyCreatesCustomer(t *testing.T) {
 }
 
 // Точный повтор принятой команды с бо́льшим номером не создаёт ни новых операций, ни
-// нового периода, но двигает last_command_number (§5, правило 4; §11.1).
+// нового периода, но двигает last_command_number.
 func TestIntegrationApplyRepeatIsNoOp(t *testing.T) {
 	uc, pool := newFixture(t)
 	seedTopology(t, pool, []string{"node-a"}, nil)
@@ -349,8 +348,7 @@ func TestIntegrationApplyRepeatIsNoOp(t *testing.T) {
 	}
 }
 
-// Устаревшая команда завершается идемпотентным OK без единого side effect
-// (§5, правило 2).
+// Устаревшая команда завершается идемпотентным OK без единого side effect.
 func TestIntegrationApplyStaleCommand(t *testing.T) {
 	uc, pool := newFixture(t)
 	seedTopology(t, pool, []string{"node-a"}, nil)
@@ -380,7 +378,7 @@ func TestIntegrationApplyStaleCommand(t *testing.T) {
 }
 
 // Renewal закрывает текущий период и открывает новый ТЕМ ЖЕ timestamp: иначе дельта
-// трафика не попала бы ни в один период (§11, §12).
+// трафика не попала бы ни в один период.
 func TestIntegrationApplyRenewalStitchesPeriods(t *testing.T) {
 	uc, pool := newFixture(t)
 	seedTopology(t, pool, []string{"node-a"}, nil)
@@ -392,7 +390,7 @@ func TestIntegrationApplyRenewalStitchesPeriods(t *testing.T) {
 		t.Fatalf("первый Execute: %v", err)
 	}
 
-	// Расход прошлого периода: renewal обязан начать новый с нуля (§5).
+	// Расход прошлого периода: renewal обязан начать новый с нуля.
 	if _, err := pool.Exec(ctx, `UPDATE node_quota_usage SET uplink_bytes = 500`); err != nil {
 		t.Fatalf("подготовка расхода: %v", err)
 	}
@@ -416,14 +414,14 @@ func TestIntegrationApplyRenewalStitchesPeriods(t *testing.T) {
 		t.Fatalf("расход нового периода = %d, ожидался 0", got)
 	}
 	// Access уже PRESENT и остаётся им, поэтому новых операций renewal не создаёт:
-	// естественная идемпотентность целевого состояния (§11.1).
+	// естественная идемпотентность целевого состояния.
 	if got := scalar[int64](t, pool, `SELECT count(*) FROM agent_operations`); got != 1 {
 		t.Fatalf("операций %d, ожидалась 1", got)
 	}
 }
 
 // Понижение квоты блокирует только исчерпавшую ноду: квота применяется независимо
-// на каждой ноде (§4, §5).
+// на каждой ноде.
 func TestIntegrationApplyQuotaDecreaseBlocksOneNode(t *testing.T) {
 	uc, pool := newFixture(t)
 	seedTopology(t, pool, []string{"node-a", "node-b"}, nil)
@@ -458,7 +456,7 @@ func TestIntegrationApplyQuotaDecreaseBlocksOneNode(t *testing.T) {
 		t.Fatalf("desired_state node-b = %q, исчерпание на другой ноде на него не влияет", got)
 	}
 
-	// Remove создан только для исчерпавшей ноды, версия выросла (§5, §9).
+	// Remove создан только для исчерпавшей ноды, версия выросла.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM agent_operations
 		 WHERE operation_type = 'ENSURE_ABSENT' AND node_id = 'node-a' AND desired_version = 2`); got != 1 {
@@ -469,7 +467,7 @@ func TestIntegrationApplyQuotaDecreaseBlocksOneNode(t *testing.T) {
 		t.Fatalf("операций на node-b %d, ожидалась 1 (только исходный Present)", got)
 	}
 
-	// Прежняя неотправленная операция того же access помечена устаревшей (§9).
+	// Прежняя неотправленная операция того же access помечена устаревшей.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM agent_operations
 		 WHERE node_id = 'node-a' AND desired_version = 1 AND status = 'SUPERSEDED'`); got != 1 {
@@ -477,7 +475,7 @@ func TestIntegrationApplyQuotaDecreaseBlocksOneNode(t *testing.T) {
 	}
 }
 
-// Неизвестный fleet возвращает NOT_FOUND и не оставляет следов (§5, правило 6).
+// Неизвестный fleet возвращает NOT_FOUND и не оставляет следов.
 func TestIntegrationApplyUnknownFleet(t *testing.T) {
 	uc, pool := newFixture(t)
 	seedTopology(t, pool, []string{"node-a"}, nil)
@@ -532,7 +530,7 @@ func TestIntegrationQuotaRoundTripAtUint64Max(t *testing.T) {
 	}
 }
 
-// TestIntegrationApplyWritesAudit — §15: audit обязателен для customer
+// TestIntegrationApplyWritesAudit — audit обязателен для customer
 // Apply/renewal. Проверяется на настоящей БД, потому что запись проходит через
 // сериализацию metadata в jsonb и nullable-колонки адаптера.
 func TestIntegrationApplyWritesAudit(t *testing.T) {
@@ -571,7 +569,7 @@ func TestIntegrationApplyWritesAudit(t *testing.T) {
 		t.Error("продление не отмечено открытием нового периода квоты")
 	}
 
-	// request_id связывает запись с логами того же запроса (§15).
+	// request_id связывает запись с логами того же запроса.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM audit_events WHERE request_id IS NULL`); got != 0 {
 		t.Errorf("записей без request_id %d, ожидалось 0", got)
@@ -589,7 +587,7 @@ func TestIntegrationApplyAuditRollsBackWithCommand(t *testing.T) {
 	seedTopology(t, pool, []string{"node-a"}, nil)
 
 	// Fleet, которого нет в манифесте: команда отклоняется после того, как
-	// транзакция уже открыта (§5, правило 6).
+	// транзакция уже открыта.
 	cmd := command(1, 1<<30, time.Now().UTC().Add(30*24*time.Hour))
 	cmd.Command.FleetID = testFleetID + 1
 
@@ -606,7 +604,7 @@ func TestIntegrationApplyAuditRollsBackWithCommand(t *testing.T) {
 }
 
 // TestIntegrationApplyStaleCommandWritesNoAudit — устаревшая команда
-// коммитится, но side effects не имеет (§5, правило 2), поэтому и записи о ней
+// коммитится, но side effects не имеет, поэтому и записи о ней
 // быть не должно: повтор доставки иначе плодил бы дубликаты одного no-op.
 func TestIntegrationApplyStaleCommandWritesNoAudit(t *testing.T) {
 	uc, pool := newFixture(t)

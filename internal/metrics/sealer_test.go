@@ -45,7 +45,7 @@ func TestSealerIgnoresSuccessAndSeal(t *testing.T) {
 	if _, err := sealer.Open(crypto.SealedCredential{}); err != nil {
 		t.Fatalf("успешное расшифрование вернуло ошибку: %v", err)
 	}
-	// Отказ Seal валит команду целиком и виден как ошибка RPC; §15 просит именно
+	// Отказ Seal валит команду целиком и виден как ошибка RPC; метрика собирает
 	// ошибки расшифрования, которые деградируют молча.
 	if _, err := sealer.Seal(crypto.ClientUUID{}); err == nil {
 		t.Fatal("ошибка шифрования не проброшена наружу")

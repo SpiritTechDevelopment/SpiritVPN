@@ -16,7 +16,7 @@ func accessID(n byte) uuid.UUID {
 	return id
 }
 
-// exampleTopology — пример из §4: ноды NL-1 и DE-1 плюс связь NL-1 -> DE-1 дают
+// exampleTopology — ноды NL-1 и DE-1 плюс связь NL-1 -> DE-1 дают
 // customer три access.
 func exampleTopology() FleetTopology {
 	return FleetTopology{
@@ -52,7 +52,7 @@ func accessLabels(accesses []Access) []string {
 	return labels
 }
 
-// §4: link_count = fleet_node_count + bridge_relation_count.
+// Link_count = fleet_node_count + bridge_relation_count.
 func TestTargetsOf(t *testing.T) {
 	targets := TargetsOf(exampleTopology())
 
@@ -85,7 +85,7 @@ func TestTargetsOf(t *testing.T) {
 }
 
 // Несколько BRIDGE с одной входной ноды допустимы: ограничения «не более одного
-// BRIDGE на customer/node» нет (§4).
+// BRIDGE на customer/node» нет.
 func TestTargetsOfMultipleBridgesFromSameEntry(t *testing.T) {
 	topology := FleetTopology{
 		FleetID: 10,
@@ -160,7 +160,7 @@ func TestPlanAccessSetKeepsInSync(t *testing.T) {
 	}
 }
 
-// §6: смена egress_tag при неизменных routing_key и паре (entry, exit) — repoint,
+// Смена egress_tag при неизменных routing_key и паре (entry, exit) — repoint,
 // а не новое поколение.
 func TestPlanAccessSetDetectsEgressDrift(t *testing.T) {
 	accesses := []Access{
@@ -227,7 +227,7 @@ func TestPlanAccessSetRetireIsSorted(t *testing.T) {
 	}
 }
 
-// §4 и §17: fleet может временно не содержать ни нод, ни связей, оставаясь
+// Fleet может временно не содержать ни нод, ни связей, оставаясь
 // действующим. Набор целей тогда пуст.
 func TestPlanAccessSetEmptyFleet(t *testing.T) {
 	plan := PlanAccessSet(FleetTopology{FleetID: 10}, nil)
@@ -237,7 +237,7 @@ func TestPlanAccessSetEmptyFleet(t *testing.T) {
 	}
 }
 
-// §4: повторно добавленная logical target даёт новое поколение max+1 с новыми
+// Повторно добавленная logical target даёт новое поколение max+1 с новыми
 // credentials; ретайрнутые access остаются в истории и не восстанавливаются.
 func TestPlanAccessSetNextGeneration(t *testing.T) {
 	topology := FleetTopology{FleetID: 10, Nodes: []NodeID{"NL-1"}}

@@ -174,7 +174,7 @@ func newCertAuthority(t *testing.T) *certAuthority {
 // issue выпускает сертификат, подписанный CA.
 //
 // Идентичность кладётся в DNS SAN, а в CN пишется заведомо другое значение:
-// решение 13 требует, чтобы авторизация читала SAN и игнорировала CN, и
+// авторизация обязана читать SAN и игнорировать CN, и
 // расхождение делает нарушение этого правила видимым сразу.
 func (ca *certAuthority) issue(
 	t *testing.T,
@@ -331,7 +331,7 @@ func (s *testServer) client(t *testing.T, identity string) customerv1.CustomerAc
 	return customerv1.NewCustomerAccessServiceClient(s.conn(t, identity))
 }
 
-// manifestClient дозванивается до сервера как infrastructure CI/CD (§14).
+// manifestClient дозванивается до сервера как infrastructure CI/CD.
 func (s *testServer) manifestClient(t *testing.T, identity string) manifestv1.ManifestServiceClient {
 	t.Helper()
 
@@ -426,12 +426,12 @@ func TestMTLSAllowsConfiguredWriter(t *testing.T) {
 	if cmd.CustomerID != "cust-1" || cmd.FleetID != 1 {
 		t.Errorf("команда доехала искажённой: %+v", cmd)
 	}
-	// Решение 11 на настоящем транспорте.
+	// Секундная точность expires_at на настоящем транспорте.
 	if cmd.ExpiresAt.Nanosecond() != 0 || cmd.ExpiresAt.Location() != time.UTC {
 		t.Errorf("expires_at %v: ожидалась секундная точность в UTC", cmd.ExpiresAt)
 	}
 
-	// §15: идентичность вызывающего из mTLS уезжает в audit_events. Проверяется
+	// Идентичность вызывающего из mTLS уезжает в audit_events. Проверяется
 	// на настоящем рукопожатии, потому что это единственное место, где она
 	// вообще появляется.
 	if request.Actor != "product-svc" {
@@ -456,7 +456,7 @@ func TestMTLSPropagatesDomainError(t *testing.T) {
 	}
 }
 
-// TestMTLSWriterCannotRead — решение 14 на настоящем соединении. Чтение отдаёт
+// TestMTLSWriterCannotRead — на настоящем соединении. Чтение отдаёт
 // VLESS URI с client_uuid, поэтому право писать не даёт права читать.
 func TestMTLSWriterCannotRead(t *testing.T) {
 	server := startServer(t, []string{"product-svc"}, nil)
@@ -471,7 +471,7 @@ func TestMTLSWriterCannotRead(t *testing.T) {
 
 // TestMTLSReaderGetsLinksWithNoStore — read-путь целиком на настоящем
 // соединении: identity с ролью reader доходит до хендлера, ответ несёт URI и
-// запрет кеширования (§5).
+// запрет кеширования.
 func TestMTLSReaderGetsLinksWithNoStore(t *testing.T) {
 	const uri = "vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443?security=reality#NL"
 
@@ -503,7 +503,7 @@ func TestMTLSReaderGetsLinksWithNoStore(t *testing.T) {
 	}
 }
 
-// TestMTLSNeverLogsIssuedURI — §8 на настоящем соединении: ответ с credentials не
+// TestMTLSNeverLogsIssuedURI — на настоящем соединении: ответ с credentials не
 // попадает в лог сервера ни через interceptor, ни через сам gRPC.
 func TestMTLSNeverLogsIssuedURI(t *testing.T) {
 	const secretUUID = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
@@ -532,9 +532,10 @@ func TestMTLSNeverLogsIssuedURI(t *testing.T) {
 	}
 }
 
-// TestMTLSManifestWriterIsSeparateRole — решение 14 и §14 на настоящем
-// соединении: манифест переписывает топологию целиком, и права продуктового
-// сервиса на него не распространяются ни в какую сторону.
+// TestMTLSManifestWriterIsSeparateRole — на настоящем соединении роль
+// manifest-writer отдельна от customer-ролей: манифест переписывает топологию
+// целиком, и права продуктового сервиса на него не распространяются ни в какую
+// сторону.
 func TestMTLSManifestWriterIsSeparateRole(t *testing.T) {
 	server := startServerWithManifest(t,
 		[]string{"product-svc"}, []string{"product-svc"}, []string{"infra-ci"})
@@ -557,7 +558,7 @@ func TestMTLSManifestWriterIsSeparateRole(t *testing.T) {
 }
 
 // TestMTLSManifestWriterApplies — путь приёма манифеста целиком: identity с
-// ролью manifest-writer доходит до хендлера, и она же уезжает в аудит (§15).
+// ролью manifest-writer доходит до хендлера, и она же уезжает в аудит.
 func TestMTLSManifestWriterApplies(t *testing.T) {
 	server := startServerWithManifest(t, nil, nil, []string{"infra-ci"})
 	server.manifest.result = app.ApplyManifestResult{Revision: 42}
@@ -581,7 +582,7 @@ func TestMTLSManifestWriterApplies(t *testing.T) {
 		t.Fatalf("use case вызван %d раз, ожидался 1", calls)
 	}
 	if cmd.Actor != "infra-ci" {
-		t.Errorf("actor %q, ожидался infra-ci: аудит §15 получит не ту идентичность", cmd.Actor)
+		t.Errorf("actor %q, ожидался infra-ci: аудит получит не ту идентичность", cmd.Actor)
 	}
 	if cmd.RequestID == "" {
 		t.Error("request_id пуст: запись аудита нечем будет скоррелировать с логом")
@@ -605,7 +606,7 @@ func TestMTLSRejectsUnknownIdentity(t *testing.T) {
 	}
 }
 
-// TestMTLSRejectsMissingClientCertificate — решение 15 и tls.RequireAndVerifyClientCert.
+// TestMTLSRejectsMissingClientCertificate — и tls.RequireAndVerifyClientCert.
 // Отказ обязан случиться на рукопожатии, а не на уровне приложения.
 func TestMTLSRejectsMissingClientCertificate(t *testing.T) {
 	server := startServer(t, []string{"product-svc"}, nil)
@@ -658,7 +659,7 @@ func TestMTLSRejectsForeignCA(t *testing.T) {
 	}
 }
 
-// TestMTLSIgnoresCommonName — решение 13 на настоящем сертификате. Во всех
+// TestMTLSIgnoresCommonName — на настоящем сертификате. Во всех
 // выпущенных здесь сертификатах CN заведомо не совпадает с идентичностью, и
 // авторизация обязана опираться только на SAN.
 func TestMTLSIgnoresCommonName(t *testing.T) {
@@ -672,7 +673,7 @@ func TestMTLSIgnoresCommonName(t *testing.T) {
 	}
 }
 
-// TestMTLSLogsIdentityAndRequestID — §15 на настоящем вызове: в записи есть
+// TestMTLSLogsIdentityAndRequestID — на настоящем вызове: в записи есть
 // request_id, стабильный код и то, кому именно отказали.
 func TestMTLSLogsIdentityAndRequestID(t *testing.T) {
 	server := startServer(t, []string{"product-svc"}, nil)

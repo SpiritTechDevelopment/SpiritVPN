@@ -51,7 +51,7 @@ type ManifestProjection struct {
 	CurrentMemberships []FleetNodeKey
 
 	// Fleets — ВСЕ принятые fleet. Разделения на текущие и нет здесь нет
-	// намеренно: принятый fleet не удаляется и не переиспользуется (§4, §17), а
+	// намеренно: принятый fleet не удаляется и не переиспользуется, а
 	// его отсутствие в снапшоте отклоняет весь манифест.
 	Fleets []int64
 
@@ -63,11 +63,11 @@ type ManifestProjection struct {
 //
 // Digest сюда не передаётся: его считает сам PlanManifest. Принимать его
 // параметром значило бы допустить вызов, где digest не соответствует снапшоту, —
-// а именно на равенстве digest держится вся идемпотентность §6.
+// а именно на равенстве digest держится вся идемпотентность приёма.
 type ManifestInput struct {
 	Snapshot ManifestSnapshot
 	// AllowDestructive действует только на этот вызов и не сохраняется как
-	// разрешение для следующих revisions (§6).
+	// разрешение для следующих revisions.
 	AllowDestructive bool
 	Projection       ManifestProjection
 }
@@ -76,7 +76,7 @@ type ManifestInput struct {
 //
 // Списки Nodes/FleetIDs/Memberships/Bridges — строки, которые становятся
 // текущими; Removed* — строки, которые перестают ими быть. Физических удалений в
-// плане нет вовсе: история не удаляется (§6, §11).
+// плане нет вовсе: история не удаляется.
 type ManifestPlan struct {
 	Revision int64
 	Digest   string
@@ -85,11 +85,11 @@ type ManifestPlan struct {
 	Payload []byte
 
 	// Idempotent — та же revision с тем же digest. План пуст, писать нечего
-	// вовсе, включая строку materialization job (решение 21).
+	// вовсе, включая строку materialization job.
 	Idempotent bool
 
 	// Destructive — снапшот что-то удаляет. Гейт по AllowDestructive уже пройден;
-	// флаг остаётся для аудита (§15).
+	// флаг остаётся для аудита.
 	Destructive bool
 
 	Nodes       []ManifestNode
@@ -103,7 +103,7 @@ type ManifestPlan struct {
 }
 
 // PlanManifest сверяет снапшот с принятым состоянием и раскладывает его в план
-// записи (§6).
+// записи.
 //
 // Снапшот обязан быть уже проверен ValidateManifest: здесь только те правила,
 // которым нужно принятое состояние.
@@ -114,7 +114,7 @@ type ManifestPlan struct {
 //     содержательный отказ, а устаревшая revision не должна разбираться по
 //     существу;
 //  2. присутствие всех ранее принятых fleet — отклоняет манифест независимо от
-//     allow_destructive (§6);
+//     allow_destructive;
 //  3. неизменяемость пары у существующего routing_key;
 //  4. диф и гейт destructive — последним: он про то, что снапшот удаляет, а это
 //     известно только после дифа.
@@ -161,12 +161,12 @@ func PlanManifest(in ManifestInput) (ManifestPlan, error) {
 	return plan, nil
 }
 
-// checkRevision реализует гейт §6: повтор той же revision с тем же digest
+// checkRevision реализует гейт revision: повтор той же revision с тем же digest
 // идемпотентен, с другим digest отклоняется, более старая revision отклоняется.
 //
 // Идемпотентность распространяется только на ПОСЛЕДНЮЮ принятую revision. Повтор
 // более раннего номера — устаревшая доставка, и он отклоняется даже при
-// совпадающем digest: более специальное правило §6 про старую revision
+// совпадающем digest: более специальное правило про старую revision
 // перекрывает общее про повтор.
 func checkRevision(in ManifestInput, digest string) (idempotent bool, err error) {
 	switch {
@@ -185,7 +185,7 @@ func checkRevision(in ManifestInput, digest string) (idempotent bool, err error)
 	}
 }
 
-// checkAcceptedFleets — §6: все fleet ID из предыдущего принятого снапшота
+// checkAcceptedFleets — все fleet ID из предыдущего принятого снапшота
 // обязаны присутствовать; отсутствие хотя бы одного отклоняет весь манифест
 // независимо от allow_destructive.
 func checkAcceptedFleets(in ManifestInput) error {
@@ -208,13 +208,13 @@ func checkAcceptedFleets(in ManifestInput) error {
 	return manifestError(ErrManifestFleetMissing, "%v", missing)
 }
 
-// checkBridgePairs — §6: пара (entry, exit) неизменяема для существующего
+// checkBridgePairs — пара (entry, exit) неизменяема для существующего
 // routing_key.
 //
 // Сверка идёт со ВСЕМИ строками, включая удалённые. Строка живёт вечно, и
 // оживление её с другой парой означало бы, что одна и та же логическая цель
 // (logical_target_key = routing_key) вдруг указывает в другое место, унося за
-// собой входную ноду всех уже выданных access. §6 требует для переноса именно
+// собой входную ноду всех уже выданных access. Перенос требует именно
 // новый routing_key.
 func checkBridgePairs(in ManifestInput) error {
 	projected := make(map[BridgeKey]ProjectedBridge, len(in.Projection.Bridges))
@@ -244,7 +244,7 @@ func checkBridgePairs(in ManifestInput) error {
 }
 
 // sortedNodesByID упорядочивает ноды по node_id: в этом порядке транзакция
-// обязана брать их row locks (§11.1).
+// обязана брать их row locks.
 func sortedNodesByID(nodes []ManifestNode) []ManifestNode {
 	sorted := slices.Clone(nodes)
 	slices.SortFunc(sorted, func(a, b ManifestNode) int {
@@ -291,7 +291,7 @@ func flattenFleets(fleets []ManifestFleet) ([]int64, []FleetNodeKey, []PlannedBr
 	return ids, memberships, bridges
 }
 
-// removedNodes — ноды, глобально исчезнувшие из манифеста (§6). Backend
+// removedNodes — ноды, глобально исчезнувшие из манифеста. Backend
 // прекращает выдавать их ссылки и не доставляет на них операции; ретайр самих
 // access принадлежит materialization job.
 func removedNodes(in ManifestInput) []NodeID {

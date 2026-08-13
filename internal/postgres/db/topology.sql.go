@@ -17,7 +17,7 @@ WHERE node_id = ANY($1::text[])
 `
 
 // Увеличивает desired_revision ровно один раз на ноду независимо от числа
-// затронутых access (§11.1). Вызывается только после LockNodesForUpdate, поэтому
+// затронутых access. Вызывается только после LockNodesForUpdate, поэтому
 // порядок строк внутри этого UPDATE уже не важен — все нужные locks взяты.
 func (q *Queries) BumpNodesDesiredRevision(ctx context.Context, nodeIds []string) error {
 	_, err := q.db.Exec(ctx, bumpNodesDesiredRevision, nodeIds)
@@ -34,16 +34,16 @@ SELECT EXISTS (
 ) AS is_current
 `
 
-// Чтение текущей проекции топологии fleet и блокировка нод (§6, §11.1).
+// Чтение текущей проекции топологии fleet и блокировка нод.
 //
 // Текущая топология — это строки проекции с current = true. Manifest является
-// полным снапшотом, а его валидация требует существования всех node references
-// (§6), поэтому глобально удалённая нода не может остаться ни в актуальном
+// полным снапшотом, а его валидация требует существования всех node references,
+// поэтому глобально удалённая нода не может остаться ни в актуальном
 // membership, ни в актуальной bridge-связи. Поддерживать этот инвариант обязан
 // срез, применяющий manifest; здесь он не перепроверяется джойнами, чтобы
 // определение «текущей топологии» жило в одном месте.
-// Проверяет, что fleet присутствует в последнем принятом снапшоте (§5, правило 6).
-// Ранее принятый fleet физически не удаляется (§6), поэтому строка может
+// Проверяет, что fleet присутствует в последнем принятом снапшоте.
+// Ранее принятый fleet физически не удаляется, поэтому строка может
 // существовать с current = false: приём новых команд для него закрыт, а FK уже
 // привязанных customer не ломается.
 func (q *Queries) FleetIsCurrent(ctx context.Context, vpnFleetID int64) (bool, error) {
@@ -69,7 +69,7 @@ type ListCurrentFleetBridgeRoutesRow struct {
 }
 
 // BRIDGE-связи fleet. Каждая даёт один BRIDGE access на своей входной ноде;
-// egress_tag форвардится агенту дословно (§6, §7).
+// egress_tag форвардится агенту дословно.
 func (q *Queries) ListCurrentFleetBridgeRoutes(ctx context.Context, vpnFleetID int64) ([]ListCurrentFleetBridgeRoutesRow, error) {
 	rows, err := q.db.Query(ctx, listCurrentFleetBridgeRoutes, vpnFleetID)
 	if err != nil {
@@ -103,7 +103,7 @@ WHERE vpn_fleet_id = $1
 ORDER BY node_id
 `
 
-// Ноды fleet. Каждая даёт один FREEDOM access (§4).
+// Ноды fleet. Каждая даёт один FREEDOM access.
 func (q *Queries) ListCurrentFleetNodes(ctx context.Context, vpnFleetID int64) ([]string, error) {
 	rows, err := q.db.Query(ctx, listCurrentFleetNodes, vpnFleetID)
 	if err != nil {
@@ -132,7 +132,7 @@ ORDER BY node_id
 FOR UPDATE
 `
 
-// Блокирует строки нод, состав desired-юзеров которых меняется (§11.1, шаг 5).
+// Блокирует строки нод, состав desired-юзеров которых меняется.
 // ORDER BY внутри FOR UPDATE обязателен: узел блокировки стоит в плане над
 // сортировкой, поэтому строки блокируются в порядке node_id, и транзакции,
 // затрагивающие пересекающиеся наборы нод, не встают в deadlock.

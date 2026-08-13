@@ -38,7 +38,7 @@ func TestGeneratorProducesDistinctValues(t *testing.T) {
 			t.Fatal("ожидался UUIDv4 для operation_id")
 		}
 		if accessID.Version() != 4 || periodID.Version() != 4 || clientUUID.Reveal().Version() != 4 {
-			t.Fatal("ожидался UUIDv4 (§7)")
+			t.Fatal("ожидался UUIDv4")
 		}
 		if _, dup := accessIDs[accessID]; dup {
 			t.Fatalf("коллизия access_id: %v", accessID)
@@ -62,7 +62,7 @@ func TestGeneratorAccountingID(t *testing.T) {
 }
 
 // Отказ CSPRNG обязан стать ошибкой команды: uuid.New паникует, поэтому под
-// капотом используется uuid.NewRandomFromReader (§7, решение 4).
+// капотом используется uuid.NewRandomFromReader.
 func TestGeneratorPropagatesRandomError(t *testing.T) {
 	g := newGeneratorWithRandom(failingReader{})
 

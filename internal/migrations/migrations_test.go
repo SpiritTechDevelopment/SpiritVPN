@@ -9,8 +9,8 @@ import (
 )
 
 // TestEmbeddedSourceLoads проверяет, что встроенные миграции видны источнику iofs и
-// что базовая версия отдаёт и up-, и down-миграцию. Ловит пропавший/переименованный
-// .sql-файл без обращения к базе.
+// что базовая версия отдаёт и up-, и down-миграцию. Ловит пропавший/переименованный.
+// sql-файл без обращения к базе.
 func TestEmbeddedSourceLoads(t *testing.T) {
 	src, err := iofs.New(files, ".")
 	if err != nil {
@@ -76,7 +76,7 @@ func readMigration(t *testing.T, open func() (io.ReadCloser, string, error)) str
 }
 
 // TestLatestMatchesEmbeddedMigrations проверяет версию, на которую опирается
-// readiness (§15). Константы для неё нет намеренно: её забыли бы поднять вместе
+// readiness. Константы для неё нет намеренно: её забыли бы поднять вместе
 // с новой миграцией, и readiness начала бы врать. Тест ловит обратное — что
 // вычисление разошлось с реальным набором файлов.
 func TestLatestMatchesEmbeddedMigrations(t *testing.T) {

@@ -1,9 +1,9 @@
 // Package nodeagent — клиент node-agent, единственная исходящая сетевая
-// поверхность backend (§9).
+// поверхность backend.
 //
 // Backend здесь клиент, а не сервер: он вызывает EnsureUserPresent/Absent на
-// агенте входной ноды поверх mTLS в management WireGuard overlay (§14). Сам Xray
-// backend не трогает никогда — команды транслирует агент (§17).
+// агенте входной ноды поверх mTLS в management WireGuard overlay. Сам Xray
+// backend не трогает никогда — команды транслирует агент.
 //
 // Контракт (proto/spiritvpn/nodeagent/v1) принадлежит инфраструктуре и живёт в
 // отдельном репозитории; здесь лежит только вендорная копия, и менять её нельзя —
@@ -22,17 +22,17 @@ import (
 // ErrIdentityMismatch — предъявленный агентом сертификат прошёл проверку цепочки,
 // но его идентичность не совпала с certificate_identity из манифеста.
 //
-// §9 называет это security failure: такое не хот-лупится и порождает alert.
+// Это security failure: такое не хот-лупится и порождает alert.
 // Отдельный сентинел нужен, чтобы отличить подмену ноды от обычной недоступности,
 // которая ретраится.
 var ErrIdentityMismatch = errors.New("nodeagent: идентичность агента не совпала с манифестом")
 
 // ErrEndpointIncomplete — agent_config ноды не даёт достаточно данных для вызова.
 //
-// Манифест такое не пропускает (§6 проверяет endpoint, tls_server_name и
-// certificate_identity до записи), поэтому наступить на это можно только через
+// Манифест такое не пропускает: endpoint, tls_server_name и
+// certificate_identity проверяются до записи. Наступить на это можно только через
 // испорченный jsonb колонки. Ошибка своя, а не общая transport, потому что исход
-// у неё особый: retryable с alert (решение 50). Permanent здесь был бы вечным —
+// у неё особый: retryable с alert. Permanent здесь был бы вечным —
 // починка манифеста не меняет desired_version access и новой операции не
 // порождает, так что ретраить было бы уже некому.
 var ErrEndpointIncomplete = errors.New("nodeagent: неполный agent_config ноды")
@@ -75,7 +75,7 @@ type tlsFiles struct {
 
 // loadTLSMaterial читает пару и CA один раз при старте.
 //
-// Пара отдельная от серверной (решение 44): здесь backend предъявляет себя
+// Пара отдельная от серверной: здесь backend предъявляет себя
 // агенту, там принимает product-сервис. Общий сертификат смешал бы две роли, и
 // компрометация одной автоматически означала бы компрометацию другой.
 func loadTLSMaterial(files tlsFiles) (tls.Certificate, *x509.CertPool, error) {
@@ -103,7 +103,7 @@ func loadTLSMaterial(files tlsFiles) (tls.Certificate, *x509.CertPool, error) {
 // tlsConfigFor собирает конфигурацию под одну ноду.
 //
 // ServerName берётся из манифеста и задаёт как SNI, так и имя, по которому
-// проверяется сертификат. Сверх этого проверяется идентичность (решение 36):
+// проверяется сертификат. Сверх этого проверяется идентичность:
 // валидная цепочка отвечает только на вопрос «сертификат выпущен нашим CA», а им
 // подписаны сертификаты ВСЕХ нод. Без явной сверки любая нода могла бы выдать
 // себя за любую другую и получить чужие credentials.
@@ -129,7 +129,7 @@ func tlsConfigFor(
 //
 // Вызывается уже ПОСЛЕ штатной проверки цепочки и имени, поэтому verifiedChains
 // непуст, а leaf доверен. Читаются DNS SAN и URI SAN — те же поля, что и на
-// серверной стороне (решение 13); CN не используется.
+// серверной стороне; CN не используется.
 func verifyAgentIdentity(expected string, check *identityCheck) func([][]byte, [][]*x509.Certificate) error {
 	return func(_ [][]byte, verifiedChains [][]*x509.Certificate) error {
 		err := matchAgentIdentity(expected, verifiedChains)
@@ -142,7 +142,7 @@ func verifyAgentIdentity(expected string, check *identityCheck) func([][]byte, [
 func matchAgentIdentity(expected string, verifiedChains [][]*x509.Certificate) error {
 	if expected == "" {
 		// Пустая ожидаемая идентичность совпала бы с чем угодно. Манифест её
-		// не пропускает (§6 требует certificate_identity), но полагаться на
+		// не пропускает — certificate_identity обязателен, — но полагаться на
 		// это здесь нельзя: цена ошибки — принятая чужая нода.
 		return fmt.Errorf("%w: манифест не задал ожидаемую идентичность", ErrIdentityMismatch)
 	}

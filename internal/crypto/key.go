@@ -17,8 +17,8 @@ const KeySize = 32
 const maxKeyIDLen = 64
 
 var (
-	// ErrKeyMissing — ключ не задан. Production secrets не имеют default values
-	// (§14), поэтому отсутствие ключа — ошибка старта, а не повод сгенерировать
+	// ErrKeyMissing — ключ не задан. Production secrets не имеют default values,
+	// поэтому отсутствие ключа — ошибка старта, а не повод сгенерировать
 	// временный.
 	ErrKeyMissing = errors.New("crypto: encryption key не задан")
 
@@ -34,7 +34,7 @@ var (
 // Key — active encryption key вместе со своей идентичностью.
 //
 // v1 держит ровно один active key; key_id сохраняется в каждой записи ради
-// forward-compat, но ротация и decrypt-only ключи в v1 не реализуются (§7, §14).
+// forward-compat, но ротация и decrypt-only ключи в v1 не реализуются.
 type Key struct {
 	id     string
 	secret []byte
@@ -85,7 +85,7 @@ func ParseKey(raw string) (Key, error) {
 // ограниченными правами), затем `<name>`.
 //
 // Значения по умолчанию отсутствуют, ключ не принимается аргументом командной
-// строки и никогда не печатается при старте (§14). Настоящий secret-провайдер
+// строки и никогда не печатается при старте. Настоящий secret-провайдер
 // придёт отдельно; этот путь предназначен для dev и для монтируемых секретов.
 func LoadKey(getenv func(string) string, name string) (Key, error) {
 	if path := strings.TrimSpace(getenv(name + "_FILE")); path != "" {

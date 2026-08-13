@@ -10,7 +10,7 @@ import (
 	nodeagentv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/nodeagent/v1"
 )
 
-// Наблюдение фактического инвентаря Xray (§10).
+// Наблюдение фактического инвентаря Xray.
 
 const observedUUID = "11111111-1111-4111-8111-111111111111"
 
@@ -114,7 +114,7 @@ func TestInventoryFromWithoutObservation(t *testing.T) {
 	}
 }
 
-// TestObserveUsersRequestsInventory — §10: include_users обязан уехать взведённым,
+// TestObserveUsersRequestsInventory — include_users обязан уехать взведённым,
 // иначе агент вернёт пустой список, и сверка не найдёт расхождений никогда.
 //
 // Заодно проверяется, что чужой курсор не подтверждается: спул принадлежит
@@ -202,7 +202,7 @@ func TestObserveUsersClassifiesTransportFailure(t *testing.T) {
 }
 
 // TestObserveUsersRejectsIncompleteEndpoint — непригодный agent_config отсекается
-// до набора номера и остаётся retryable (решение 50): чинится он следующим
+// до набора номера и остаётся retryable: чинится он следующим
 // манифестом, поэтому permanent означал бы, что чинить уже нечего.
 func TestObserveUsersRejectsIncompleteEndpoint(t *testing.T) {
 	agent := &fakeAgent{}
@@ -255,7 +255,7 @@ func TestObserveUsersIdentityMismatchIsPermanent(t *testing.T) {
 		t.Errorf("код %q, ожидался %q", outcome.Code, CodeIdentityMismatch)
 	}
 	if !outcome.Alert {
-		t.Error("подмена идентичности не подняла alert (§9: security failure)")
+		t.Error("подмена идентичности не подняла alert: это security failure")
 	}
 	if agent.calls != 0 {
 		t.Errorf("агент получил %d вызовов, хотя идентичность не сошлась", agent.calls)

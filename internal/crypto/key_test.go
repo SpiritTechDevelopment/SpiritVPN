@@ -105,7 +105,7 @@ func TestNewKeyCopiesSecret(t *testing.T) {
 }
 
 // Секрет не должен появляться в логах ни прямо, ни через печать вмещающей
-// структуры (§14).
+// структуры.
 func TestKeyDoesNotLeakSecret(t *testing.T) {
 	key, err := ParseKey("dev-1:" + testSecretB64)
 	if err != nil {
@@ -206,7 +206,7 @@ func TestLoadKeyFromFileWins(t *testing.T) {
 	}
 }
 
-// Default value у ключа нет (§14): пустое окружение обязано провалить старт.
+// Default value у ключа нет: пустое окружение обязано провалить старт.
 func TestLoadKeyRequiresValue(t *testing.T) {
 	if _, err := LoadKey(envFunc(nil), "SPIRIT_KEY"); !errors.Is(err, ErrKeyMissing) {
 		t.Fatalf("ошибка = %v, ожидалась ErrKeyMissing", err)

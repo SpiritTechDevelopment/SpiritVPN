@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// DesiredStateFor — эффективность access на его входной ноде (§4):
+// DesiredStateFor — эффективность access на его входной ноде:
 //
 //	current_time < expires_at AND node_quota_period_usage_bytes < usage_quota_bytes
 //
@@ -16,7 +16,7 @@ import (
 // поэтому исчерпание на одной ноде не влияет на access того же customer на других.
 //
 // Отдельный effective/block state нигде не хранится: он всегда выводится из
-// expires_at и exhausted_at текущего периода (§5).
+// expires_at и exhausted_at текущего периода.
 func DesiredStateFor(now, expiresAt time.Time, nodeExhausted bool) DesiredState {
 	if now.Before(expiresAt) && !nodeExhausted {
 		return DesiredStatePresent
@@ -28,15 +28,15 @@ func DesiredStateFor(now, expiresAt time.Time, nodeExhausted bool) DesiredState 
 // операции агенту.
 //
 // Тип операции не дублируется отдельным полем: PRESENT даёт EnsureUserPresent,
-// ABSENT — EnsureUserAbsent (§9).
+// ABSENT — EnsureUserAbsent.
 type DesiredChange struct {
 	AccessID uuid.UUID
 	// EntryNodeID нужен, чтобы транзакция заблокировала строку ноды и ровно один
-	// раз увеличила её desired_revision (§11.1).
+	// раз увеличила её desired_revision.
 	EntryNodeID  NodeID
 	DesiredState DesiredState
 	// DesiredVersion — новая версия, прежняя + 1. Она же попадает в
-	// agent_operations.desired_version (§9, решение 3.1).
+	// agent_operations.desired_version.
 	DesiredVersion int64
 }
 
@@ -49,11 +49,11 @@ type DesiredChange struct {
 //
 // nodeExhausted отражает состояние ПОСЛЕ применения изменений квоты этой же
 // транзакции, а не сохранённое: понижение и повышение лимита должны немедленно
-// отражаться на desired state (§5).
+// отражаться на desired state.
 //
 // Неизменившийся desired-кортеж не порождает ни новой версии, ни операции —
-// на этом держится естественная идемпотентность повторного Apply (§11.1).
-// Результат отсортирован по access_id (порядок блокировок §11.1).
+// на этом держится естественная идемпотентность повторного Apply.
+// Результат отсортирован по access_id (нормативный порядок блокировок).
 func PlanDesiredChanges(
 	accesses []Access,
 	now, expiresAt time.Time,

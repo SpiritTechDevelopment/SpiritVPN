@@ -123,7 +123,7 @@ func reconcileNode(t *testing.T, users ...app.ReconcileUser) *app.ClaimedReconci
 		Flow:            domain.FlowXTLSRprxVision,
 		DesiredRevision: 7,
 		// Нода после потери состояния: ей набор нужен целиком, и путь полного
-		// набора она проходит без всякой сверки (§10). Тесты сверки заводят ноду
+		// набора она проходит без всякой сверки. Тесты сверки заводят ноду
 		// отдельно — им нужен как раз обратный случай.
 		NeedsBootstrap: true,
 		Users:          users,
@@ -168,7 +168,7 @@ func reconcileApplied() nodeagent.ReconcileResult {
 	}
 }
 
-// TestReconcileSendsFullSet — §10: агенту уезжает весь набор ноды, а принятый
+// TestReconcileSendsFullSet — агенту уезжает весь набор ноды, а принятый
 // результат отмечает применёнными ровно те access, что в нём были.
 func TestReconcileSendsFullSet(t *testing.T) {
 	node := reconcileNode(t, reconcileUser(t, "acc-1"), reconcileUser(t, "acc-2"))
@@ -205,7 +205,7 @@ func TestReconcileSendsFullSet(t *testing.T) {
 	}
 }
 
-// TestReconcileSendsEmptySet — §10 и §18: пустой набор легален и означает
+// TestReconcileSendsEmptySet — пустой набор легален и означает
 // «backend-owned юзеров на ноде нет». Не отправить его значило бы оставить на
 // ноде всех, кого backend уже снял.
 func TestReconcileSendsEmptySet(t *testing.T) {
@@ -273,7 +273,7 @@ func TestReconcileSkipsNodeWithBrokenPublicConfig(t *testing.T) {
 	}
 }
 
-// TestReconcileIgnoresStaleResult — §10: результат не принимается, если
+// TestReconcileIgnoresStaleResult — результат не принимается, если
 // desired_revision сдвинулась, пока набор был на проводе. Это не ошибка шага:
 // более новое состояние уже доставляют обычные Ensure.
 func TestReconcileIgnoresStaleResult(t *testing.T) {
@@ -289,7 +289,7 @@ func TestReconcileIgnoresStaleResult(t *testing.T) {
 	}
 }
 
-// TestReconcileUnavailableNodeChangesNothing — §16: недоступность агента не
+// TestReconcileUnavailableNodeChangesNothing — недоступность агента не
 // доходит до записи. Принимать нечего — набор не применялся.
 func TestReconcileUnavailableNodeChangesNothing(t *testing.T) {
 	uc, repo, _ := newReconcileHarness(t, reconcileNode(t, reconcileUser(t, "acc-1")),
@@ -356,7 +356,7 @@ func containsStep(journal []string, step string) bool {
 	return false
 }
 
-// Сверка с фактическим инвентарём Xray (§10).
+// Сверка с фактическим инвентарём Xray.
 //
 // До этого среза полный набор летел на каждую ноду каждый интервал. Теперь он
 // летит только туда, где сверка нашла расхождение, — поэтому «набор не
@@ -404,7 +404,7 @@ func sentUser(t *testing.T, node *app.ClaimedReconcileNode) []nodeagent.ActualUs
 	return actual
 }
 
-// TestReconcileSkipsFullSetWhenNodeMatches — §10: совпавшая нода не получает
+// TestReconcileSkipsFullSetWhenNodeMatches — совпавшая нода не получает
 // полного набора. Это и есть смысл сверки: набор дорогой, а расхождения нет.
 func TestReconcileSkipsFullSetWhenNodeMatches(t *testing.T) {
 	node := settledNode(t, reconcileUser(t, "acc-1"), reconcileUser(t, "acc-2"))
@@ -432,8 +432,8 @@ func TestReconcileSkipsFullSetWhenNodeMatches(t *testing.T) {
 	}
 }
 
-// TestReconcileSendsFullSetOnDrift — §10: найденное расхождение чинится полным
-// набором (решение 86).
+// TestReconcileSendsFullSetOnDrift — найденное расхождение чинится полным
+// набором.
 func TestReconcileSendsFullSetOnDrift(t *testing.T) {
 	node := settledNode(t, reconcileUser(t, "acc-1"), reconcileUser(t, "acc-2"))
 	uc, _, agent := newReconcileHarness(t, node, reconcileApplied())
@@ -455,12 +455,12 @@ func TestReconcileSendsFullSetOnDrift(t *testing.T) {
 	}
 }
 
-// TestReconcileSkipsFullSetOnUnusableInventory — решение 88: непригодный снимок
+// TestReconcileSkipsFullSetOnUnusableInventory — непригодный снимок
 // отменяет сверку целиком.
 //
 // Чиним мы полным набором, который удаляет по определению, поэтому любой триггер
 // по такому снимку был бы выводом удаления в обход запрета
-// BACKEND_TECHNICAL_SPEC.md §16.
+// инвентаря.
 func TestReconcileSkipsFullSetOnUnusableInventory(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -509,7 +509,7 @@ func TestReconcileSkipsFullSetOnUnusableInventory(t *testing.T) {
 	}
 }
 
-// TestReconcileBootstrapSkipsInventory — §10: ноде с потерянным состоянием набор
+// TestReconcileBootstrapSkipsInventory — ноде с потерянным состоянием набор
 // нужен целиком, и сверяться с ней не о чем.
 //
 // Агент с needs_bootstrap не имеет права удалять юзеров и сам из этого состояния

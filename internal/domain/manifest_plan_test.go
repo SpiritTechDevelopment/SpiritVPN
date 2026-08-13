@@ -73,7 +73,7 @@ func TestPlanManifestFirstAcceptance(t *testing.T) {
 			len(plan.Nodes), len(plan.FleetIDs), len(plan.Memberships), len(plan.Bridges))
 	}
 
-	// Ноды упорядочены по node_id: в этом порядке транзакция берёт их locks (§11.1).
+	// Ноды упорядочены по node_id: в этом порядке транзакция берёт их locks.
 	if got := []NodeID{plan.Nodes[0].NodeID, plan.Nodes[1].NodeID}; !slices.Equal(got, []NodeID{"DE-1", "NL-1"}) {
 		t.Errorf("порядок нод %v, ожидался [DE-1 NL-1]", got)
 	}
@@ -85,8 +85,8 @@ func TestPlanManifestFirstAcceptance(t *testing.T) {
 	}
 }
 
-// TestPlanManifestIdempotentReplay — §6: повтор той же revision с тем же digest.
-// Решение 21: план пуст целиком, писать нечего вовсе.
+// TestPlanManifestIdempotentReplay — повтор той же revision с тем же digest.
+// План пуст целиком, писать нечего вовсе.
 func TestPlanManifestIdempotentReplay(t *testing.T) {
 	snapshot := validSnapshot()
 	plan := planOrFail(t, ManifestInput{Snapshot: snapshot, Projection: projectionOf(snapshot)})
@@ -141,7 +141,7 @@ func TestPlanManifestRevisionGate(t *testing.T) {
 			want: ErrManifestRevisionRegression,
 		},
 		{
-			// §6 разводит два правила, и более специальное про старую revision
+			// Правил два, и более специальное про старую revision
 			// перекрывает общее про идемпотентный повтор.
 			name: "старая revision с совпадающим содержимым",
 			snapshot: func() ManifestSnapshot {
@@ -163,7 +163,7 @@ func TestPlanManifestRevisionGate(t *testing.T) {
 	}
 }
 
-// TestPlanManifestRollback — §6: rollback выполняется прежним desired snapshot
+// TestPlanManifestRollback — rollback выполняется прежним desired snapshot
 // под новой большей revision. Он обязан проходить как обычный приём.
 func TestPlanManifestRollback(t *testing.T) {
 	original := validSnapshot()
@@ -180,8 +180,8 @@ func TestPlanManifestRollback(t *testing.T) {
 	}
 }
 
-// TestPlanManifestFleetMissing — §6: отсутствие ранее принятого fleet отклоняет
-// весь манифест независимо от allow_destructive (§4, §17).
+// TestPlanManifestFleetMissing — отсутствие ранее принятого fleet отклоняет
+// весь манифест независимо от allow_destructive.
 func TestPlanManifestFleetMissing(t *testing.T) {
 	accepted := validSnapshot()
 
@@ -200,7 +200,7 @@ func TestPlanManifestFleetMissing(t *testing.T) {
 	}
 }
 
-// TestPlanManifestBridgePairImmutable — §6: пара (entry, exit) неизменяема для
+// TestPlanManifestBridgePairImmutable — пара (entry, exit) неизменяема для
 // существующего routing_key.
 func TestPlanManifestBridgePairImmutable(t *testing.T) {
 	accepted := validSnapshot()
@@ -254,7 +254,7 @@ func TestPlanManifestBridgePairImmutableForRemoved(t *testing.T) {
 	}
 }
 
-// TestPlanManifestDestructiveGate — §6: три вида удаления требуют
+// TestPlanManifestDestructiveGate — три вида удаления требуют
 // allow_destructive; без него манифест отклоняется.
 func TestPlanManifestDestructiveGate(t *testing.T) {
 	tests := []struct {
@@ -324,14 +324,14 @@ func TestPlanManifestDestructiveGate(t *testing.T) {
 				Projection:       projection,
 			})
 			if !plan.Destructive {
-				t.Error("план не помечен destructive — аудит §15 не увидит удаления")
+				t.Error("план не помечен destructive — аудит не увидит удаления")
 			}
 			tc.wantPlan(t, plan)
 		})
 	}
 }
 
-// TestPlanManifestAdditionsAreNotDestructive — §6: добавление объектов и
+// TestPlanManifestAdditionsAreNotDestructive — добавление объектов и
 // изменение публичных параметров destructive-флага не требуют.
 func TestPlanManifestAdditionsAreNotDestructive(t *testing.T) {
 	accepted := validSnapshot()
@@ -349,7 +349,7 @@ func TestPlanManifestAdditionsAreNotDestructive(t *testing.T) {
 	}
 }
 
-// TestPlanManifestRepointIsNotDestructive — §6: смена egress_tag при неизменных
+// TestPlanManifestRepointIsNotDestructive — смена egress_tag при неизменных
 // routing_key и паре — repoint, а не удаление.
 func TestPlanManifestRepointIsNotDestructive(t *testing.T) {
 	accepted := validSnapshot()
@@ -366,7 +366,7 @@ func TestPlanManifestRepointIsNotDestructive(t *testing.T) {
 	}
 }
 
-// TestPlanManifestRevive — решение 24: повторно добавленная нода оживляет свою
+// TestPlanManifestRevive — повторно добавленная нода оживляет свою
 // строку. Удалением это не является и destructive-флага не требует.
 func TestPlanManifestRevive(t *testing.T) {
 	accepted := validSnapshot()
@@ -388,7 +388,7 @@ func TestPlanManifestRevive(t *testing.T) {
 	}
 }
 
-// TestPlanManifestRouteTransfer — §6 разрешает перенос route: удалить старый
+// TestPlanManifestRouteTransfer — разрешает перенос route: удалить старый
 // routing_key и добавить новый. Пара при этом освобождается, потому что
 // уникальность пары держится только на текущих связях (см. baseline).
 func TestPlanManifestRouteTransfer(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 
 const (
 	// AccountingIDPrefix — backend namespace. По нему агент отличает
-	// backend-owned users от инфраструктурных `svc-*` (§7).
+	// backend-owned users от инфраструктурных `svc-*`.
 	AccountingIDPrefix = "u."
 
 	// accountingIDAlphabet — base32 lowercase. Регистр один, потому что
@@ -15,7 +15,7 @@ const (
 	accountingIDAlphabet = "abcdefghijklmnopqrstuvwxyz234567"
 
 	// accountingIDBodyLen — длина opaque-части: 20 символов по 5 бит = 100 бит
-	// энтропии (§7, решение 4).
+	// энтропии.
 	accountingIDBodyLen = 20
 
 	// accountingIDMask — младшие 5 бит байта. Отображение несмещённое: 256 кратно
@@ -31,7 +31,7 @@ const (
 var _ [0]struct{} = [len(accountingIDAlphabet) - 32]struct{}{}
 
 // NewAccountingID выдаёт стабильный псевдоним access для Xray email и учёта
-// трафика (§7).
+// трафика.
 //
 // Значение не содержит customer ID, username, email, телефона и вообще ничего
 // пользовательского — это чистый CSPRNG. Глобальная уникальность держится unique

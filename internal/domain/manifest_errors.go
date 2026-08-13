@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// Ошибки приёма манифеста (§6). Сопоставление с gRPC-кодами живёт в grpcsvc и
+// Ошибки приёма манифеста. Сопоставление с gRPC-кодами живёт в grpcsvc и
 // опирается на эти сентинелы через errors.Is.
 //
 // Разделены они по одному признаку — от чего зависит исход:
@@ -15,63 +15,63 @@ import (
 //	FAILED_PRECONDITION  — конфликты с уже принятым состоянием. Тот же запрос
 //	                       завтра может стать валидным (или наоборот).
 //
-// §6 кодов не называет; это разделение — заполнение пробела, и оно совпадает с
-// тем, как §5 разводит исходы командного пути.
+// Разделение введено здесь и совпадает с тем, как разводятся исходы командного
+// пути.
 var (
 	// --- форма снапшота: INVALID_ARGUMENT ---
 
-	// ErrManifestSchemaVersion — schema_version не равна 1 (§6).
+	// ErrManifestSchemaVersion — schema_version не равна 1.
 	ErrManifestSchemaVersion = errors.New("domain: неподдерживаемая schema_version манифеста")
 
-	// ErrManifestRevisionInvalid — revision не положительна (§6).
+	// ErrManifestRevisionInvalid — revision не положительна.
 	ErrManifestRevisionInvalid = errors.New("domain: revision манифеста должна быть > 0")
 
-	// ErrManifestTooLarge — превышен один из лимитов §13.
+	// ErrManifestTooLarge — превышен один из лимитов размера манифеста.
 	ErrManifestTooLarge = errors.New("domain: манифест превышает лимиты")
 
 	// ErrManifestDuplicate — повторяющийся node_id, vpn_fleet_id или routing_key
-	// внутри снапшота (§6).
+	// внутри снапшота.
 	ErrManifestDuplicate = errors.New("domain: дубликат идентификатора в манифесте")
 
 	// ErrManifestUnknownNode — ссылка на node_id, которого нет в snapshot.nodes
-	// (§6: все node references обязаны существовать).
+	// (все node references обязаны существовать).
 	ErrManifestUnknownNode = errors.New("domain: ссылка на неизвестную ноду")
 
 	// ErrManifestNodeInvalid — обязательные поля agent или public не заполнены
-	// либо содержат значение, не поддерживаемое v1 (§6).
+	// либо содержат значение, не поддерживаемое v1.
 	ErrManifestNodeInvalid = errors.New("domain: некорректные параметры ноды")
 
-	// ErrManifestBridgeInvalid — связь нарушает правила §6: entry совпадает с
+	// ErrManifestBridgeInvalid — связь нарушает правила: entry совпадает с
 	// exit, одна из нод не входит в fleet, либо пуст egress_tag.
 	ErrManifestBridgeInvalid = errors.New("domain: некорректная bridge-связь")
 
 	// --- конфликты с принятым состоянием: FAILED_PRECONDITION ---
 
-	// ErrManifestRevisionRegression — revision не больше последней принятой (§6).
+	// ErrManifestRevisionRegression — revision не больше последней принятой.
 	// Повтор той же revision с тем же digest сюда не доходит: он идемпотентен.
 	ErrManifestRevisionRegression = errors.New("domain: revision манифеста не возрастает")
 
-	// ErrManifestDigestConflict — та же revision с другим каноническим digest
-	// (§6). Ровно то, ради чего digest и считается: две разные топологии под
+	// ErrManifestDigestConflict — та же revision с другим каноническим digest.
+	// Ровно то, ради чего digest и считается: две разные топологии под
 	// одним номером означают рассогласованный источник, а не повтор доставки.
 	ErrManifestDigestConflict = errors.New("domain: та же revision манифеста с другим digest")
 
-	// ErrManifestFleetMissing — в снапшоте нет ранее принятого fleet (§6).
+	// ErrManifestFleetMissing — в снапшоте нет ранее принятого fleet.
 	// Отклоняет весь манифест независимо от allow_destructive: принятый
-	// vpn_fleet_id не удаляется и не переиспользуется (§4, §17).
+	// vpn_fleet_id не удаляется и не переиспользуется.
 	ErrManifestFleetMissing = errors.New("domain: ранее принятый fleet отсутствует в манифесте")
 
 	// ErrManifestDestructive — снапшот удаляет ноду, membership или связь без
-	// allow_destructive (§6).
+	// allow_destructive.
 	ErrManifestDestructive = errors.New("domain: удаление требует allow_destructive")
 
 	// ErrManifestBridgePairImmutable — у существующего routing_key изменилась
-	// пара (entry_node_id, exit_node_id) (§6). Перенос route требует удаления
+	// пара (entry_node_id, exit_node_id). Перенос route требует удаления
 	// старого routing_key и добавления нового.
 	ErrManifestBridgePairImmutable = errors.New("domain: пара entry/exit связи неизменяема")
 )
 
-// ManifestValidationError — нарушение правила §6 вместе с деталью, которую
+// ManifestValidationError — нарушение правила манифеста вместе с деталью, которую
 // безопасно показать вызывающему.
 //
 // Тип нужен ровно ради этой безопасности. Остальные доменные ошибки уходят
@@ -81,7 +81,7 @@ var (
 // рождаются в чистых функциях над payload вызывающего и ничего, кроме значений
 // из его же запроса, содержать не могут.
 //
-// Смысл — в диагностике: manifest-writer это infrastructure CI/CD (§14), и
+// Смысл — в диагностике: manifest-writer это infrastructure CI/CD, и
 // «связь nl-1.to-de-1 ссылается на неизвестную ноду DE-9» экономит ему час
 // против голого INVALID_ARGUMENT.
 type ManifestValidationError struct {

@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Фикстуры материализации переиспользуют пример §4 из соседних тестов:
+// Фикстуры материализации переиспользуют пример из соседних тестов:
 // exampleTopology (две ноды и связь) и materializedAccesses (три согласованных с
 // ней access). Customer действует, квота не исчерпана; каждый тест ломает ровно
 // одно условие.
@@ -37,7 +37,7 @@ func planOrFailMaterialize(t *testing.T, in MaterializationInput) Materializatio
 	return plan
 }
 
-// TestPlanMaterializeIsIdempotent — §13: повторная материализация одной revision
+// TestPlanMaterializeIsIdempotent — повторная материализация одной revision
 // идемпотентна. Согласованное состояние обязано давать пустой план.
 func TestPlanMaterializeIsIdempotent(t *testing.T) {
 	plan := planOrFailMaterialize(t, materializeInput())
@@ -51,7 +51,7 @@ func TestPlanMaterializeIsIdempotent(t *testing.T) {
 	}
 }
 
-// TestPlanMaterializeAddsNode — §13: новая нода даёт FREEDOM всем неистёкшим
+// TestPlanMaterializeAddsNode — новая нода даёт FREEDOM всем неистёкшим
 // customer fleet и нулевую строку расхода текущего периода.
 func TestPlanMaterializeAddsNode(t *testing.T) {
 	in := materializeInput()
@@ -85,7 +85,7 @@ func TestPlanMaterializeAddsNode(t *testing.T) {
 	}
 }
 
-// TestPlanMaterializeAddsRelation — §13: новая связь даёт BRIDGE. Строка расхода
+// TestPlanMaterializeAddsRelation — новая связь даёт BRIDGE. Строка расхода
 // при этом не заводится: нода уже во fleet и свою строку имеет.
 func TestPlanMaterializeAddsRelation(t *testing.T) {
 	in := materializeInput()
@@ -113,7 +113,7 @@ func TestPlanMaterializeAddsRelation(t *testing.T) {
 	}
 }
 
-// TestPlanMaterializeRetiresWithOperation — §13: удаление связи при живой входной
+// TestPlanMaterializeRetiresWithOperation — удаление связи при живой входной
 // ноде создаёт обычный Remove на неё.
 func TestPlanMaterializeRetiresWithOperation(t *testing.T) {
 	in := materializeInput()
@@ -139,7 +139,7 @@ func TestPlanMaterializeRetiresWithOperation(t *testing.T) {
 	}
 }
 
-// TestPlanMaterializeRetiresDeadNodeWithoutOperation — §6: глобально удалённая
+// TestPlanMaterializeRetiresDeadNodeWithoutOperation — глобально удалённая
 // нода не получает ни одной команды, а её desired_revision не двигается —
 // доставлять туда нечего.
 func TestPlanMaterializeRetiresDeadNodeWithoutOperation(t *testing.T) {
@@ -175,7 +175,7 @@ func TestPlanMaterializeRetiresDeadNodeWithoutOperation(t *testing.T) {
 
 // TestPlanMaterializeSkipsOperationForAbsentAccess — ретайр уже отсутствующего
 // access операции не порождает: она была бы no-op и повисла бы недоставленной в
-// метрике §15.
+// метрике.
 func TestPlanMaterializeSkipsOperationForAbsentAccess(t *testing.T) {
 	in := materializeInput()
 	in.Topology.Bridges = nil
@@ -194,7 +194,7 @@ func TestPlanMaterializeSkipsOperationForAbsentAccess(t *testing.T) {
 	}
 }
 
-// TestPlanMaterializeRepoint — §6: смена egress_tag меняет цель выхода, но не
+// TestPlanMaterializeRepoint — смена egress_tag меняет цель выхода, но не
 // поколение и не credentials.
 func TestPlanMaterializeRepoint(t *testing.T) {
 	in := materializeInput()
@@ -224,7 +224,7 @@ func TestPlanMaterializeRepoint(t *testing.T) {
 }
 
 // TestPlanMaterializeExhaustedNodeBornAbsent — новый access на уже исчерпанной
-// ноде рождается ABSENT: манифест не должен открывать доступ в обход квоты (§4).
+// ноде рождается ABSENT: манифест не должен открывать доступ в обход квоты.
 func TestPlanMaterializeExhaustedNodeBornAbsent(t *testing.T) {
 	in := materializeInput()
 	in.Topology.Bridges = append(in.Topology.Bridges, BridgeRoute{
@@ -245,7 +245,7 @@ func TestPlanMaterializeExhaustedNodeBornAbsent(t *testing.T) {
 	}
 
 	// Существующий FREEDOM на той же ноде гасится тем же исчерпанием: трафик всех
-	// access customer на ноде суммируется в один период (§4).
+	// access customer на ноде суммируется в один период.
 	if len(plan.DesiredChanges) != 1 || plan.DesiredChanges[0].AccessID != accessID(2) {
 		t.Fatalf("смены desired state %+v, ожидалась одна у FREEDOM DE-1", plan.DesiredChanges)
 	}
@@ -254,13 +254,13 @@ func TestPlanMaterializeExhaustedNodeBornAbsent(t *testing.T) {
 	}
 
 	// DE-1 затронута гашением существующего access, а не созданием нового:
-	// родившийся ABSENT состава юзеров ноды не меняет (решение 3.2).
+	// родившийся ABSENT состава юзеров ноды не меняет.
 	if len(plan.TouchedNodes) != 1 || plan.TouchedNodes[0] != "DE-1" {
 		t.Errorf("затронутые ноды %v, ожидалась DE-1", plan.TouchedNodes)
 	}
 }
 
-// TestPlanMaterializeExpiredCustomer — §13 ограничивает создание неистёкшими
+// TestPlanMaterializeExpiredCustomer — ограничивает создание неистёкшими
 // customer, но ретайр касается всех: исчезнувшая цель обязана уйти независимо от
 // срока.
 func TestPlanMaterializeExpiredCustomer(t *testing.T) {
@@ -284,7 +284,7 @@ func TestPlanMaterializeExpiredCustomer(t *testing.T) {
 }
 
 // TestPlanMaterializeRequiresOpenPeriod — у существующего customer открытый
-// период обязан быть (§11). Его отсутствие — нарушение инварианта, а не штатный
+// период обязан быть. Его отсутствие — нарушение инварианта, а не штатный
 // случай.
 func TestPlanMaterializeRequiresOpenPeriod(t *testing.T) {
 	in := materializeInput()

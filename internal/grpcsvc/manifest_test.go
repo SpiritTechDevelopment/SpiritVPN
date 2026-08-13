@@ -31,7 +31,7 @@ func (s *stubManifest) Execute(
 	return s.result, s.err
 }
 
-// manifestRequest — пример §6 на проводе.
+// manifestRequest — пример манифеста на проводе.
 func manifestRequest() *manifestv1.ApplyFleetManifestRequest {
 	return &manifestv1.ApplyFleetManifestRequest{
 		SchemaVersion: domain.ManifestSchemaVersion,
@@ -62,7 +62,7 @@ func manifestRequest() *manifestv1.ApplyFleetManifestRequest {
 	}
 }
 
-// TestApplyFleetManifestMapsResult — §6: успех отдаёт APPLIED, идемпотентный
+// TestApplyFleetManifestMapsResult — успех отдаёт APPLIED, идемпотентный
 // повтор — IDEMPOTENT, и оба эхом возвращают revision.
 func TestApplyFleetManifestMapsResult(t *testing.T) {
 	tests := []struct {
@@ -100,9 +100,9 @@ func TestApplyFleetManifestMapsResult(t *testing.T) {
 	}
 }
 
-// TestApplyFleetManifestConvertsRequest — раскладка §6 на проводе и доменная
+// TestApplyFleetManifestConvertsRequest — раскладка манифеста на проводе и доменная
 // раскладка отличаются: display_name лежит рядом с node_id, а хранится вместе с
-// публичными параметрами (решения 16, 19). Перекладка происходит на транспорте.
+// публичными параметрами. Перекладка происходит на транспорте.
 func TestApplyFleetManifestConvertsRequest(t *testing.T) {
 	stub := &stubManifest{}
 	srv := NewManifestServer(stub)
@@ -133,7 +133,7 @@ func TestApplyFleetManifestConvertsRequest(t *testing.T) {
 		t.Errorf("параметры ноды %+v", node)
 	}
 
-	// Снапшот обязан быть валидным по §6: транспорт ничего не теряет по дороге.
+	// Снапшот обязан быть валидным: транспорт ничего не теряет по дороге.
 	if err := domain.ValidateManifest(snapshot); err != nil {
 		t.Fatalf("собранный снапшот не проходит валидацию: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestApplyFleetManifestConvertsRequest(t *testing.T) {
 
 // TestApplyFleetManifestRejectsRevisionOverflow — колонка revision объявлена как
 // bigint, и значение выше 2^63-1 обязано быть отвергнуто на границе, а не
-// превратиться в отрицательное в адаптере (решение 11).
+// превратиться в отрицательное в адаптере.
 func TestApplyFleetManifestRejectsRevisionOverflow(t *testing.T) {
 	stub := &stubManifest{}
 	srv := NewManifestServer(stub)
@@ -160,8 +160,8 @@ func TestApplyFleetManifestRejectsRevisionOverflow(t *testing.T) {
 	}
 }
 
-// TestApplyFleetManifestSurfacesValidationDetail — деталь нарушения §6 уходит
-// вызывающему: он infrastructure CI/CD (§14), и голый INVALID_ARGUMENT заставил
+// TestApplyFleetManifestSurfacesValidationDetail — деталь нарушения уходит
+// вызывающему: он infrastructure CI/CD, и голый INVALID_ARGUMENT заставил
 // бы его разбирать снапшот вручную.
 func TestApplyFleetManifestSurfacesValidationDetail(t *testing.T) {
 	srv := NewManifestServer(&stubManifest{
@@ -227,7 +227,7 @@ func TestApplyFleetManifestHidesInfrastructureErrors(t *testing.T) {
 	}
 }
 
-// TestApplyFleetManifestPassesAuditFields — §15: аудиту нужны идентичность
+// TestApplyFleetManifestPassesAuditFields — аудиту нужны идентичность
 // вызывающего и request_id, а взять их может только транспорт.
 func TestApplyFleetManifestPassesAuditFields(t *testing.T) {
 	stub := &stubManifest{}

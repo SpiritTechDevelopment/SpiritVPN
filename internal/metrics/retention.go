@@ -7,7 +7,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 )
 
-// WrapUsageRetention считает удалённые дедуп-записи (§12, §15).
+// WrapUsageRetention считает удалённые дедуп-записи.
 //
 // Счётчик отвечает на вопрос «прунер вообще работает», тогда как парный ему
 // gauge возраста самой старой записи отвечает на «справляется ли». Порознь оба
@@ -16,7 +16,7 @@ import (
 // о том, успевает ли уборка за темпом записи.
 //
 // Декоратор порта, а не счётчик внутри use case: про Prometheus не знает ни
-// один пакет, кроме этого (§15), и ретенция не повод заводить исключение.
+// один пакет, кроме этого, и ретенция не повод заводить исключение.
 func (r *Registry) WrapUsageRetention(inner app.UsageRetentionRepository) app.UsageRetentionRepository {
 	return &observedUsageRetention{inner: inner, reg: r}
 }

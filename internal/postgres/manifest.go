@@ -13,8 +13,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/postgres/db"
 )
 
-// manifestIngestLockKey — ключ advisory lock, сериализующего приём манифеста
-// (решение 28).
+// manifestIngestLockKey — ключ advisory lock, сериализующего приём манифеста.
 //
 // Пространство ключей advisory locks общее на всю базу, поэтому значение взято
 // заведомо неслучайным и не единицей: с базой backend не делит никто, но цена
@@ -22,10 +21,10 @@ import (
 // блокирование двух несвязанных подсистем.
 const manifestIngestLockKey int64 = 0x5350495256504E01
 
-// WithinManifestTx выполняет приём манифеста в одной транзакции (§6: снапшот
+// WithinManifestTx выполняет приём манифеста в одной транзакции (снапшот
 // применяется атомарно или не применяется вовсе).
 //
-// Уровень READ COMMITTED, как и у командного пути (§11.1): согласованность
+// Уровень READ COMMITTED, как и у командного пути: согласованность
 // чтения проекции обеспечивает не изоляция, а advisory lock, который берётся
 // первым оператором и снимается вместе с транзакцией.
 func (r *Repository) WithinManifestTx(ctx context.Context, fn func(app.ManifestTx) error) error {
@@ -55,12 +54,12 @@ type manifestTx struct {
 	queries *db.Queries
 }
 
-// LoadProjection читает принятое состояние целиком (§6).
+// LoadProjection читает принятое состояние целиком.
 func (t *manifestTx) LoadProjection(ctx context.Context) (domain.ManifestProjection, error) {
 	var projection domain.ManifestProjection
 
 	// Отсутствие строк означает, что манифест не принимался ни разу: нулевая
-	// LastRevision пропускает любую валидную revision (§6: revision > 0).
+	// LastRevision пропускает любую валидную revision: она всегда > 0.
 	last, err := t.queries.GetLastManifestRevision(ctx)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -112,7 +111,7 @@ func (t *manifestTx) LoadProjection(ctx context.Context) (domain.ManifestProject
 	return projection, nil
 }
 
-// WritePlan проецирует снапшот (§6, §11).
+// WritePlan проецирует снапшот.
 //
 // Порядок между таблицами продиктован внешними ключами: журнал revisions первым
 // (на него ссылаются все строки проекции), затем ноды и fleets, и только потом
@@ -144,8 +143,7 @@ func (t *manifestTx) WritePlan(ctx context.Context, plan domain.ManifestPlan) er
 	}
 
 	// Джоба ставится в той же транзакции, что и проекция: принятый снапшот без
-	// материализации означал бы customer, навсегда оставшихся без новых access
-	// (§6, §13).
+	// материализации означал бы customer, навсегда оставшихся без новых access.
 	return t.queries.InsertMaterializationJob(ctx, plan.Revision)
 }
 
@@ -257,12 +255,12 @@ func (t *manifestTx) retireBridges(ctx context.Context, plan domain.ManifestPlan
 	})
 }
 
-// AppendAudit добавляет запись в append-only журнал (§15).
+// AppendAudit добавляет запись в append-only журнал.
 func (t *manifestTx) AppendAudit(ctx context.Context, event app.AuditEvent) error {
 	return appendAudit(ctx, t.queries, event)
 }
 
-// appendAudit — общая запись журнала для всех путей, которые его ведут (§15:
+// appendAudit — общая запись журнала для всех путей, которые его ведут (
 // customer Apply/renewal/expiry, destructive manifest, смена ключа). Отображение
 // AuditEvent в колонки живёт в одном месте, иначе оно разъехалось бы между ними.
 func appendAudit(ctx context.Context, queries *db.Queries, event app.AuditEvent) error {

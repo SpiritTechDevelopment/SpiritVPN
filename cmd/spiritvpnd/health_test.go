@@ -35,7 +35,7 @@ func do(t *testing.T, server *http.Server, path string) *httptest.ResponseRecord
 	return rec
 }
 
-// TestLivenessIgnoresDependencies — §15: liveness не зависит ни от PostgreSQL,
+// TestLivenessIgnoresDependencies — liveness не зависит ни от PostgreSQL,
 // ни от нод. Проверка базы здесь превратила бы её кратковременную недоступность
 // в одновременный перезапуск всех подов.
 func TestLivenessIgnoresDependencies(t *testing.T) {
@@ -93,7 +93,7 @@ func TestReadinessHidesCheckDetails(t *testing.T) {
 	}
 }
 
-// TestMetricsServesRegistry — §15 требует /metrics на служебном порту рядом с
+// TestMetricsServesRegistry — требует /metrics на служебном порту рядом с
 // health. Проверяется именно проводка: что endpoint зарегистрирован и отдаёт
 // переданный реестр, а не пустой ответ и не глобальный DefaultRegisterer.
 func TestMetricsServesRegistry(t *testing.T) {

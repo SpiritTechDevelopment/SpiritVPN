@@ -1,5 +1,4 @@
-// Package domain содержит чистые правила customer access из
-// BACKEND_DOMAIN_AGREEMENTS.md §4 и §5.
+// Package domain содержит чистые правила customer access.
 //
 // Пакет детерминирован: он не читает часы, не генерирует идентификаторы и не
 // ходит в БД. Всё недетерминированное — текущее время, access_id, accounting_id
@@ -7,9 +6,9 @@
 // здесь — таблица «вход → ожидаемый план», без моков и подмены времени.
 //
 // Время приходит из PostgreSQL (now() = момент начала транзакции), а не из часов
-// процесса: истечение сверяется со временем БД (§11.1), а при renewal closed_at
+// процесса: истечение сверяется со временем БД, а при renewal closed_at
 // старого периода обязан совпасть со started_at нового с точностью до значения,
-// иначе дельта трафика не попадёт ни в один период (§11, §12).
+// иначе дельта трафика не попадёт ни в один период.
 package domain
 
 import (
@@ -18,16 +17,16 @@ import (
 	"github.com/google/uuid"
 )
 
-// NodeID — стабильная инфраструктурная идентичность ноды (§3). IP, домен и
+// NodeID — стабильная инфраструктурная идентичность ноды. IP, домен и
 // endpoint агента идентичностью не являются и могут меняться.
 type NodeID string
 
-// LogicalTargetKey — логическая цель access, стабильная поверх поколений (§4):
+// LogicalTargetKey — логическая цель access, стабильная поверх поколений:
 // для FREEDOM это node_id его ноды, для BRIDGE — routing_key связи.
 type LogicalTargetKey string
 
 // AccessKind — вид access. FREEDOM выпускается на каждую ноду fleet, BRIDGE — на
-// каждую bridge relation (§4).
+// каждую bridge relation.
 type AccessKind string
 
 const (
@@ -35,7 +34,7 @@ const (
 	AccessKindBridge  AccessKind = "BRIDGE"
 )
 
-// DesiredState — желаемое присутствие юзера на входной ноде (§9).
+// DesiredState — желаемое присутствие юзера на входной ноде.
 type DesiredState string
 
 const (
@@ -43,11 +42,11 @@ const (
 	DesiredStateAbsent  DesiredState = "ABSENT"
 )
 
-// ApplyState — состояние доставки желаемого состояния на входную ноду (§9).
+// ApplyState — состояние доставки желаемого состояния на входную ноду.
 //
 // При планировании Apply домен его намеренно не читает: apply_state — результат
 // доставки, а не желаемое состояние, и версию desired он не двигает (см. Access).
-// Read-путь §5 без него, наоборот, не выражается: READY означает именно
+// Read-путь без него, наоборот, не выражается: READY означает именно
 // подтверждённую доставку, а не намерение.
 type ApplyState string
 
@@ -59,36 +58,36 @@ const (
 )
 
 // FreedomEgressKey — зарезервированное значение egress_key для FREEDOM: пустая
-// строка означает локальный выход самой ноды (direct) (§6, §7).
+// строка означает локальный выход самой ноды (direct).
 const FreedomEgressKey = ""
 
-// BridgeRoute — направленная BRIDGE-связь внутри fleet (§6).
+// BridgeRoute — направленная BRIDGE-связь внутри fleet.
 type BridgeRoute struct {
 	// RoutingKey однозначно идентифицирует связь внутри fleet; отдельного
-	// bridge_id нет (§3).
+	// bridge_id нет.
 	RoutingKey string
 	// EntryNodeID — нода, на которую ставится client_uuid customer. На EXIT
-	// customer credential не устанавливается (§4).
+	// customer credential не устанавливается.
 	EntryNodeID NodeID
 	ExitNodeID  NodeID
 	// EgressTag — тег exit-outbound на входной ноде. Передаётся агенту дословно
-	// как User.egress_key; backend ничего из него не деривит (§6, §7).
+	// как User.egress_key; backend ничего из него не деривит.
 	EgressTag string
 }
 
-// FleetTopology — текущая проекция топологии одного fleet из manifest (§6).
+// FleetTopology — текущая проекция топологии одного fleet из manifest.
 type FleetTopology struct {
 	FleetID int64
 	Nodes   []NodeID
 	Bridges []BridgeRoute
 }
 
-// Access — индивидуальный доступ customer к одной логической цели (§4).
+// Access — индивидуальный доступ customer к одной логической цели.
 //
-// Структура намеренно уже строки vpn_accesses: правила §4/§5 не читают
+// Структура намеренно уже строки vpn_accesses: доменные правила не читают
 // encrypted_client_uuid (он непрозрачен и у существующего access неизменен) и не
 // читают apply_state — тот является результатом доставки, а не желаемым
-// состоянием, и версию desired не двигает (решение 3.1).
+// состоянием, и версию desired не двигает.
 type Access struct {
 	ID               uuid.UUID
 	Kind             AccessKind
@@ -101,24 +100,24 @@ type Access struct {
 	DesiredVersion   int64
 	// Retired соответствует retired_at IS NOT NULL. Ретайрнутые access не
 	// выдаются и не восстанавливаются, но участвуют в расчёте поколения при
-	// повторном появлении той же цели (§4).
+	// повторном появлении той же цели.
 	Retired bool
 }
 
 // Entitlement — корневая строка customer, точка сериализации всех изменений его
-// состояния (§11.1).
+// состояния.
 type Entitlement struct {
 	FleetID   int64
 	ExpiresAt time.Time
-	// LastCommandNumber — гейт порядка команд product (§5, правила 1–3).
+	// LastCommandNumber — гейт порядка команд product.
 	LastCommandNumber uint64
 	// DesiredVersion — внутренний счётчик фактических изменений desired state
-	// customer; спекой не используется (решение 3.5).
+	// customer; спекой не используется.
 	DesiredVersion int64
 }
 
 // QuotaPeriod — период учёта квоты. Текущий период — единственный с
-// closed_at IS NULL (§11).
+// closed_at IS NULL.
 type QuotaPeriod struct {
 	ID              uuid.UUID
 	UsageQuotaBytes uint64
@@ -127,16 +126,16 @@ type QuotaPeriod struct {
 
 // NodeQuotaUsage — расход трафика customer на одной ноде внутри периода.
 // Квота применяется независимо на каждой ноде: превышение на одной не влияет на
-// доступ на других (§4).
+// доступ на других.
 type NodeQuotaUsage struct {
 	NodeID     NodeID
 	TotalBytes uint64
 	// ExhaustedAt одновременно факт исчерпания квоты и причина node-level
-	// блокировки; отдельной таблицы блокировок нет (§11).
+	// блокировки; отдельной таблицы блокировок нет.
 	ExhaustedAt *time.Time
 }
 
-// ApplyCommand — нормализованный запрос ApplyCustomerAccess (§5).
+// ApplyCommand — нормализованный запрос ApplyCustomerAccess.
 // ExpiresAt — абсолютный момент окончания, а не длительность.
 type ApplyCommand struct {
 	CustomerID      string
@@ -146,5 +145,5 @@ type ApplyCommand struct {
 	CommandNumber   uint64
 }
 
-// maxCustomerIDBytes — верхняя граница непрозрачного customer_id (§3).
+// maxCustomerIDBytes — верхняя граница непрозрачного customer_id.
 const maxCustomerIDBytes = 256

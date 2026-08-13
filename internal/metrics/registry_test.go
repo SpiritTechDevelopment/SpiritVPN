@@ -48,7 +48,7 @@ func TestRegistryPassesPrometheusLint(t *testing.T) {
 	}
 }
 
-// TestNoCustomerIDLabels — §15 дословно: customer ID допускается только в
+// TestNoCustomerIDLabels — дословно: customer ID допускается только в
 // ограниченных audit records и НЕ используется как metric label.
 //
 // Проверка идёт по белому списку, а не поиском строки "customer_id": так она
@@ -81,7 +81,7 @@ func TestNoCustomerIDLabels(t *testing.T) {
 		for _, metric := range f.GetMetric() {
 			for _, label := range metric.GetLabel() {
 				if !allowed[label.GetName()] {
-					t.Errorf("метрика %s несёт метку %q, которой нет в белом списке §15",
+					t.Errorf("метрика %s несёт метку %q, которой нет в белом списке",
 						f.GetName(), label.GetName())
 				}
 			}

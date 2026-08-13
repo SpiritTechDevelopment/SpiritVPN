@@ -4,18 +4,17 @@
 // - protoc             (unknown)
 // source: spiritvpn/manifest/v1/manifest.proto
 
-// Приём infrastructure manifest. Нормативный источник: BACKEND_DOMAIN_AGREEMENTS.md
-// §6 (Infrastructure manifest) и §13 (materialization). Этот proto — wire-проекция
+// Приём infrastructure manifest и материализация топологии. Этот proto — wire-проекция
 // логического YAML-снапшота, который рендерит infra CI/CD. Со-owned с infra CI/CD.
 //
-// Вызывающая сторона аутентифицируется по mTLS с ролью manifest-writer (§14). Весь
+// Вызывающая сторона аутентифицируется по mTLS с ролью manifest-writer. Весь
 // снапшот применяется атомарно или не применяется вовсе; массовая материализация
-// customer access идёт асинхронно durable-джобой после commit (§6/§13).
+// customer access идёт асинхронно durable-джобой после commit.
 //
 // Ограничения полей, которые protobuf выразить не может (schema_version == 1,
 // revision > 0, регэксп fingerprint, transport == "tcp", flow == "xtls-rprx-vision",
 // уникальность, ссылочная целостность, destructive-guard), валидирует backend до
-// проекции; см. §6.
+// проекции.
 
 package manifestv1
 

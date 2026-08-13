@@ -15,7 +15,7 @@ import (
 // testClientUUID — фиксированное значение, чтобы ожидаемая URI была буквальной.
 var testClientUUID = crypto.NewClientUUID(uuid.MustParse("f81d4fae-7dec-11d0-a765-00a0c91e6bf6"))
 
-// testNode — нода из примера manifest §6.
+// testNode — нода из примера манифеста.
 func testNode() domain.NodePublic {
 	return domain.NodePublic{
 		Address:          "nl.example.com",
@@ -30,7 +30,7 @@ func testNode() domain.NodePublic {
 	}
 }
 
-// TestBuildVLESSURIMatchesSpec пиннит форму URI из §8 буквально, вместе с
+// TestBuildVLESSURIMatchesSpec пиннит форму URI буквально, вместе с
 // порядком параметров: он нормативен, и url.Values.Encode() его бы нарушил,
 // отсортировав ключи по алфавиту.
 func TestBuildVLESSURIMatchesSpec(t *testing.T) {
@@ -58,7 +58,7 @@ func TestBuildVLESSURIKeepsEmptyShortID(t *testing.T) {
 	}
 }
 
-// TestBuildVLESSURIEncodesFragment — §8 требует url-encoded display_name.
+// TestBuildVLESSURIEncodesFragment — требует url-encoded display_name.
 // Фрагмент разбирается обратно и обязан совпасть с исходным именем.
 func TestBuildVLESSURIEncodesFragment(t *testing.T) {
 	names := []string{
@@ -87,7 +87,7 @@ func TestBuildVLESSURIEncodesFragment(t *testing.T) {
 	}
 }
 
-// TestBuildVLESSURIBracketsIPv6 — address может быть и доменом, и адресом (§6).
+// TestBuildVLESSURIBracketsIPv6 — address может быть и доменом, и адресом.
 // Голый IPv6-литерал сделал бы URI неразбираемой.
 func TestBuildVLESSURIBracketsIPv6(t *testing.T) {
 	node := testNode()
@@ -106,7 +106,7 @@ func TestBuildVLESSURIBracketsIPv6(t *testing.T) {
 
 // TestBuildVLESSURICarriesCredential — uuid уезжает в user info в открытом виде:
 // на готовой строке редакция crypto.ClientUUID уже не работает, и это ровно то,
-// ради чего ответ не логируется и не кешируется (§8).
+// ради чего ответ не логируется и не кешируется.
 func TestBuildVLESSURICarriesCredential(t *testing.T) {
 	raw := app.BuildVLESSURI(testClientUUID, testNode(), "NL")
 
@@ -122,9 +122,9 @@ func TestBuildVLESSURICarriesCredential(t *testing.T) {
 	}
 }
 
-// TestNodePublicUsable — §6 валидирует параметры до записи, поэтому непригодная
+// TestNodePublicUsable — валидирует параметры до записи, поэтому непригодная
 // нода означает рассогласованную проекцию. Список обязательных полей здесь и
-// есть определение «пригодна» (решение 18).
+// есть определение «пригодна».
 func TestNodePublicUsable(t *testing.T) {
 	tests := []struct {
 		name   string

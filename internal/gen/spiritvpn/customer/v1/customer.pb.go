@@ -4,11 +4,10 @@
 // 	protoc        (unknown)
 // source: spiritvpn/customer/v1/customer.proto
 
-// Customer-facing control-plane API. Нормативный источник: BACKEND_DOMAIN_AGREEMENTS.md
-// §5 (Customer gRPC API) и §8 (VLESS URI). Сервис финальный по спеке.
+// Customer-facing control-plane API: приём команд доступа и выдача VLESS URI.
 //
 // Вызывающая сторона аутентифицируется по mTLS с ролью customer-access-writer
-// (Apply) или customer-access-reader (GetLinks); см. §14.
+// (Apply) или customer-access-reader (GetLinks).
 
 package customerv1
 
@@ -357,7 +356,7 @@ type CustomerAccessLink struct {
 	// quota — возвращается TIME_EXPIRED.
 	BlockReason *AccessBlockReason `protobuf:"varint,3,opt,name=block_reason,json=blockReason,proto3,enum=spiritvpn.customer.v1.AccessBlockReason,oneof" json:"block_reason,omitempty"`
 	// Присутствует только для READY. Строится на лету из расшифрованного client_uuid
-	// и текущего manifest (§8); человекочитаемое имя — внутри фрагмента URI.
+	// и текущего manifest; человекочитаемое имя — внутри фрагмента URI.
 	Uri           *string `protobuf:"bytes,4,opt,name=uri,proto3,oneof" json:"uri,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

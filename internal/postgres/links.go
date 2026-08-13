@@ -13,7 +13,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/postgres/db"
 )
 
-// LoadCustomerLinks читает состояние ссылок customer одним снимком (§5).
+// LoadCustomerLinks читает состояние ссылок customer одним снимком.
 //
 // Уровень изоляции здесь REPEATABLE READ, а не READ COMMITTED командного пути.
 // Причина в том, что снимок собирается двумя операторами: срок действия customer
@@ -24,8 +24,8 @@ import (
 // стоит ровно ничего: строк она не блокирует, а serialization failure на таком
 // уровне PostgreSQL не выдаёт.
 //
-// §11.1 фиксирует READ COMMITTED для транзакций, меняющих состояние; read-путь он
-// не описывает, и это отступлением не является.
+// READ COMMITTED зафиксирован для транзакций, меняющих состояние; read-путь под
+// это правило не подпадает.
 func (r *Repository) LoadCustomerLinks(ctx context.Context, customerID string) (app.CustomerLinks, error) {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{
 		IsoLevel:   pgx.RepeatableRead,
@@ -61,7 +61,7 @@ func (r *Repository) LoadCustomerLinks(ctx context.Context, customerID string) (
 }
 
 // linkSourcesFromRows сохраняет порядок (kind, logical_target_key, access_id),
-// заданный запросом: он же порядок ответа §5.
+// заданный запросом: он же порядок ответа.
 func linkSourcesFromRows(rows []db.ListCustomerAccessLinksRow) []app.AccessLinkSource {
 	sources := make([]app.AccessLinkSource, 0, len(rows))
 	for _, row := range rows {
@@ -71,7 +71,7 @@ func linkSourcesFromRows(rows []db.ListCustomerAccessLinksRow) []app.AccessLinkS
 }
 
 // linkSourceFromRow переносит строку в форму, из которой домен выводит состояние.
-// Состояние здесь не вычисляется: §5 требует выводить его из сырых фактов, а не
+// Состояние здесь не вычисляется: оно выводится из сырых фактов, а не
 // хранить, и место этого вывода — domain.LinkStatusOf.
 func linkSourceFromRow(row db.ListCustomerAccessLinksRow) app.AccessLinkSource {
 	source := app.AccessLinkSource{

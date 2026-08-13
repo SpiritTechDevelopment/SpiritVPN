@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// §4: эффективный access требует total < quota, поэтому равенство уже является
+// Эффективный access требует total < quota, поэтому равенство уже является
 // исчерпанием.
 func TestIsQuotaExhausted(t *testing.T) {
 	tests := []struct {
@@ -74,7 +74,7 @@ func TestRecomputeExhausted(t *testing.T) {
 			want:  []NodeQuotaChange{{NodeID: "NL-1", ExhaustedAt: &tNow}},
 		},
 		{
-			name: "результат отсортирован по node_id — порядок блокировок §11.1",
+			name: "результат отсортирован по node_id — нормативный порядок блокировок",
 			usages: []NodeQuotaUsage{
 				{NodeID: "NL-1", TotalBytes: 100},
 				{NodeID: "DE-1", TotalBytes: 100},

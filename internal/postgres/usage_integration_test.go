@@ -160,7 +160,7 @@ func seedUsageCustomer(t *testing.T, stack usageStack, quotaBytes uint64) string
 // accountingOn — accounting_id FREEDOM-access на указанной входной ноде.
 //
 // Отчитаться за accounting_id может только та нода, на которой он заведён: на
-// чужой это неизвестный юзер и карантин (§12, шаг 6). Поэтому тесту, трогающему
+// чужой это неизвестный юзер и карантин. Поэтому тесту, трогающему
 // обе ноды, нужен идентификатор каждой.
 func accountingOn(t *testing.T, stack usageStack, nodeID string) string {
 	t.Helper()
@@ -212,7 +212,7 @@ func nodeTotal(t *testing.T, stack usageStack, nodeID string) uint64 {
 		 WHERE u.node_id = $1 AND p.closed_at IS NULL`, nodeID))
 }
 
-// TestIntegrationUsageAccruesDeltas — §12: дельты складываются в counters ноды.
+// TestIntegrationUsageAccruesDeltas — дельты складываются в counters ноды.
 func TestIntegrationUsageAccruesDeltas(t *testing.T) {
 	stack := newUsageStack(t)
 	accountingID := seedUsageCustomer(t, stack, 1<<30)
@@ -227,7 +227,7 @@ func TestIntegrationUsageAccruesDeltas(t *testing.T) {
 	if got := nodeTotal(t, stack, "NL-1"); got != 300 {
 		t.Errorf("расход NL-1 %d, ожидалось 300", got)
 	}
-	// Курсор подтверждён только после commit (решение 63).
+	// Курсор подтверждён только после commit.
 	if got := scalar[int64](t, stack.pool,
 		`SELECT acked_sequence::bigint FROM node_usage_cursors WHERE node_id = 'NL-1'`); got != 1 {
 		t.Errorf("acked_sequence %d, ожидалось 1", got)
@@ -242,7 +242,7 @@ func TestIntegrationUsageAccruesDeltas(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageDeduplicatesRepeatedBatch — §12: повторный pull, перезапуск
+// TestIntegrationUsageDeduplicatesRepeatedBatch — повторный pull, перезапуск
 // воркера и повтор batch не удваивают totals.
 func TestIntegrationUsageDeduplicatesRepeatedBatch(t *testing.T) {
 	stack := newUsageStack(t)
@@ -269,7 +269,7 @@ func TestIntegrationUsageDeduplicatesRepeatedBatch(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageSkipsAcknowledgedBatch — §12, шаг 1: уже подтверждённый
+// TestIntegrationUsageSkipsAcknowledgedBatch — уже подтверждённый
 // batch является идемпотентным no-op и не открывает транзакций.
 func TestIntegrationUsageSkipsAcknowledgedBatch(t *testing.T) {
 	stack := newUsageStack(t)
@@ -287,8 +287,8 @@ func TestIntegrationUsageSkipsAcknowledgedBatch(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageExhaustsQuotaAndBlocksNode — §12, шаг 5: пересечение порога
-// гасит ВСЕ access customer на ноде, а §9 доставляет удаления агенту.
+// TestIntegrationUsageExhaustsQuotaAndBlocksNode — пересечение порога
+// гасит все access customer на ноде, а диспетчер доставляет удаления агенту.
 func TestIntegrationUsageExhaustsQuotaAndBlocksNode(t *testing.T) {
 	stack := newUsageStack(t)
 	accountingID := seedUsageCustomer(t, stack, 1000)
@@ -303,12 +303,12 @@ func TestIntegrationUsageExhaustsQuotaAndBlocksNode(t *testing.T) {
 		`SELECT count(*) FROM node_quota_usage WHERE node_id = 'NL-1' AND exhausted_at IS NOT NULL`); got != 1 {
 		t.Fatal("отметка исчерпания не поставлена")
 	}
-	// На NL-1 у customer два access: FREEDOM и BRIDGE, где она входная (§4).
+	// На NL-1 у customer два access: FREEDOM и BRIDGE, где она входная.
 	if got := scalar[int64](t, stack.pool,
 		`SELECT count(*) FROM vpn_accesses WHERE entry_node_id = 'NL-1' AND desired_state = 'ABSENT'`); got != 2 {
 		t.Errorf("погашено access на NL-1 %d, ожидалось 2", got)
 	}
-	// §4: превышение на одной ноде не влияет на access на других.
+	// Превышение на одной ноде не влияет на access на других.
 	if got := scalar[int64](t, stack.pool,
 		`SELECT count(*) FROM vpn_accesses WHERE entry_node_id = 'DE-1' AND desired_state = 'PRESENT'`); got != 1 {
 		t.Errorf("квота NL-1 задела DE-1: PRESENT на DE-1 %d, ожидался 1", got)
@@ -334,7 +334,7 @@ func TestIntegrationUsageExhaustsQuotaAndBlocksNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageThresholdFiresOnce — §12: порог активируется один раз, и
+// TestIntegrationUsageThresholdFiresOnce — порог активируется один раз, и
 // вторая пачка не плодит повторных Remove operations.
 func TestIntegrationUsageThresholdFiresOnce(t *testing.T) {
 	stack := newUsageStack(t)
@@ -356,7 +356,7 @@ func TestIntegrationUsageThresholdFiresOnce(t *testing.T) {
 	)
 	pullRound(t, stack.usage)
 
-	// Начисление продолжается после блокировки (§12).
+	// Начисление продолжается после блокировки.
 	if got := nodeTotal(t, stack, "NL-1"); got != 2000 {
 		t.Errorf("расход %d, ожидалось 2000", got)
 	}
@@ -374,7 +374,7 @@ func TestIntegrationUsageThresholdFiresOnce(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageQuotaIsPerNode — §12: расход принадлежит паре (нода,
+// TestIntegrationUsageQuotaIsPerNode — расход принадлежит паре (нода,
 // период), а не customer, и пороги на разных нодах пересекаются независимо.
 //
 // Проверяется в обе стороны, потому что это два разных способа ошибиться. Сложи
@@ -439,7 +439,7 @@ func TestIntegrationUsageQuotaIsPerNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageClosedPeriodIgnored — §11.1: batch закрытого периода
+// TestIntegrationUsageClosedPeriodIgnored — batch закрытого периода
 // регистрируется как IGNORED_CLOSED_PERIOD, не меняет historical totals и не
 // блокирует access нового периода.
 func TestIntegrationUsageClosedPeriodIgnored(t *testing.T) {
@@ -450,7 +450,7 @@ func TestIntegrationUsageClosedPeriodIgnored(t *testing.T) {
 	closedPeriod := scalar[string](t, stack.pool,
 		`SELECT quota_period_id::text FROM quota_periods WHERE closed_at IS NULL`)
 
-	// Renewal закрывает период и открывает новый (§5, правило 8).
+	// Renewal закрывает период и открывает новый.
 	renewed := time.Now().UTC().Add(60 * 24 * time.Hour)
 	if err := stack.customer.Execute(context.Background(), command(2, 1000, renewed)); err != nil {
 		t.Fatalf("renewal: %v", err)
@@ -483,7 +483,7 @@ func TestIntegrationUsageClosedPeriodIgnored(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageQuarantinesUnknownAccounting — §12, шаг 6: неизвестный
+// TestIntegrationUsageQuarantinesUnknownAccounting — неизвестный
 // accounting_id уходит в карантин и не блокирует остальной batch.
 func TestIntegrationUsageQuarantinesUnknownAccounting(t *testing.T) {
 	stack := newUsageStack(t)
@@ -511,14 +511,14 @@ func TestIntegrationUsageQuarantinesUnknownAccounting(t *testing.T) {
 	if got := nodeTotal(t, stack, "NL-1"); got != 300 {
 		t.Errorf("расход %d, ожидалось 300 — плохой item заблокировал batch", got)
 	}
-	// В карантине только счётчики байтов, никаких секретов (§12).
+	// В карантине только счётчики байтов, никаких секретов.
 	if got := scalar[string](t, stack.pool,
 		`SELECT sanitized_payload::text FROM traffic_batch_quarantine`); got != `{"uplink_bytes": 1, "downlink_bytes": 2}` {
 		t.Errorf("payload карантина %q", got)
 	}
 }
 
-// TestIntegrationUsageQuarantinesItemWithoutPeriod — решение 65: item, которому не
+// TestIntegrationUsageQuarantinesItemWithoutPeriod — item, которому не
 // нашлось периода, уходит в карантин, а не помечается IGNORED_CLOSED_PERIOD:
 // период не закрыт, его не существует.
 func TestIntegrationUsageQuarantinesItemWithoutPeriod(t *testing.T) {
@@ -543,7 +543,7 @@ func TestIntegrationUsageQuarantinesItemWithoutPeriod(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageSpoolChangeResetsCursor — §12: смена spool_id трактуется как
+// TestIntegrationUsageSpoolChangeResetsCursor — смена spool_id трактуется как
 // новый спул, backend продолжает с его sequence и старые не начисляет.
 func TestIntegrationUsageSpoolChangeResetsCursor(t *testing.T) {
 	stack := newUsageStack(t)
@@ -577,7 +577,7 @@ func TestIntegrationUsageSpoolChangeResetsCursor(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageAcksOnlyCommitted — §12: агенту подтверждается ровно то, что
+// TestIntegrationUsageAcksOnlyCommitted — агенту подтверждается ровно то, что
 // уже закоммичено, иначе он удалит из спула неучтённое.
 func TestIntegrationUsageAcksOnlyCommitted(t *testing.T) {
 	stack := newUsageStack(t)
@@ -613,7 +613,7 @@ func TestIntegrationUsageAcksOnlyCommitted(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageLeaseIsPerNode — §12: на ноду одновременно активен один pull
+// TestIntegrationUsageLeaseIsPerNode — на ноду одновременно активен один pull
 // worker.
 func TestIntegrationUsageLeaseIsPerNode(t *testing.T) {
 	stack := newUsageStack(t)
@@ -667,7 +667,7 @@ func TestIntegrationUsageReleasesLeaseAfterStep(t *testing.T) {
 	}
 }
 
-// TestIntegrationUsageUnavailableNodeChangesNothing — §16: недоступность агента не
+// TestIntegrationUsageUnavailableNodeChangesNothing — недоступность агента не
 // меняет ни desired state, ни counters.
 func TestIntegrationUsageUnavailableNodeChangesNothing(t *testing.T) {
 	stack := newUsageStack(t)
@@ -690,7 +690,7 @@ func TestIntegrationUsageUnavailableNodeChangesNothing(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Ретенция реестра дедупа (§12)
+// Ретенция реестра дедупа
 // ---------------------------------------------------------------------------
 
 // testRetentionWindow — окно, с которым гоняется прунер в тестах. Значение
@@ -741,7 +741,7 @@ func seedProcessedItem(t *testing.T, stack usageStack) {
 	}
 }
 
-// TestIntegrationRetentionKeepsUnacknowledgedItems — §12: удаляется только то,
+// TestIntegrationRetentionKeepsUnacknowledgedItems — удаляется только то,
 // что подтверждено. Неподтверждённый batch агент пришлёт снова, и без своей
 // строки реестра он начислится второй раз.
 //
@@ -769,7 +769,7 @@ func TestIntegrationRetentionKeepsUnacknowledgedItems(t *testing.T) {
 	}
 }
 
-// TestIntegrationRetentionKeepsFreshItems — §12: возраст сам по себе является
+// TestIntegrationRetentionKeepsFreshItems — возраст сам по себе является
 // условием. Он покрывает простой backend: подтверждение записано у нас, но до
 // агента ещё не доехало.
 func TestIntegrationRetentionKeepsFreshItems(t *testing.T) {
@@ -790,7 +790,7 @@ func TestIntegrationRetentionKeepsFreshItems(t *testing.T) {
 	}
 }
 
-// TestIntegrationRetentionDropsVanishedSpool — §12: строки исчезнувшего спула
+// TestIntegrationRetentionDropsVanishedSpool — строки исчезнувшего спула
 // удаляются, даже если их sequence выше подтверждённого.
 //
 // Сравнивать их с acked_sequence бессмысленно: новый спул начинает нумерацию с
@@ -810,10 +810,10 @@ func TestIntegrationRetentionDropsVanishedSpool(t *testing.T) {
 	}
 }
 
-// TestIntegrationRetentionLateRetryReaccrues — §18, fault test: очень поздний
+// TestIntegrationRetentionLateRetryReaccrues — fault test: очень поздний
 // повтор после очистки дедупа начисляет трафик ВТОРОЙ раз.
 //
-// Тест закрепляет принятую погрешность, а не желаемое поведение. §12 называет её
+// Тест закрепляет принятую погрешность, а не желаемое поведение. Она названа
 // положительной (в пользу сервиса) и допустимой; цена альтернативы — реестр,
 // растущий пропорционально трафику без ограничения.
 //
@@ -839,11 +839,11 @@ func TestIntegrationRetentionLateRetryReaccrues(t *testing.T) {
 
 	if got := nodeTotal(t, stack, "NL-1"); got != 600 {
 		t.Errorf("расход NL-1 %d, ожидалось 600: после очистки дедупа повтор обязан "+
-			"начислиться второй раз — это принятая погрешность §12, а не ошибка", got)
+			"начислиться второй раз — это принятая погрешность, а не ошибка", got)
 	}
 }
 
-// Fault tests учёта (§18). Проверяют не начисление, а то, что остаётся после
+// Fault tests учёта. Проверяют не начисление, а то, что остаётся после
 // внезапной смерти воркера.
 
 // crashingUsage роняет шаг между durable commit группы и подтверждением курсора
@@ -869,10 +869,10 @@ func (r *crashingUsage) AdvanceCursor(
 	return r.UsageRepository.AdvanceCursor(ctx, nodeID, cursor)
 }
 
-// TestIntegrationUsageCrashBeforeAckDoesNotDoubleCharge — §18: смерть воркера
+// TestIntegrationUsageCrashBeforeAckDoesNotDoubleCharge — смерть воркера
 // между commit группы и подтверждением курсора не удваивает трафик.
 //
-// Это цена решения 63: подтверждать курсор раньше commit нельзя, потому что
+// Это цена того, что подтверждать курсор раньше commit нельзя, потому что
 // потерянные байты не восстановить. Значит окно «начислено, но не подтверждено»
 // существует всегда, и агент штатно присылает такой batch повторно. Не удваивает
 // его дедуп по traffic_usage_items_processed, а не удача.

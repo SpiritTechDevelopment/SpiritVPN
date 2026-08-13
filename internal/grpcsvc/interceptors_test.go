@@ -134,7 +134,7 @@ func TestRequestIDGeneratedWhenUnusable(t *testing.T) {
 }
 
 // TestRequestIDNeverFailsRequest — непригодный идентификатор не повод отклонять
-// команду product-сервиса: корреляция это удобство, а не правило §5.
+// команду product-сервиса: корреляция это удобство, а не правило контракта.
 func TestRequestIDNeverFailsRequest(t *testing.T) {
 	ctx := metadata.NewIncomingContext(
 		context.Background(),
@@ -214,7 +214,7 @@ func TestAuthorizeRejectsUnauthenticated(t *testing.T) {
 	}
 }
 
-// TestAuthorizeIgnoresCommonName — решение 13: CN идентичностью не является.
+// TestAuthorizeIgnoresCommonName — CN идентичностью не является.
 // Сертификат, у которого нужное имя лежит только в CN, доступа не получает.
 func TestAuthorizeIgnoresCommonName(t *testing.T) {
 	cert := &x509.Certificate{Subject: pkix.Name{CommonName: "product-svc"}}
@@ -227,7 +227,7 @@ func TestAuthorizeIgnoresCommonName(t *testing.T) {
 	}
 }
 
-// TestAuthorizeRejectsEmptyIdentity — решение 13 целиком: пустая идентичность из
+// TestAuthorizeRejectsEmptyIdentity — целиком: пустая идентичность из
 // сертификата не должна совпасть с пустым элементом в списке разрешённых.
 func TestAuthorizeRejectsEmptyIdentity(t *testing.T) {
 	authorizer := NewAuthorizer(map[Role][]string{
@@ -242,7 +242,7 @@ func TestAuthorizeRejectsEmptyIdentity(t *testing.T) {
 	}
 }
 
-// TestAuthorizeWriterIsNotReader — решение 14. Чтение отдаёт VLESS URI с
+// TestAuthorizeWriterIsNotReader — Чтение отдаёт VLESS URI с
 // client_uuid, поэтому право писать не даёт права читать.
 func TestAuthorizeWriterIsNotReader(t *testing.T) {
 	reached := false
@@ -258,7 +258,7 @@ func TestAuthorizeWriterIsNotReader(t *testing.T) {
 	}
 }
 
-// TestAuthorizeGrantsBothRolesWhenListedTwice — обратная сторона решения 14:
+// TestAuthorizeGrantsBothRolesWhenListedTwice — обратная сторона разделения ролей:
 // сервис получает оба права, будучи явно перечисленным в обоих списках.
 func TestAuthorizeGrantsBothRolesWhenListedTwice(t *testing.T) {
 	authorizer := NewAuthorizer(map[Role][]string{
@@ -341,7 +341,7 @@ func TestLoggingRecordsRequiredFields(t *testing.T) {
 	}
 }
 
-// TestLoggingRecordsStableErrorCode — §15: в записи стабильный код, а не только
+// TestLoggingRecordsStableErrorCode — в записи стабильный код, а не только
 // gRPC-код, который слишком груб (три доменных исхода делят INVALID_ARGUMENT).
 func TestLoggingRecordsStableErrorCode(t *testing.T) {
 	err := statusFromError(context.Background(), domain.ErrExpiryRegression)
@@ -354,7 +354,7 @@ func TestLoggingRecordsStableErrorCode(t *testing.T) {
 		t.Errorf("grpc_code %q, ожидался FailedPrecondition", got)
 	}
 	if got, _ := record["level"].(string); got != "WARN" {
-		t.Errorf("уровень %q, ожидался WARN: отказ по правилам §5 — штатная работа, а не поломка", got)
+		t.Errorf("уровень %q, ожидался WARN: отказ по правилам контракта — штатная работа, а не поломка", got)
 	}
 }
 
@@ -372,7 +372,7 @@ func TestLoggingRecordsPeerIdentityOnAuthFailure(t *testing.T) {
 	}
 }
 
-// TestLoggingNeverRecordsRequestBody — §15: customer_id допустим только в audit.
+// TestLoggingNeverRecordsRequestBody — customer_id допустим только в audit.
 func TestLoggingNeverRecordsRequestBody(t *testing.T) {
 	req := &customerv1.ApplyCustomerAccessRequest{
 		CustomerId:      "cust-секретный-идентификатор",
@@ -391,7 +391,7 @@ func TestLoggingNeverRecordsRequestBody(t *testing.T) {
 	}
 }
 
-// TestLoggingNeverRecordsResponseBody — §8: ответ с URI не логируется.
+// TestLoggingNeverRecordsResponseBody — ответ с URI не логируется.
 //
 // Регрессионный guard, а не проверка текущего поведения: interceptor тела ответа
 // сейчас не пишет вовсе. Стоит кому-нибудь добавить в запись resp «для удобства

@@ -9,15 +9,15 @@ import (
 
 // nodePublicConfig — раскладка jsonb-колонки vpn_nodes.public_config.
 //
-// Ключи — блок node.public манифеста дословно, в snake_case (§6), плюс
+// Ключи — блок node.public манифеста дословно, в snake_case, плюс
 // display_name, который в манифесте лежит уровнем выше, рядом с node_id: под него
-// решено не заводить отдельную колонку (решение 16).
+// решено не заводить отдельную колонку.
 //
 // Эта структура — единственное место, где формат колонки известен. Когда появится
 // срез приёма манифеста, writer встанет сюда же, рядом с reader'ом: так формат
-// физически не сможет разъехаться между тем, кто пишет, и тем, кто читает
-// (решение 19). Схему внутри jsonb не версионируем — manifest уже версионирован
-// целиком своим schema_version (§6).
+// физически не сможет разъехаться между тем, кто пишет, и тем, кто читает.
+// Схему внутри jsonb не версионируем — manifest уже версионирован
+// целиком своим schema_version.
 type nodePublicConfig struct {
 	Address          string `json:"address"`
 	Port             int    `json:"port"`
@@ -31,7 +31,7 @@ type nodePublicConfig struct {
 }
 
 // nodeAgentConfig — раскладка jsonb-колонки vpn_nodes.agent_config: блок
-// node.agent манифеста дословно (§6). Клиенту эти значения не показываются
+// node.agent манифеста дословно. Клиенту эти значения не показываются
 // никогда, и в VLESS URI они не попадают.
 type nodeAgentConfig struct {
 	Endpoint            string `json:"endpoint"`
@@ -39,7 +39,7 @@ type nodeAgentConfig struct {
 	CertificateIdentity string `json:"certificate_identity"`
 }
 
-// nodeConfigJSON — writer, парный к nodePublicFrom (решение 19).
+// nodeConfigJSON — writer, парный к nodePublicFrom.
 //
 // Стоит рядом с reader'ом намеренно: формат колонок известен ровно этому файлу,
 // и разъехаться тому, кто пишет, с тем, кто читает, физически негде.
@@ -68,13 +68,13 @@ func nodeConfigJSON(node domain.ManifestNode) (agent, public []byte) {
 	return agent, public
 }
 
-// nodeAgentFrom разбирает agent_config в endpoint вызова агента (§9).
+// nodeAgentFrom разбирает agent_config в endpoint вызова агента.
 //
 // Стоит рядом с writer'ом по той же причине, что и nodePublicFrom: формат колонки
 // известен ровно этому файлу.
 //
 // Ошибка разбора не возвращается: нераспознанный jsonb даёт нулевую структуру,
-// которую отвергнет клиент агента — с исходом retryable и alert (решение 50).
+// которую отвергнет клиент агента — с исходом retryable и alert.
 // Второй канал для той же причины не нужен, исход у «json битый» и «поля пустые»
 // один и тот же.
 func nodeAgentFrom(nodeID string, raw []byte) nodeagent.Endpoint {
@@ -95,8 +95,8 @@ func nodeAgentFrom(nodeID string, raw []byte) nodeagent.Endpoint {
 //
 // Ошибка разбора не возвращается: нераспознанный jsonb даёт нулевую структуру,
 // которая не проходит domain.NodePublic.Usable, и ссылка на этой ноде уходит наружу
-// как FAILED (решение 18). Отдельный канал для причины не заводится — исход у
-// «json битый» и «поля пустые» один и тот же, а различать их будет метрика §15.
+// как FAILED. Отдельный канал для причины не заводится — исход у
+// «json битый» и «поля пустые» один и тот же, а различать их будет метрика.
 func nodePublicFrom(raw []byte) domain.NodePublic {
 	var config nodePublicConfig
 	if err := json.Unmarshal(raw, &config); err != nil {

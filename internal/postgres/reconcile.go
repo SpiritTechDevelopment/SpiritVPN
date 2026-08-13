@@ -15,15 +15,15 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/postgres/db"
 )
 
-// ClaimNodeForReconcile берёт ноду и её полный набор одной транзакцией (§10).
+// ClaimNodeForReconcile берёт ноду и её полный набор одной транзакцией.
 //
-// Именно одной: §10 требует зафиксировать desired_revision и прочитать users под
-// блокировкой строки ноды, иначе зафиксированная ревизия описывала бы не тот
-// набор, который уехал агенту. Захват берёт строку эксклюзивно, а не в share
-// mode, как говорит буква §10, — он всё равно её пишет, назначая lease, и вторая
-// блокировка той же строки ничего бы не добавила (решение 84).
+// Именно одной: desired_revision фиксируется и users читаются под блокировкой
+// строки ноды, иначе зафиксированная ревизия описывала бы не тот набор, который
+// уехал агенту. Захват берёт строку эксклюзивно, а не в share mode: он всё равно
+// её пишет, назначая lease, и вторая блокировка той же строки ничего бы не
+// добавила.
 //
-// Транзакция закрывается до расшифрования и до сетевого вызова (§11.1).
+// Транзакция закрывается до расшифрования и до сетевого вызова.
 func (r *Repository) ClaimNodeForReconcile(
 	ctx context.Context,
 	owner string,
@@ -98,7 +98,7 @@ func (r *Repository) ReleaseNodeReconcile(ctx context.Context, nodeID domain.Nod
 	})
 }
 
-// AcceptReconcile применяет результат, если desired_revision не сдвинулась (§10).
+// AcceptReconcile применяет результат, если desired_revision не сдвинулась.
 //
 // Все три записи в одной транзакции: принять набор, но не отметить access
 // применёнными означало бы, что следующий проход считает ноду reconcile-нутой, а
@@ -130,7 +130,7 @@ func (r *Repository) AcceptReconcile(
 
 	applied := acceptance.AppliedAccessIDs
 	if applied == nil {
-		// Пустой набор легален (§10) и означает, что на ноде не должно быть ни
+		// Пустой набор легален и означает, что на ноде не должно быть ни
 		// одного backend-owned юзера. ANY(NULL) не равен ANY пустого массива,
 		// поэтому nil здесь пришлось бы отдельным случаем в SQL.
 		applied = []uuid.UUID{}
@@ -156,7 +156,7 @@ func (r *Repository) AcceptReconcile(
 	return true, nil
 }
 
-// SetNodeNeedsBootstrap запоминает признак, присланный агентом (§10).
+// SetNodeNeedsBootstrap запоминает признак, присланный агентом.
 func (r *Repository) SetNodeNeedsBootstrap(
 	ctx context.Context,
 	nodeID domain.NodeID,

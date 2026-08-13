@@ -148,8 +148,8 @@ func newMaterializeHarness(tx *fakeMaterializeTx) (*app.MaterializeManifest, *fa
 	return uc, repo
 }
 
-// TestProcessNextMaterializesOneCustomer — решение 30: шаг обрабатывает ровно
-// одного customer и двигает курсор в той же транзакции (решение 34).
+// TestProcessNextMaterializesOneCustomer — шаг обрабатывает ровно
+// одного customer и двигает курсор в той же транзакции.
 func TestProcessNextMaterializesOneCustomer(t *testing.T) {
 	tx := materializeFixture()
 	uc, repo := newMaterializeHarness(tx)
@@ -175,7 +175,7 @@ func TestProcessNextMaterializesOneCustomer(t *testing.T) {
 		t.Errorf("операций %d, ожидалась 1", len(tx.written.Operations))
 	}
 
-	// Порядок чтений совпадает с нормативным порядком блокировок §11.1.
+	// Порядок чтений совпадает с нормативным порядком блокировок.
 	want := []string{
 		"ClaimJob", "NextCustomer", "Now",
 		"LockEntitlement", "LockOpenQuotaPeriod", "LockNodeQuotaUsage",
@@ -193,7 +193,7 @@ func TestProcessNextMaterializesOneCustomer(t *testing.T) {
 }
 
 // TestProcessNextPassesLease — lease берётся от имени этой реплики и на
-// заданный срок (§13, §15).
+// заданный срок.
 func TestProcessNextPassesLease(t *testing.T) {
 	tx := materializeFixture()
 	uc, _ := newMaterializeHarness(tx)
@@ -288,7 +288,7 @@ func TestProcessNextPropagatesWriteError(t *testing.T) {
 	}
 }
 
-// TestProcessNextRequiresOpenPeriod — нарушение инварианта §11 доезжает наружу,
+// TestProcessNextRequiresOpenPeriod — нарушение инварианта доезжает наружу,
 // а не проглатывается воркером.
 func TestProcessNextRequiresOpenPeriod(t *testing.T) {
 	tx := materializeFixture()
@@ -309,7 +309,7 @@ func materializedAccess(id uuid.UUID, kind domain.AccessKind, target string, nod
 	}
 }
 
-// TestProcessNextIssuesRepointOperation — §6: repoint доставляется обычным
+// TestProcessNextIssuesRepointOperation — repoint доставляется обычным
 // EnsureUserPresent, и агент переиздаёт правило по новому egress_key.
 func TestProcessNextIssuesRepointOperation(t *testing.T) {
 	bridgeID := uuid.New()
@@ -353,7 +353,7 @@ func TestProcessNextIssuesRepointOperation(t *testing.T) {
 	}
 }
 
-// TestProcessNextRetireOperationsFollowNodeLiveness — §6: удаление доставляется
+// TestProcessNextRetireOperationsFollowNodeLiveness — удаление доставляется
 // только на живую ноду; у глобально удалённой операции не выпускаются.
 func TestProcessNextRetireOperationsFollowNodeLiveness(t *testing.T) {
 	liveID, deadID := uuid.New(), uuid.New()

@@ -48,7 +48,7 @@ func manifestTestNode(id string) domain.ManifestNode {
 	}
 }
 
-// manifestFixture — два узла, один fleet, одна связь: пример §6.
+// manifestFixture — два узла, один fleet, одна связь.
 func manifestFixture(revision int64) domain.ManifestSnapshot {
 	return domain.ManifestSnapshot{
 		SchemaVersion: domain.ManifestSchemaVersion,
@@ -115,19 +115,19 @@ func TestIntegrationManifestProjectsSnapshot(t *testing.T) {
 		t.Errorf("связей %d, ожидалась 1", got)
 	}
 
-	// §6/§13: джоба ставится в той же транзакции, что и проекция.
+	// Джоба ставится в той же транзакции, что и проекция.
 	if got := scalar[string](t, pool,
 		`SELECT status FROM manifest_materialization_jobs WHERE revision = 7`); got != "PENDING" {
 		t.Errorf("статус джобы %q, ожидался PENDING", got)
 	}
 
-	// Решение 22: приём манифеста не двигает desired_revision нод.
+	// Приём манифеста не двигает desired_revision нод.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM vpn_nodes WHERE desired_revision <> 1`); got != 0 {
 		t.Errorf("у %d нод сдвинулась desired_revision", got)
 	}
 
-	// Решение 19: раскладка public_config и agent_config.
+	// Раскладка public_config и agent_config.
 	if got := scalar[string](t, pool,
 		`SELECT public_config->>'display_name' FROM vpn_nodes WHERE node_id = 'NL-1'`); got != "имя NL-1" {
 		t.Errorf("display_name %q", got)
@@ -137,7 +137,7 @@ func TestIntegrationManifestProjectsSnapshot(t *testing.T) {
 		t.Errorf("tls_server_name %q", got)
 	}
 	// Канонический payload сохранён без потерь. Сравнение идёт как jsonb, а не
-	// побайтово: колонка объявлена как jsonb (§11), и PostgreSQL хранит в ней
+	// побайтово: колонка объявлена как jsonb, и PostgreSQL хранит в ней
 	// разобранное значение с пересортированными ключами, а не исходный текст.
 	payload, digest := domain.CanonicalizeManifest(manifestFixture(7))
 	if got := scalar[bool](t, pool,
@@ -150,7 +150,7 @@ func TestIntegrationManifestProjectsSnapshot(t *testing.T) {
 	}
 }
 
-// TestIntegrationManifestIdempotentReplay — решение 21: повтор не пишет ничего,
+// TestIntegrationManifestIdempotentReplay — повтор не пишет ничего,
 // включая вторую джобу материализации.
 func TestIntegrationManifestIdempotentReplay(t *testing.T) {
 	uc, pool := newManifestFixture(t)
@@ -169,7 +169,7 @@ func TestIntegrationManifestIdempotentReplay(t *testing.T) {
 	}
 }
 
-// TestIntegrationManifestRejects — конфликты с принятым состоянием (§6).
+// TestIntegrationManifestRejects — конфликты с принятым состоянием.
 func TestIntegrationManifestRejects(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -220,7 +220,7 @@ func TestIntegrationManifestRejects(t *testing.T) {
 				t.Fatalf("ошибка %v, ожидалась %v", err, tc.want)
 			}
 
-			// §16: некорректный манифест не меняет проекцию.
+			// Некорректный манифест не меняет проекцию.
 			if got := scalar[int64](t, pool, `SELECT count(*) FROM manifest_revisions`); got != 1 {
 				t.Errorf("отклонённый манифест записал журнал: строк %d", got)
 			}
@@ -231,8 +231,8 @@ func TestIntegrationManifestRejects(t *testing.T) {
 	}
 }
 
-// TestIntegrationManifestDestructiveMarksInsteadOfDeleting — §6/§11: история не
-// удаляется, строки лишь перестают быть текущими. Плюс аудит §15.
+// TestIntegrationManifestDestructiveMarksInsteadOfDeleting — история не
+// удаляется, строки лишь перестают быть текущими. Плюс аудит.
 func TestIntegrationManifestDestructiveMarksInsteadOfDeleting(t *testing.T) {
 	uc, pool := newManifestFixture(t)
 	applyManifest(t, uc, manifestFixture(7), false)
@@ -260,13 +260,13 @@ func TestIntegrationManifestDestructiveMarksInsteadOfDeleting(t *testing.T) {
 		t.Error("удалённое membership осталось текущим")
 	}
 
-	// Решение 23: manifest_revision удалённой строки остаётся прежней.
+	// Manifest_revision удалённой строки остаётся прежней.
 	if got := scalar[int64](t, pool,
 		`SELECT manifest_revision FROM vpn_nodes WHERE node_id = 'DE-1'`); got != 7 {
 		t.Errorf("manifest_revision удалённой ноды %d, ожидалась 7", got)
 	}
 
-	// §15: destructive-манифест обязан оставить запись аудита.
+	// Destructive-манифест обязан оставить запись аудита.
 	if got := scalar[int64](t, pool,
 		`SELECT count(*) FROM audit_events
 		 WHERE action = 'MANIFEST_APPLIED' AND actor_id = 'infra-ci'
@@ -276,7 +276,7 @@ func TestIntegrationManifestDestructiveMarksInsteadOfDeleting(t *testing.T) {
 }
 
 // TestIntegrationManifestNoAuditWithoutRemovals — обычный приём журнал аудита не
-// засоряет (§15 требует его только для destructive).
+// засоряет (он нужен только для destructive).
 func TestIntegrationManifestNoAuditWithoutRemovals(t *testing.T) {
 	uc, pool := newManifestFixture(t)
 	applyManifest(t, uc, manifestFixture(7), false)
@@ -291,7 +291,7 @@ func TestIntegrationManifestNoAuditWithoutRemovals(t *testing.T) {
 	}
 }
 
-// TestIntegrationManifestRevivesRow — решение 24: вернувшаяся нода оживляет свою
+// TestIntegrationManifestRevivesRow — вернувшаяся нода оживляет свою
 // строку, а не заводит новую.
 func TestIntegrationManifestRevivesRow(t *testing.T) {
 	uc, pool := newManifestFixture(t)
@@ -319,7 +319,7 @@ func TestIntegrationManifestRevivesRow(t *testing.T) {
 
 // TestIntegrationManifestRouteTransfer — ради этого правился baseline: пара
 // (entry, exit) уникальна только среди ТЕКУЩИХ связей, поэтому перенос route на
-// новый routing_key, который §6 разрешает, проходит.
+// новый routing_key проходит.
 func TestIntegrationManifestRouteTransfer(t *testing.T) {
 	uc, pool := newManifestFixture(t)
 	applyManifest(t, uc, manifestFixture(7), false)
@@ -343,7 +343,7 @@ func TestIntegrationManifestRouteTransfer(t *testing.T) {
 	}
 }
 
-// TestIntegrationManifestRepointUpdatesEgressTag — §6: смена egress_tag при
+// TestIntegrationManifestRepointUpdatesEgressTag — смена egress_tag при
 // неизменной паре не destructive и меняет строку на месте.
 func TestIntegrationManifestRepointUpdatesEgressTag(t *testing.T) {
 	uc, pool := newManifestFixture(t)
@@ -403,7 +403,7 @@ func TestIntegrationManifestFeedsCustomerAccess(t *testing.T) {
 		}
 	}
 
-	// Фрагмент FREEDOM берётся из display_name ноды манифеста (§8).
+	// Фрагмент FREEDOM берётся из display_name ноды манифеста.
 	freedom, _ := url.Parse(got[1].URI)
 	if freedom.Fragment != "имя DE-1" && freedom.Fragment != "имя NL-1" {
 		t.Errorf("фрагмент %q не из display_name манифеста", freedom.Fragment)

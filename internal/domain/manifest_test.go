@@ -32,7 +32,7 @@ func manifestNode(id string) ManifestNode {
 	}
 }
 
-// validSnapshot — пример из §6: две ноды, один fleet, одна связь.
+// validSnapshot — две ноды, один fleet, одна связь.
 func validSnapshot() ManifestSnapshot {
 	return ManifestSnapshot{
 		SchemaVersion: ManifestSchemaVersion,
@@ -54,7 +54,7 @@ func validSnapshot() ManifestSnapshot {
 
 func TestValidateManifestAcceptsSpecExample(t *testing.T) {
 	if err := ValidateManifest(validSnapshot()); err != nil {
-		t.Fatalf("пример §6 отвергнут: %v", err)
+		t.Fatalf("валидный пример отвергнут: %v", err)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestValidateManifestRejects(t *testing.T) {
 			want: ErrManifestDuplicate,
 		},
 		{
-			// §6: пара (entry, exit) уникальна внутри fleet.
+			// Пара (entry, exit) уникальна внутри fleet.
 			name: "две связи с одной парой",
 			mutate: func(s *ManifestSnapshot) {
 				s.Fleets[0].Bridges = append(s.Fleets[0].Bridges, ManifestBridge{
@@ -226,7 +226,7 @@ func TestValidateManifestRejects(t *testing.T) {
 			want:   ErrManifestNodeInvalid,
 		},
 
-		// --- лимиты §13 ---
+		// --- лимиты размера ---
 		{
 			name: "слишком много нод",
 			mutate: func(s *ManifestSnapshot) {
@@ -293,8 +293,8 @@ func TestValidateManifestRejects(t *testing.T) {
 	}
 }
 
-// TestManifestValidationErrorMessage — сообщение уходит наружу как есть (§14:
-// manifest-writer это infrastructure CI/CD), поэтому его форма фиксируется.
+// TestManifestValidationErrorMessage — сообщение уходит наружу как есть, потому
+// что manifest-writer это infrastructure CI/CD, поэтому его форма фиксируется.
 func TestManifestValidationErrorMessage(t *testing.T) {
 	withDetail := &ManifestValidationError{Rule: ErrManifestUnknownNode, Detail: "fleet 10 ссылается на ноду FR-9"}
 	if got := withDetail.Error(); got != ErrManifestUnknownNode.Error()+": fleet 10 ссылается на ноду FR-9" {
@@ -307,7 +307,7 @@ func TestManifestValidationErrorMessage(t *testing.T) {
 	}
 }
 
-// TestValidateManifestAllowsEmptyFleet — §4: fleet может временно не содержать
+// TestValidateManifestAllowsEmptyFleet — fleet может временно не содержать
 // ни нод, ни связей, но остаётся в каждом снапшоте.
 func TestValidateManifestAllowsEmptyFleet(t *testing.T) {
 	snapshot := validSnapshot()
@@ -318,7 +318,7 @@ func TestValidateManifestAllowsEmptyFleet(t *testing.T) {
 	}
 }
 
-// TestValidateManifestAllowsEmptyShortID — §6 перечисляет обязательные поля
+// TestValidateManifestAllowsEmptyShortID — перечисляет обязательные поля
 // явно, и short_id среди них нет: пустой sid — легальная конфигурация REALITY.
 func TestValidateManifestAllowsEmptyShortID(t *testing.T) {
 	snapshot := validSnapshot()

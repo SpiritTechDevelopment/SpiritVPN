@@ -11,11 +11,11 @@ import (
 // DefaultPullTimeout — deadline опроса ноды.
 //
 // Больше DefaultCallTimeout: Ensure отправляет одну команду, а здесь агент
-// возвращает до нескольких batch по 5 000 items (§12), и пять секунд на них может
+// возвращает до нескольких batch по 5 000 items, и пять секунд на них может
 // не хватить на медленном overlay.
 const DefaultPullTimeout = 30 * time.Second
 
-// UsageCursor — позиция в спуле агента (§12).
+// UsageCursor — позиция в спуле агента.
 //
 // Пара (SpoolID, Sequence) глобально идентифицирует batch и является ключом
 // идемпотентности. Новый SQLite на ноде даёт новый SpoolID и начинает Sequence с
@@ -25,7 +25,7 @@ type UsageCursor struct {
 	Sequence uint64
 }
 
-// UserUsage — дельта трафика одного access за интервал опроса (§12).
+// UserUsage — дельта трафика одного access за интервал опроса.
 type UserUsage struct {
 	AccountingID  string
 	UplinkBytes   uint64
@@ -36,26 +36,26 @@ type UserUsage struct {
 type UsageBatch struct {
 	Cursor UsageCursor
 	// CollectedAt — момент сбора на ноде. По нему item сопоставляется с quota
-	// period, поэтому это НЕ время получения backend'ом (§12).
+	// period, поэтому это НЕ время получения backend'ом.
 	CollectedAt time.Time
 	Items       []UserUsage
 }
 
-// NodeState — то, что backend забирает у агента в v1 (§12).
+// NodeState — то, что backend забирает у агента в v1.
 //
 // activity_batches и users сюда не переносятся намеренно: activity в v1 не
-// enforce-ится, а инвентарь юзеров принадлежит reconcile (§10). Чего мы не
+// enforce-ится, а инвентарь юзеров принадлежит reconcile. Чего мы не
 // запрашиваем, того не подтверждаем и не храним.
 type NodeState struct {
 	NodeID  string
 	Batches []UsageBatch
 
-	// XrayReachable и XrayUptime — liveness ноды для §15.
+	// XrayReachable и XrayUptime — liveness ноды для метрик.
 	XrayReachable bool
 	XrayUptime    time.Duration
 
 	// NeedsBootstrap — локальное состояние агента новое или повреждено, и до
-	// ReconcileUsers ему нельзя удалять юзеров (§10). Здесь только прокидывается.
+	// ReconcileUsers ему нельзя удалять юзеров. Здесь только прокидывается.
 	NeedsBootstrap bool
 }
 
@@ -63,7 +63,7 @@ type NodeState struct {
 //
 // Отдельный тип, а не Outcome: у чтения нет строки в agent_operations, поэтому
 // исходы «применено» и «постоянная ошибка» ему бессмысленны. Значим только факт
-// успеха плюс код и alert для §15.
+// успеха плюс код и alert для метрик.
 type PullOutcome struct {
 	State *NodeState
 	// Code — стабильный код исхода, тот же словарь, что и у Ensure.
@@ -76,7 +76,7 @@ type PullOutcome struct {
 // OK сообщает, что состояние получено и с ним можно работать.
 func (o PullOutcome) OK() bool { return o.State != nil }
 
-// GetNodeState забирает неподтверждённые usage-batches ноды (§12).
+// GetNodeState забирает неподтверждённые usage-batches ноды.
 //
 // acknowledged передаётся ровно тем, что backend уже durable закоммитил: агент
 // удаляет из спула только подтверждённое, поэтому передать больше — значит
@@ -106,7 +106,7 @@ func (c *Client) GetNodeState(
 		},
 		MaxUsageBatches: maxBatches,
 		// Инвентарь юзеров и activity в v1 не запрашиваются: первое принадлежит
-		// reconcile (§10), второе не enforce-ится (§12). Не запрошенное не
+		// reconcile, второе не enforce-ится. Не запрошенное не
 		// подтверждается, и агент их не удаляет.
 		IncludeUsers: false,
 	})
@@ -134,7 +134,7 @@ func pullFailure(outcome Outcome) PullOutcome {
 
 // nodeStateFrom разбирает ответ агента.
 //
-// node_id из тела сверяется с тем, за кого мы его держим: §10 запрещает принимать
+// node_id из тела сверяется с тем, за кого его держит backend: запрещено принимать
 // node_id из запроса, и здесь та же логика — нода определяется mTLS-идентичностью,
 // а расхождение означает, что соединение ведёт не туда, куда мы думаем.
 func nodeStateFrom(endpoint Endpoint, response *nodeagentv1.GetNodeStateResponse) (*NodeState, error) {

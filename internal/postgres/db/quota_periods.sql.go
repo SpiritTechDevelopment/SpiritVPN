@@ -22,7 +22,7 @@ WHERE customer_id = $1
 // Закрывает текущий период при renewal. closed_at берётся из now(), то есть из
 // момента начала транзакции; ровно то же значение получает started_at нового
 // периода, поэтому периоды образуют полуоткрытые интервалы [started_at, closed_at)
-// без пересечения и без дыры, в которую провалилась бы дельта трафика (§11).
+// без пересечения и без дыры, в которую провалилась бы дельта трафика.
 func (q *Queries) CloseOpenQuotaPeriod(ctx context.Context, customerID string) error {
 	_, err := q.db.Exec(ctx, closeOpenQuotaPeriod, customerID)
 	return err
@@ -57,9 +57,9 @@ WHERE customer_id = $1
 FOR UPDATE
 `
 
-// Периоды учёта квоты (§5, §11).
-// Блокирует текущий период — единственный с closed_at IS NULL (§11, §11.1 шаг 2).
-// Отсутствие строки у существующего customer нарушает инвариант §11.
+// Периоды учёта квоты.
+// Блокирует текущий период — единственный с closed_at IS NULL.
+// Отсутствие строки у существующего customer нарушает инвариант.
 func (q *Queries) LockOpenQuotaPeriod(ctx context.Context, customerID string) (QuotaPeriod, error) {
 	row := q.db.QueryRow(ctx, lockOpenQuotaPeriod, customerID)
 	var i QuotaPeriod
@@ -84,7 +84,7 @@ type UpdateQuotaPeriodQuotaParams struct {
 	UsageQuotaBytes pgtype.Numeric
 }
 
-// Меняет лимит открытого периода без сброса накопленного расхода (§5, правило 7).
+// Меняет лимит открытого периода без сброса накопленного расхода.
 func (q *Queries) UpdateQuotaPeriodQuota(ctx context.Context, arg UpdateQuotaPeriodQuotaParams) error {
 	_, err := q.db.Exec(ctx, updateQuotaPeriodQuota, arg.QuotaPeriodID, arg.UsageQuotaBytes)
 	return err

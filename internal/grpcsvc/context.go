@@ -17,7 +17,7 @@ func contextWithRequestID(ctx context.Context, id string) context.Context {
 
 // RequestIDFromContext возвращает идентификатор запроса или пустую строку.
 //
-// Экспортирован намеренно: §15 требует request_id в structured logs, а логируют
+// Экспортирован намеренно: request_id нужен в structured logs, а логируют
 // не только interceptor'ы — до него доберутся и трейсер pgx, и будущий audit.
 func RequestIDFromContext(ctx context.Context) string {
 	id, _ := ctx.Value(requestIDContextKey).(string)

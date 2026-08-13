@@ -10,7 +10,7 @@ import (
 // Конверсия строк sqlc в доменные типы.
 //
 // Enum-подобные колонки (kind, desired_state) переносятся приведением типа без
-// проверки набора значений: он закреплён CHECK-ограничениями схемы (§11), и
+// проверки набора значений: он закреплён CHECK-ограничениями схемы, и
 // дублировать их здесь значило бы держать один инвариант в двух местах. Проверяется
 // только то, что схема гарантировать не может, — диапазон numeric(20,0).
 
@@ -44,7 +44,7 @@ func quotaPeriodFromRow(row db.QuotaPeriod) (domain.QuotaPeriod, error) {
 }
 
 // nodeUsageFromRows переносит расход по нодам в домен, сохраняя порядок node_id,
-// заданный запросом (§11.1).
+// заданный запросом.
 func nodeUsageFromRows(rows []db.LockNodeQuotaUsageRow) ([]domain.NodeQuotaUsage, error) {
 	usages := make([]domain.NodeQuotaUsage, 0, len(rows))
 
@@ -65,7 +65,7 @@ func nodeUsageFromRows(rows []db.LockNodeQuotaUsageRow) ([]domain.NodeQuotaUsage
 }
 
 // accessFromRow переносит строку access в домен. Retired выводится из retired_at:
-// домену нужен только факт, а не момент (§4).
+// домену нужен только факт, а не момент.
 func accessFromRow(row db.ListCustomerAccessesRow) domain.Access {
 	return domain.Access{
 		ID:               row.AccessID,
@@ -90,7 +90,7 @@ func accessesFromRows(rows []db.ListCustomerAccessesRow) []domain.Access {
 	return accesses
 }
 
-// topologyFromRows собирает проекцию топологии fleet из двух списков (§6).
+// topologyFromRows собирает проекцию топологии fleet из двух списков.
 func topologyFromRows(
 	fleetID int64,
 	nodes []string,
@@ -120,7 +120,7 @@ func topologyFromRows(
 
 // nodeIDStrings разворачивает доменные node_id обратно в text[] для запросов,
 // принимающих массив. Порядок сохраняется: списки плана уже отсортированы по
-// node_id под порядок блокировок (§11.1).
+// node_id под порядок блокировок.
 func nodeIDStrings(nodes []domain.NodeID) []string {
 	ids := make([]string, 0, len(nodes))
 	for _, node := range nodes {

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Три access примера из §4: FREEDOM на каждую ноду и BRIDGE на связь. У обоих
+// Три access примера: FREEDOM на каждую ноду и BRIDGE на связь. У обоих
 // access с входом NL-1 общая node quota — на этом проверяется, что исчерпание
 // гасит их вместе.
 func materializedAccesses(state DesiredState, version int64) []Access {
@@ -79,7 +79,7 @@ func TestPlanApplyCreatesCustomer(t *testing.T) {
 		t.Fatal("создание customer не может быть no-op")
 	}
 
-	// Период открывается с нулевым расходом на каждой ноде fleet (§5).
+	// Период открывается с нулевым расходом на каждой ноде fleet.
 	if got := plan.NodeQuotaInits; !slices.Equal(got, []NodeID{"DE-1", "NL-1"}) {
 		t.Fatalf("NodeQuotaInits = %v, ожидались обе ноды по возрастанию node_id", got)
 	}
@@ -108,7 +108,7 @@ func TestPlanApplyCreatesCustomer(t *testing.T) {
 	}
 }
 
-// Правила 4 и 7 §5: принятая команда, не меняющая целевого состояния, не создаёт
+// Принятая команда, не меняющая целевого состояния, не создаёт
 // ни операций, ни нового периода. last_command_number при этом всё равно
 // двигается — но это уже дело слоя приложения.
 func TestPlanApplyExactRepeatIsNoOp(t *testing.T) {
@@ -146,7 +146,7 @@ func TestPlanApplyExactRepeatIsNoOp(t *testing.T) {
 	}
 }
 
-// Правило 8 §5: renewal истёкшего customer открывает новый период и возвращает
+// Renewal истёкшего customer открывает новый период и возвращает
 // access в PRESENT.
 func TestPlanApplyRenewalOfExpiredCustomer(t *testing.T) {
 	cmd := validCommand()
@@ -201,7 +201,7 @@ func TestPlanApplyRenewalOfExpiredCustomer(t *testing.T) {
 	}
 }
 
-// §4: квота независима на каждой ноде. Оба access с входом NL-1 гаснут вместе, а
+// Квота независима на каждой ноде. Оба access с входом NL-1 гаснут вместе, а
 // DE-1 не затрагивается.
 func TestPlanApplyQuotaLoweredExhaustsSingleNode(t *testing.T) {
 	cmd := validCommand()
@@ -248,7 +248,7 @@ func TestPlanApplyQuotaLoweredExhaustsSingleNode(t *testing.T) {
 	}
 }
 
-// Повышение лимита снимает отметку и разблокирует ноду независимо от других (§5).
+// Повышение лимита снимает отметку и разблокирует ноду независимо от других.
 func TestPlanApplyQuotaRaisedUnblocksNode(t *testing.T) {
 	cmd := validCommand()
 	cmd.ExpiresAt = tFuture
@@ -290,7 +290,7 @@ func TestPlanApplyQuotaRaisedUnblocksNode(t *testing.T) {
 }
 
 // Изменение лимита, не пересекающее порог, отметок не двигает, но и no-op не
-// является: сам лимит периода меняется (правило 7 §5).
+// является: сам лимит периода меняется.
 func TestPlanApplyQuotaChangeWithoutThresholdCrossing(t *testing.T) {
 	cmd := validCommand()
 	cmd.ExpiresAt = tFuture
@@ -324,7 +324,7 @@ func TestPlanApplyQuotaChangeWithoutThresholdCrossing(t *testing.T) {
 	}
 }
 
-// Решение 1: рассогласованный с manifest access Apply не трогает ни в какую
+// Рассогласованный с manifest access Apply не трогает ни в какую
 // сторону. Проверяются оба источника рассогласования.
 func TestPlanApplySkipsAccessesOutOfSyncWithTopology(t *testing.T) {
 	tests := []struct {
@@ -392,7 +392,7 @@ func TestPlanApplySkipsAccessesOutOfSyncWithTopology(t *testing.T) {
 }
 
 // Новая цель, появившаяся пока customer истёк, материализуется сразу ABSENT: у
-// неё нет операции, и её нода не считается затронутой (решение 3.2).
+// неё нет операции, и её нода не считается затронутой.
 func TestPlanApplyCreatesBlockedAccessForExpiredCustomer(t *testing.T) {
 	cmd := validCommand()
 	cmd.ExpiresAt = tPast
@@ -429,7 +429,7 @@ func TestPlanApplyCreatesBlockedAccessForExpiredCustomer(t *testing.T) {
 			plan.TouchedNodes)
 	}
 	// Ноде, добавленной в fleet после открытия периода, строку расхода заводит
-	// materialization job вместе с её access (§13), а не Apply.
+	// materialization job вместе с её access, а не Apply.
 	if len(plan.NodeQuotaInits) != 0 {
 		t.Fatalf("NodeQuotaInits = %v, внутри открытого периода Apply строк расхода не заводит",
 			plan.NodeQuotaInits)
@@ -440,7 +440,7 @@ func TestPlanApplyCreatesBlockedAccessForExpiredCustomer(t *testing.T) {
 }
 
 // Отсутствие открытого периода у существующего customer — нарушение инварианта
-// §11, а не ошибка вызывающего.
+// инварианта, а не ошибка вызывающего.
 func TestPlanApplyRequiresOpenPeriod(t *testing.T) {
 	cmd := validCommand()
 	cmd.ExpiresAt = tFuture
@@ -458,7 +458,7 @@ func TestPlanApplyRequiresOpenPeriod(t *testing.T) {
 	}
 }
 
-// §4, §17: принятый fleet не удаляется и может быть пустым. Customer при этом
+// Принятый fleet не удаляется и может быть пустым. Customer при этом
 // заводится нормально, просто без единого access.
 func TestPlanApplyEmptyFleet(t *testing.T) {
 	cmd := validCommand()

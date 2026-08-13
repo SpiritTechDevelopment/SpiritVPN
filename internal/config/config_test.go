@@ -55,7 +55,7 @@ func mustLoad(t *testing.T, env map[string]string) config.Config {
 	return cfg
 }
 
-// TestLoadAppliesDefaults — умолчания есть только у не-секретов (§14).
+// TestLoadAppliesDefaults — умолчания есть только у не-секретов.
 func TestLoadAppliesDefaults(t *testing.T) {
 	cfg := mustLoad(t, validEnv())
 
@@ -151,7 +151,7 @@ func TestLoadRejectsEmptyRoleLists(t *testing.T) {
 	}
 }
 
-// TestLoadDropsEmptyIdentities — решение 13: пустая идентичность в списке
+// TestLoadDropsEmptyIdentities — пустая идентичность в списке
 // совпала бы с пустым DNS SAN и раздала бы роль любому валидному сертификату.
 func TestLoadDropsEmptyIdentities(t *testing.T) {
 	env := validEnv()
@@ -197,8 +197,8 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 	}
 }
 
-// TestLoadAcceptsKeyFromFile — _FILE приоритетнее прямого значения: §14
-// предпочитает защищённый файл переменной окружения.
+// TestLoadAcceptsKeyFromFile — _FILE приоритетнее прямого значения: защищённый
+// файл предпочтительнее переменной окружения.
 func TestLoadAcceptsKeyFromFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "client_uuid.key")
 	if err := os.WriteFile(path, []byte("from-file:"+keySecret+"\n"), 0o600); err != nil {
@@ -215,7 +215,7 @@ func TestLoadAcceptsKeyFromFile(t *testing.T) {
 	}
 }
 
-// TestConfigNeverPrintsSecrets — §14: конфигурация не выводится при старте.
+// TestConfigNeverPrintsSecrets — конфигурация не выводится при старте.
 // Проверяются оба реальных пути утечки: структурный лог и печать через fmt.
 func TestConfigNeverPrintsSecrets(t *testing.T) {
 	cfg := mustLoad(t, validEnv())

@@ -17,9 +17,9 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 )
 
-// Юнит-тесты воркера учёта трафика. Смысл слоя — порядок фаз: §11.1 требует,
+// Юнит-тесты воркера учёта трафика. Смысл слоя — порядок фаз: порядок фаз требует,
 // чтобы во время RPC не было открытой транзакции, а курсор подтверждался только
-// после durable commit группы (решение 63). Сами начисления, дедуп и порог живут
+// после durable commit группы. Сами начисления, дедуп и порог живут
 // в домене и SQL и проверяются там.
 
 const (
@@ -48,7 +48,7 @@ type fakeUsageRepo struct {
 
 	cursors []nodeagent.UsageCursor
 
-	// bootstrap — последнее записанное значение признака по нодам (§10).
+	// bootstrap — последнее записанное значение признака по нодам.
 	bootstrap map[domain.NodeID]bool
 
 	// Что видит транзакция группы.
@@ -250,7 +250,7 @@ func livingCustomer(repo *fakeUsageRepo) {
 // steps склеивает журнал для сравнения порядка целиком, а не по одному шагу.
 func steps(journal []string) string { return strings.Join(journal, ",") }
 
-// TestPullUsageCallsAgentOutsideTransaction — §11.1 запрещает держать транзакцию
+// TestPullUsageCallsAgentOutsideTransaction — запрещает держать транзакцию
 // открытой во время обращения к агенту.
 //
 // Проверяется позицией в журнале, а не «моком, который бы заметил»: единственный
@@ -291,7 +291,7 @@ func TestPullUsageCallsAgentOutsideTransaction(t *testing.T) {
 }
 
 // TestPullUsageAdvancesCursorAfterCommit — курсор подтверждается ТОЛЬКО после
-// commit группы (решение 63). Обратный порядок означал бы, что упавшая группа
+// commit группы. Обратный порядок означал бы, что упавшая группа
 // уже подтверждена и batch к нам больше не приедет.
 func TestPullUsageAdvancesCursorAfterCommit(t *testing.T) {
 	repo := &fakeUsageRepo{claimed: []*app.ClaimedUsageNode{claimedNode(nodeagent.UsageCursor{})}}
@@ -343,9 +343,9 @@ func TestPullUsageAdvancesCursorAfterCommit(t *testing.T) {
 	}
 }
 
-// TestPullUsageKeepsCursorWhenGroupFails — главная гарантия §12: отказ группы
+// TestPullUsageKeepsCursorWhenGroupFails — главная гарантия учёта: отказ группы
 // оставляет курсор на месте, batch приедет снова, а уже начисленные items
-// схлопнет дедуп (решение 63).
+// схлопнет дедуп.
 //
 // Тест непустой в обе стороны: сдвинь подтверждение курсора выше обработки
 // группы — и он упадёт на отсутствующей ошибке и на лишнем подтверждении.
@@ -383,7 +383,7 @@ func TestPullUsageKeepsCursorWhenGroupFails(t *testing.T) {
 	}
 }
 
-// TestPullUsageSkipsAcknowledgedBatch — монотонность (§12, шаг 1): уже
+// TestPullUsageSkipsAcknowledgedBatch — монотонность: уже
 // подтверждённый batch не должен открывать транзакцию вовсе.
 func TestPullUsageSkipsAcknowledgedBatch(t *testing.T) {
 	acknowledged := nodeagent.UsageCursor{SpoolID: usageSpoolID, Sequence: 5}
@@ -417,7 +417,7 @@ func TestPullUsageSkipsAcknowledgedBatch(t *testing.T) {
 }
 
 // TestPullUsageResetsCursorOnNewSpool — новый spool_id нумеруется с нуля, и
-// сравнивать его sequence с прежним acked_sequence нельзя (решение 64).
+// сравнивать его sequence с прежним acked_sequence нельзя.
 //
 // Без сброса batch №1 нового спула оказался бы «уже подтверждённым» относительно
 // позиции 5 старого и был бы молча потерян.
@@ -511,7 +511,7 @@ func TestPullUsageForeignNodeIsQuarantined(t *testing.T) {
 	}
 }
 
-// TestPullUsageUnavailableNodeIsProgress — §16: недоступность ноды не меняет ни
+// TestPullUsageUnavailableNodeIsProgress — недоступность ноды не меняет ни
 // состава fleet, ни desired state. Шаг при этом считается выполненным: темп
 // повтора задаёт MinInterval, а не цикл воркера.
 func TestPullUsageUnavailableNodeIsProgress(t *testing.T) {
@@ -560,7 +560,7 @@ func TestPullUsageIdleWhenNothingToPoll(t *testing.T) {
 }
 
 // TestPullUsageCapsBatchesPerPull — потолок держит шаг коротким: batch содержит
-// до 5 000 items (§12), и неограниченный ответ обрабатывался бы дольше
+// до 5 000 items, и неограниченный ответ обрабатывался бы дольше
 // собственного lease.
 func TestPullUsageCapsBatchesPerPull(t *testing.T) {
 	repo := &fakeUsageRepo{claimed: []*app.ClaimedUsageNode{claimedNode(nodeagent.UsageCursor{})}}

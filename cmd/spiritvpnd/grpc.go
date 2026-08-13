@@ -28,17 +28,17 @@ type applyUseCase interface {
 	Execute(ctx context.Context, cmd app.ApplyCustomerCommand) error
 }
 
-// linksUseCase — то же самое для read-пути §5.
+// linksUseCase — то же самое для read-пути.
 type linksUseCase interface {
 	Execute(ctx context.Context, customerID string) ([]app.CustomerAccessLink, error)
 }
 
-// manifestUseCase — приём infrastructure manifest (§6).
+// manifestUseCase — приём infrastructure manifest.
 type manifestUseCase interface {
 	Execute(ctx context.Context, cmd app.ApplyManifestCommand) (app.ApplyManifestResult, error)
 }
 
-// newGRPCServer собирает внешнюю поверхность §5 поверх mTLS §14.
+// newGRPCServer собирает внешнюю поверхность поверх mTLS.
 func newGRPCServer(
 	cfg config.GRPC,
 	logger *slog.Logger,
@@ -81,9 +81,9 @@ func newGRPCServer(
 	return server, nil
 }
 
-// transportCredentials собирает mTLS (§14).
+// transportCredentials собирает mTLS.
 //
-// Insecure-режима нет и не будет (решение 15). Второй путь исполнения, в котором
+// Insecure-режима нет и не будет. Второй путь исполнения, в котором
 // авторизация не выполняется, означал бы, что вся локальная разработка идёт
 // мимо неё, а ошибки в сопоставлении идентичностей и ролей всплывают только в
 // production. Локально те же самые сертификаты выпускает `make dev-certs`.

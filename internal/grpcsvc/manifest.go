@@ -14,7 +14,7 @@ type applyFleetManifest interface {
 	Execute(ctx context.Context, cmd app.ApplyManifestCommand) (app.ApplyManifestResult, error)
 }
 
-// ManifestServer реализует ManifestService (§6).
+// ManifestServer реализует ManifestService.
 type ManifestServer struct {
 	manifestv1.UnimplementedManifestServiceServer
 
@@ -26,10 +26,10 @@ func NewManifestServer(apply applyFleetManifest) *ManifestServer {
 	return &ManifestServer{apply: apply}
 }
 
-// ApplyFleetManifest принимает полный versioned snapshot топологии (§6).
+// ApplyFleetManifest принимает полный versioned snapshot топологии.
 //
 // Идентичность вызывающего и request_id берутся здесь, а не внутри use case:
-// про mTLS и метадату gRPC знает только транспорт, а аудиту §15 нужны оба.
+// про mTLS и метадату gRPC знает только транспорт, а аудиту нужны оба.
 func (s *ManifestServer) ApplyFleetManifest(
 	ctx context.Context,
 	req *manifestv1.ApplyFleetManifestRequest,
@@ -65,10 +65,10 @@ func (s *ManifestServer) ApplyFleetManifest(
 // Здесь и только здесь revision сужается с uint64 до int64. Колонка
 // manifest_revisions.revision объявлена как bigint, и без проверки значение выше
 // 2^63-1 доехало бы до адаптера, где превратилось бы в отрицательное и навсегда
-// сломало монотонность (§6). Тот же приём, что и с секундной точностью
-// expires_at: сужение под тип колонки закрепляется на границе (решение 11).
+// сломало монотонность. Тот же приём, что и с секундной точностью
+// expires_at: сужение под тип колонки закрепляется на границе.
 //
-// Остальные правила §6 не дублируются — они в domain.ValidateManifest.
+// Остальные правила манифеста не дублируются — они в domain.ValidateManifest.
 func manifestSnapshotFrom(req *manifestv1.ApplyFleetManifestRequest) (domain.ManifestSnapshot, error) {
 	if req.GetRevision() > math.MaxInt64 {
 		return domain.ManifestSnapshot{}, &domain.ManifestValidationError{
@@ -95,7 +95,7 @@ func manifestSnapshotFrom(req *manifestv1.ApplyFleetManifestRequest) (domain.Man
 }
 
 // manifestNodeFrom переносит ноду. display_name в манифесте лежит рядом с
-// node_id, а хранится и читается вместе с публичными параметрами (решения 16, 19);
+// node_id, а хранится и читается вместе с публичными параметрами;
 // перекладка происходит здесь.
 //
 // Порт сужается с uint32 до int без проверки: диапазон 1..65535 проверяет

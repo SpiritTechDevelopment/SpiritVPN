@@ -28,7 +28,7 @@ func expiryAccess(node NodeID, state DesiredState) Access {
 	}
 }
 
-// TestPlanExpiryTurnsPresentAccessesAbsent — §13: воркер переводит access в
+// TestPlanExpiryTurnsPresentAccessesAbsent — воркер переводит access в
 // ABSENT и создаёт Remove в одной транзакции.
 func TestPlanExpiryTurnsPresentAccessesAbsent(t *testing.T) {
 	accesses := []Access{
@@ -54,11 +54,11 @@ func TestPlanExpiryTurnsPresentAccessesAbsent(t *testing.T) {
 	}
 }
 
-// TestPlanExpiryBumpsEachNodeOnce — §11.1: транзакция увеличивает
+// TestPlanExpiryBumpsEachNodeOnce — транзакция увеличивает
 // desired_revision ноды ровно один раз независимо от числа затронутых access.
 func TestPlanExpiryBumpsEachNodeOnce(t *testing.T) {
 	// Один FREEDOM и два BRIDGE с одной и той же входной нодой — так выглядит
-	// customer на входной ноде двух связей (§4).
+	// customer на входной ноде двух связей.
 	accesses := []Access{
 		expiryAccess("node-a", DesiredStatePresent),
 		expiryAccess("node-a", DesiredStatePresent),
@@ -74,13 +74,13 @@ func TestPlanExpiryBumpsEachNodeOnce(t *testing.T) {
 	if len(plan.TouchedNodes) != 2 {
 		t.Fatalf("затронутых нод %d, ожидалось 2: %v", len(plan.TouchedNodes), plan.TouchedNodes)
 	}
-	// Порядок node_id — это порядок блокировок §11.1.
+	// Порядок node_id — это нормативный порядок блокировок.
 	if plan.TouchedNodes[0] != "node-a" || plan.TouchedNodes[1] != "node-b" {
 		t.Errorf("ноды не отсортированы: %v", plan.TouchedNodes)
 	}
 }
 
-// TestPlanExpiryIsIdempotent — §13: повторный проход не создаёт вторых Remove.
+// TestPlanExpiryIsIdempotent — повторный проход не создаёт вторых Remove.
 // На этом же держится то, что воркер сообщает о простое, а не крутит истёкших
 // customer вечно.
 func TestPlanExpiryIsIdempotent(t *testing.T) {
@@ -103,7 +103,7 @@ func TestPlanExpiryIsIdempotent(t *testing.T) {
 	}
 }
 
-// TestPlanExpirySparesRenewedCustomer — §11.1: expiry после блокировки корневой
+// TestPlanExpirySparesRenewedCustomer — expiry после блокировки корневой
 // строки перечитывает expires_at, поэтому уже закоммиченный renewal не отменяется.
 func TestPlanExpirySparesRenewedCustomer(t *testing.T) {
 	renewed := expiredEntitlement()
@@ -118,7 +118,7 @@ func TestPlanExpirySparesRenewedCustomer(t *testing.T) {
 	}
 }
 
-// TestPlanExpiryAtExactSecond — §4: доступ существует, пока current_time <
+// TestPlanExpiryAtExactSecond — доступ существует, пока current_time <
 // expires_at, поэтому ровно в момент истечения он уже снимается.
 func TestPlanExpiryAtExactSecond(t *testing.T) {
 	entitlement := expiredEntitlement()

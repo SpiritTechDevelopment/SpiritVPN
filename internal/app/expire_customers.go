@@ -8,14 +8,14 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
-// ExpireCustomers — воркер истечения срока (§13).
+// ExpireCustomers — воркер истечения срока.
 //
 // Единственный, кто снимает доступ по времени: команды ручного enable/disable в v1
-// нет, а `GetCustomerAccessLinks` лишь перестаёт отдавать URI (§4, §5). Без этого
+// нет, а `GetCustomerAccessLinks` лишь перестаёт отдавать URI. Без этого
 // воркера Xray-юзер истёкшего customer остался бы на ноде навсегда.
 //
 // Сетевых вызовов здесь нет: операции кладутся в outbox, доставляет их
-// DispatchOperations (§9).
+// DispatchOperations.
 type ExpireCustomers struct {
 	Repo ExpiryRepository
 	IDs  IDs
@@ -28,7 +28,7 @@ func NewExpireCustomers(repo ExpiryRepository, ids IDs) *ExpireCustomers {
 
 // ProcessNext гасит доступ ОДНОГО истёкшего customer.
 //
-// Шаг маленький по тем же соображениям, что и у материализации: §11.1 «сначала row
+// Шаг маленький по тем же соображениям, что и у материализации: «сначала row
 // lock корневой строки» выполняется тривиально, и не нужно упорядочивать блокировки
 // нескольких customer внутри одной транзакции.
 //
@@ -54,8 +54,8 @@ func (uc *ExpireCustomers) ProcessNext(ctx context.Context) (progressed bool, er
 		}
 
 		// expires_at берётся из строки, прочитанной ПОД locком, и план строится от
-		// него: §11.1 требует этой перепроверки, чтобы expiry не снял доступ после
-		// уже закоммиченного renewal (решение 57).
+		// него: перепроверка нужна, чтобы expiry не снял доступ после
+		// уже закоммиченного renewal.
 		plan := domain.PlanExpiry(now, due.Entitlement, accesses)
 		if plan.IsNoOp() {
 			// Продлённый customer. Шаг засчитывается прогрессом: работа была
@@ -106,14 +106,14 @@ func (uc *ExpireCustomers) materializeExpiryPlan(
 	return materialized, nil
 }
 
-// expiryAudit — запись журнала о снятии доступа (§15).
+// expiryAudit — запись журнала о снятии доступа.
 //
 // Причина TIME_EXPIRED выводится из expires_at и отдельной строкой нигде не
-// хранится (§13), поэтому журнал — единственное место, где момент срабатывания
+// хранится, поэтому журнал — единственное место, где момент срабатывания
 // остаётся видимым постфактум.
 //
 // Метаданные санитизированы: ни accounting ID, ни client_uuid, только счётчики.
-// customer_id допустим — §15 разрешает его именно в audit records.
+// customer_id допустим — разрешает его именно в audit records.
 func expiryAudit(due *ExpiredCustomer, plan domain.ExpiryPlan) AuditEvent {
 	return AuditEvent{
 		ActorType:  auditActorTypeSystem,

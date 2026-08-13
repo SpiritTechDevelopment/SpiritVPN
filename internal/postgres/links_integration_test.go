@@ -33,7 +33,7 @@ func newLinksFixture(t *testing.T) (*app.ApplyCustomerAccess, *app.GetCustomerAc
 }
 
 // seedNodePublic заполняет public_config ноды: seedTopology кладёт туда пустой
-// объект, а без параметров §6 ссылка не собирается (решение 18, 19).
+// объект, а без параметров ноды ссылка не собирается.
 func seedNodePublic(t *testing.T, pool *pgxpool.Pool, nodeID, address, displayName string) {
 	t.Helper()
 
@@ -100,7 +100,7 @@ func getLinks(t *testing.T, uc *app.GetCustomerAccessLinks) []app.CustomerAccess
 	return links
 }
 
-// TestIntegrationLinksUnknownCustomer — §5: неизвестный customer_id даёт
+// TestIntegrationLinksUnknownCustomer — неизвестный customer_id даёт
 // NOT_FOUND, и отличить его от customer без ссылок умеет только отдельный запрос
 // к корневой строке.
 func TestIntegrationLinksUnknownCustomer(t *testing.T) {
@@ -113,7 +113,7 @@ func TestIntegrationLinksUnknownCustomer(t *testing.T) {
 }
 
 // TestIntegrationLinksPendingBeforeDispatch — фактическое состояние системы без
-// dispatcher: ссылки существуют, но ни одной URI ещё нет (§8: apply_state обязан
+// dispatcher: ссылки существуют, но ни одной URI ещё нет (apply_state обязан
 // быть APPLIED).
 func TestIntegrationLinksPendingBeforeDispatch(t *testing.T) {
 	uc, _ := seedLinksFleet(t)
@@ -133,7 +133,7 @@ func TestIntegrationLinksPendingBeforeDispatch(t *testing.T) {
 }
 
 // TestIntegrationLinksReadyAfterDispatch — весь путь целиком: sealed client_uuid
-// из базы, параметры ноды из public_config, порядок ответа §5 и правило §8 о
+// из базы, параметры ноды из public_config, порядок ответа и правило о
 // том, чьё display_name уходит во фрагмент.
 func TestIntegrationLinksReadyAfterDispatch(t *testing.T) {
 	uc, pool := seedLinksFleet(t)
@@ -144,7 +144,7 @@ func TestIntegrationLinksReadyAfterDispatch(t *testing.T) {
 		t.Fatalf("ссылок %d, ожидалось 3", len(links))
 	}
 
-	// Порядок §5: (kind, logical_target_key, access_id). BRIDGE впереди FREEDOM.
+	// Порядок ответа: (kind, logical_target_key, access_id). BRIDGE впереди FREEDOM.
 	wantKinds := []domain.AccessKind{domain.AccessKindBridge, domain.AccessKindFreedom, domain.AccessKindFreedom}
 	wantHosts := []string{"a.example.com:443", "a.example.com:443", "b.example.com:443"}
 	// Фрагмент BRIDGE — имя связи (seedTopology кладёт туда routing_key),
@@ -177,13 +177,13 @@ func TestIntegrationLinksReadyAfterDispatch(t *testing.T) {
 		seenUUIDs[parsed.User.Username()] = struct{}{}
 	}
 
-	// У каждого access собственный client_uuid (§4).
+	// У каждого access собственный client_uuid.
 	if len(seenUUIDs) != 3 {
 		t.Fatalf("различных client_uuid %d, ожидалось 3", len(seenUUIDs))
 	}
 }
 
-// TestIntegrationLinksBlockedByExpiry — §5: истёкший срок блокирует customer
+// TestIntegrationLinksBlockedByExpiry — истёкший срок блокирует customer
 // целиком, независимо от состояния доставки.
 func TestIntegrationLinksBlockedByExpiry(t *testing.T) {
 	uc, pool := seedLinksFleet(t)
@@ -202,11 +202,11 @@ func TestIntegrationLinksBlockedByExpiry(t *testing.T) {
 	}
 }
 
-// TestIntegrationLinksBlockedByQuotaPerNode — §4: квота применяется на каждой
+// TestIntegrationLinksBlockedByQuotaPerNode — квота применяется на каждой
 // ноде независимо, поэтому исчерпание на node-a не трогает ссылку на node-b.
 //
 // FREEDOM node-a и BRIDGE a-to-b обе стоят на node-a, поэтому блокируются вместе:
-// трафик всех access customer на одной ноде суммируется в один период (§4).
+// трафик всех access customer на одной ноде суммируется в один период.
 func TestIntegrationLinksBlockedByQuotaPerNode(t *testing.T) {
 	uc, pool := seedLinksFleet(t)
 	dispatchAll(t, pool)
@@ -221,7 +221,7 @@ func TestIntegrationLinksBlockedByQuotaPerNode(t *testing.T) {
 		State:  domain.LinkStateBlocked,
 		Reason: domain.BlockReasonTrafficQuotaExhausted,
 	}
-	// Порядок §5: BRIDGE a-to-b, FREEDOM node-a, FREEDOM node-b.
+	// Порядок ответа: BRIDGE a-to-b, FREEDOM node-a, FREEDOM node-b.
 	if links[0].Status != blockedByQuota {
 		t.Errorf("BRIDGE на node-a: %+v, ожидалось %+v", links[0].Status, blockedByQuota)
 	}
@@ -233,7 +233,7 @@ func TestIntegrationLinksBlockedByQuotaPerNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationLinksExpiryBeatsQuota — §5: при одновременно применимых
+// TestIntegrationLinksExpiryBeatsQuota — при одновременно применимых
 // причинах наружу уходит TIME_EXPIRED.
 func TestIntegrationLinksExpiryBeatsQuota(t *testing.T) {
 	uc, pool := seedLinksFleet(t)
@@ -249,7 +249,7 @@ func TestIntegrationLinksExpiryBeatsQuota(t *testing.T) {
 	}
 }
 
-// TestIntegrationLinksExcludesRetired — §5: historical access наружу не отдаётся.
+// TestIntegrationLinksExcludesRetired — historical access наружу не отдаётся.
 func TestIntegrationLinksExcludesRetired(t *testing.T) {
 	uc, pool := seedLinksFleet(t)
 	exec(t, pool, `UPDATE vpn_accesses SET retired_at = now()
@@ -266,11 +266,10 @@ func TestIntegrationLinksExcludesRetired(t *testing.T) {
 	}
 }
 
-// TestIntegrationLinksExcludesTargetsMissingFromManifest — решение 17.
-//
+// TestIntegrationLinksExcludesTargetsMissingFromManifest — //
 // Проверяется окно между commit манифеста и отработкой materialization job:
 // цель уже исчезла из текущей проекции, а retired_at ещё не проставлен. Такой
-// access не должен отдаваться, потому что §8 запрещает по нему URI, а показать
+// access не должен отдаваться, потому что URI по нему запрещён, а показать
 // его нечем.
 func TestIntegrationLinksExcludesTargetsMissingFromManifest(t *testing.T) {
 	tests := []struct {
@@ -289,7 +288,7 @@ func TestIntegrationLinksExcludesTargetsMissingFromManifest(t *testing.T) {
 			count: 2,
 		},
 		{
-			// Глобально удалённая нода: backend прекращает выдавать её ссылки (§6).
+			// Глобально удалённая нода: backend прекращает выдавать её ссылки.
 			// Вместе с FREEDOM уходит и BRIDGE, стоящий на ней как на входной.
 			name:  "нода удалена из manifest глобально",
 			drop:  `UPDATE vpn_nodes SET current = false WHERE node_id = 'node-a'`,
@@ -314,7 +313,7 @@ func TestIntegrationLinksExcludesTargetsMissingFromManifest(t *testing.T) {
 	}
 }
 
-// TestIntegrationLinksUnusableNodeConfigDegrades — решение 18: пустой
+// TestIntegrationLinksUnusableNodeConfigDegrades — пустой
 // public_config ломает свою ссылку, а не весь ответ.
 func TestIntegrationLinksUnusableNodeConfigDegrades(t *testing.T) {
 	uc, pool := seedLinksFleet(t)
@@ -325,7 +324,7 @@ func TestIntegrationLinksUnusableNodeConfigDegrades(t *testing.T) {
 	if len(links) != 3 {
 		t.Fatalf("ссылок %d, ожидалось 3", len(links))
 	}
-	// Порядок §5: BRIDGE a-to-b, FREEDOM node-a, FREEDOM node-b.
+	// Порядок ответа: BRIDGE a-to-b, FREEDOM node-a, FREEDOM node-b.
 	if links[2].Status.State != domain.LinkStateFailed {
 		t.Errorf("FREEDOM node-b: %s, ожидалось FAILED", links[2].Status.State)
 	}
@@ -336,7 +335,7 @@ func TestIntegrationLinksUnusableNodeConfigDegrades(t *testing.T) {
 	}
 }
 
-// TestIntegrationLinksEmptyFleet — fleet может временно не содержать нод (§4).
+// TestIntegrationLinksEmptyFleet — fleet может временно не содержать нод.
 // Пустой список — не NOT_FOUND: customer существует.
 func TestIntegrationLinksEmptyFleet(t *testing.T) {
 	apply, uc, pool := newLinksFixture(t)

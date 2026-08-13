@@ -1,13 +1,13 @@
-// Package grpcsvc — транспортный адаптер внешнего gRPC API (§5).
+// Package grpcsvc — транспортный адаптер внешнего gRPC API.
 //
 // Пакет намеренно тонкий: он переводит protobuf-сообщения в доменные команды,
-// вызывает use case и отображает ошибки в gRPC-статусы. Правил §5 здесь нет —
+// вызывает use case и отображает ошибки в gRPC-статусы. Правил валидации здесь нет —
 // валидация живёт в domain.ValidateApplyCommand, порядок команд и транзакция в
 // app.ApplyCustomerAccess. Дублировать их на транспорте нельзя: два источника
 // одного правила со временем расходятся.
 //
-// Авторизация (§14: mTLS и роли customer-access-writer / customer-access-reader)
-// хендлерам не видна — её выполняет interceptor до входа в метод.
+// Авторизация — mTLS и роли customer-access-writer / customer-access-reader —
+// хендлерам не видна: её выполняет interceptor до входа в метод.
 package grpcsvc
 
 import (
@@ -23,9 +23,9 @@ import (
 	customerv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1"
 )
 
-// Запрет кеширования ответа с URI (§5, §8). gRPC не знает про HTTP-семантику,
+// Запрет кеширования ответа с URI. gRPC не знает про HTTP-семантику,
 // поэтому это обычная метадата ответа — тот самый «эквивалент Cache-Control:
-// no-store на поддерживающем metadata transport», о котором говорит §5. Ключи
+// no-store на поддерживающем metadata transport». Ключи
 // метадаты gRPC регистронезависимы и хранятся в нижнем регистре.
 const (
 	headerCacheControl  = "cache-control"
@@ -46,7 +46,7 @@ type getCustomerAccessLinks interface {
 	Execute(ctx context.Context, customerID string) ([]app.CustomerAccessLink, error)
 }
 
-// CustomerAccessServer реализует CustomerAccessService (§5).
+// CustomerAccessServer реализует CustomerAccessService.
 type CustomerAccessServer struct {
 	// Встраивание по значению обязательно: сгенерированный
 	// RegisterCustomerAccessServiceServer паникует на встраивании указателем.
@@ -61,17 +61,17 @@ func NewCustomerAccessServer(apply applyCustomerAccess, links getCustomerAccessL
 	return &CustomerAccessServer{apply: apply, links: links}
 }
 
-// ApplyCustomerAccess принимает одну команду product-сервиса (§5).
+// ApplyCustomerAccess принимает одну команду product-сервиса.
 //
 // Пустой ответ означает, что desired state и durable agent operations
 // зафиксированы в PostgreSQL, но НЕ то, что агенты их уже применили. Он же
-// возвращается на поглощённый реордер или повтор команды (§5, правило 2):
+// возвращается на поглощённый реордер или повтор команды:
 // снаружи принятие и идемпотентный no-op неразличимы.
 func (s *CustomerAccessServer) ApplyCustomerAccess(
 	ctx context.Context,
 	req *customerv1.ApplyCustomerAccessRequest,
 ) (*customerv1.ApplyCustomerAccessResponse, error) {
-	// Идентичность вызывающего и request_id уезжают в audit_events (§15). Роль
+	// Идентичность вызывающего и request_id уезжают в audit_events. Роль
 	// уже проверена interceptor'ом; здесь берётся сама идентичность, потому что
 	// журналу нужен конкретный вызывающий, а не его класс.
 	if err := s.apply.Execute(ctx, app.ApplyCustomerCommand{
@@ -85,7 +85,7 @@ func (s *CustomerAccessServer) ApplyCustomerAccess(
 	return &customerv1.ApplyCustomerAccessResponse{}, nil
 }
 
-// GetCustomerAccessLinks возвращает все текущие ссылки customer (§5).
+// GetCustomerAccessLinks возвращает все текущие ссылки customer.
 //
 // Ответ не постраничный и не кешируемый. Частично готовый fleet — штатный исход:
 // готовые URI отдаются вместе с состояниями остальных access, retired наружу не
@@ -94,9 +94,9 @@ func (s *CustomerAccessServer) GetCustomerAccessLinks(
 	ctx context.Context,
 	req *customerv1.GetCustomerAccessLinksRequest,
 ) (*customerv1.GetCustomerAccessLinksResponse, error) {
-	// Заголовок ставится до вызова use case, а не после: §5 требует его на любом
-	// ответе с URI, и привязывать его к успеху значило бы полагаться на то, что
-	// между проверкой и записью ничего не изменится.
+	// Заголовок ставится до вызова use case, а не после: он нужен на любом ответе
+	// с URI, и привязка к успеху полагалась бы на то, что между проверкой и
+	// записью ничего не изменится.
 	if err := grpc.SetHeader(ctx, metadata.Pairs(headerCacheControl, cacheControlNoStore)); err != nil {
 		return nil, statusFromError(ctx, err)
 	}
@@ -120,7 +120,7 @@ func (s *CustomerAccessServer) GetCustomerAccessLinks(
 	return response, nil
 }
 
-// Словари доменных значений в протокольные энумы (§5).
+// Словари доменных значений в протокольные энумы.
 //
 // Именно словари, а не switch с default: промах по ключу обязан стать ошибкой.
 // Значение вне словаря означает, что домен и proto разошлись, и молчаливый
@@ -147,7 +147,7 @@ var (
 // linkTo переводит одну ссылку в protobuf.
 //
 // block_reason и uri — optional-поля, и их отсутствие является частью контракта:
-// причина присутствует только у BLOCKED, URI — только у READY (§5). Поэтому оба
+// причина присутствует только у BLOCKED, URI — только у READY. Поэтому оба
 // заполняются по состоянию, а не по непустоте значения.
 func linkTo(link app.CustomerAccessLink) (*customerv1.CustomerAccessLink, error) {
 	kind, ok := accessKinds[link.Kind]
@@ -179,12 +179,12 @@ func linkTo(link app.CustomerAccessLink) (*customerv1.CustomerAccessLink, error)
 
 // applyCommandFrom переводит запрос в доменную команду.
 //
-// Здесь и только здесь закрепляется секундная точность expires_at (решение 11).
-// Домен её не проверяет: §5 перечисляет правила валидации явно, и точности среди
-// них нет — её гарантирует тип поля expires_at_epoch_sec. Но timestamptz хранит
+// Здесь и только здесь закрепляется секундная точность expires_at.
+// Домен её не проверяет: среди правил валидации точности нет, её гарантирует
+// тип поля expires_at_epoch_sec. Но timestamptz хранит
 // микросекунды, поэтому время с наносекундами прочиталось бы из базы строго
 // меньшим, и точный повтор команды классифицировался бы как renewal со сбросом
-// счётчиков трафика (§5, правило 8).
+// счётчиков трафика.
 func applyCommandFrom(req *customerv1.ApplyCustomerAccessRequest) domain.ApplyCommand {
 	return domain.ApplyCommand{
 		CustomerID:      req.GetCustomerId(),

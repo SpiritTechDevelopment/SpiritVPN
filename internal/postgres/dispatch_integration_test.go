@@ -18,7 +18,7 @@ import (
 // SKIP LOCKED, гейт «одна операция на ноду», повторная проверка desired_version и
 // сборка протухших lease.
 //
-// Настоящий gRPC здесь не поднимается (решение 53): транспорт закрыт юнит-тестами
+// Настоящий gRPC здесь не поднимается: транспорт закрыт юнит-тестами
 // пакета nodeagent, а «потерянный ответ» и «нода недоступна» скриптуются стабом в
 // одну строку — с живым сервером их пришлось бы подстраивать таймингом.
 
@@ -160,7 +160,7 @@ func drainDispatch(t *testing.T, uc *app.DispatchOperations) int {
 	return steps
 }
 
-// TestIntegrationDispatchDeliversAndMakesLinkReady — сквозной путь §9: операция
+// TestIntegrationDispatchDeliversAndMakesLinkReady — сквозной путь: операция
 // доезжает до агента, apply_state становится APPLIED, и ссылка впервые отдаётся
 // как READY без ручной правки состояния.
 func TestIntegrationDispatchDeliversAndMakesLinkReady(t *testing.T) {
@@ -196,7 +196,7 @@ func TestIntegrationDispatchDeliversAndMakesLinkReady(t *testing.T) {
 		t.Errorf("access не в APPLIED: %d", got)
 	}
 
-	// Payload собран из строки access: egress_key связи уехал дословно (§6, §9).
+	// Payload собран из строки access: egress_key связи уехал дословно.
 	var bridgeEgress bool
 	for _, user := range stack.agent.present {
 		if user.EgressKey == "de-exit" {
@@ -225,9 +225,9 @@ func TestIntegrationDispatchDeliversAndMakesLinkReady(t *testing.T) {
 	}
 }
 
-// TestIntegrationDispatchOneInFlightPerNode — §9: одновременно на одну ноду
+// TestIntegrationDispatchOneInFlightPerNode — одновременно на одну ноду
 // уходит не более одной mutating operation. Гейт держится в SQL, а не числом
-// горутин (решение 39).
+// горутин.
 func TestIntegrationDispatchOneInFlightPerNode(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
 	seedDispatchQueue(t, stack)
@@ -267,7 +267,7 @@ func TestIntegrationDispatchOneInFlightPerNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationDispatchRefusesSecondInFlightOnNode — §9: инвариант «одна
+// TestIntegrationDispatchRefusesSecondInFlightOnNode — инвариант «одна
 // операция на ноду» держится структурно, а не только гейтом в запросе.
 //
 // Гейт читает committed-снимок, поэтому два воркера, взявшие в один момент разные
@@ -342,7 +342,7 @@ func TestIntegrationDispatchRefusesSecondInFlightOnNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationDispatchRetriesUnavailableAgent — §9: UNAVAILABLE ретраится с
+// TestIntegrationDispatchRetriesUnavailableAgent — UNAVAILABLE ретраится с
 // backoff, а не гасит access навсегда.
 func TestIntegrationDispatchRetriesUnavailableAgent(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
@@ -362,7 +362,7 @@ func TestIntegrationDispatchRetriesUnavailableAgent(t *testing.T) {
 		`SELECT count(*) FROM agent_operations WHERE status = 'RETRY_WAIT'`); got != 1 {
 		t.Fatalf("операций в RETRY_WAIT %d, ожидалась 1", got)
 	}
-	// attempt_count увеличен взятием lease (решение 48), jitter нулевой: первая
+	// attempt_count увеличен взятием lease, jitter нулевой: первая
 	// пауза — нижняя половина от двух секунд.
 	if got := scalar[int32](t, stack.pool,
 		`SELECT attempt_count FROM agent_operations WHERE status = 'RETRY_WAIT'`); got != 1 {
@@ -397,7 +397,7 @@ func TestIntegrationDispatchRetriesUnavailableAgent(t *testing.T) {
 	}
 }
 
-// TestIntegrationDispatchPermanentIsTerminal — §9: permanent остаётся в terminal
+// TestIntegrationDispatchPermanentIsTerminal — permanent остаётся в terminal
 // failed state и не повторяется.
 func TestIntegrationDispatchPermanentIsTerminal(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
@@ -430,7 +430,7 @@ func TestIntegrationDispatchPermanentIsTerminal(t *testing.T) {
 	}
 }
 
-// TestIntegrationDispatchLostResponseIsSafe — §16: потеря ответа после применения
+// TestIntegrationDispatchLostResponseIsSafe — потеря ответа после применения
 // безопасна, потому что повтор той же операции идемпотентен.
 func TestIntegrationDispatchLostResponseIsSafe(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
@@ -451,7 +451,7 @@ func TestIntegrationDispatchLostResponseIsSafe(t *testing.T) {
 		`SELECT operation_id FROM agent_operations WHERE status = 'RETRY_WAIT'`)
 
 	// Пауза прошла. Повтор идёт ТОЙ ЖЕ операцией: operation_id стабилен между
-	// попытками, и агент опознаёт повтор по нему (§9, решение 38).
+	// попытками, и агент опознаёт повтор по нему.
 	exec(t, stack.pool,
 		`UPDATE agent_operations SET next_attempt_at = now() WHERE operation_id = $1`, operationID)
 
@@ -476,9 +476,9 @@ func TestIntegrationDispatchLostResponseIsSafe(t *testing.T) {
 	}
 }
 
-// TestIntegrationDispatchStaleResultDoesNotOverwrite — §11.1: результат операции,
+// TestIntegrationDispatchStaleResultDoesNotOverwrite — результат операции,
 // чья desired_version устарела ПОКА ШЁЛ RPC, не меняет apply_state актуальной
-// версии, а сама операция становится SUPERSEDED (решение 47).
+// версии, а сама операция становится SUPERSEDED.
 func TestIntegrationDispatchStaleResultDoesNotOverwrite(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
 	seedDispatchQueue(t, stack)
@@ -512,7 +512,7 @@ func TestIntegrationDispatchStaleResultDoesNotOverwrite(t *testing.T) {
 	}
 }
 
-// TestIntegrationDispatchSkipsSupersededBeforeRPC — §11.1: устаревшая операция не
+// TestIntegrationDispatchSkipsSupersededBeforeRPC — устаревшая операция не
 // уезжает агенту вовсе и снимается с очереди как SUPERSEDED.
 func TestIntegrationDispatchSkipsSupersededBeforeRPC(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
@@ -543,8 +543,8 @@ func TestIntegrationDispatchSkipsSupersededBeforeRPC(t *testing.T) {
 	}
 }
 
-// TestIntegrationDispatchReapsExpiredLease — §9: после истечения lease устаревшая
-// операция становится SUPERSEDED, актуальная возвращается в очередь (решение 49).
+// TestIntegrationDispatchReapsExpiredLease — после истечения lease устаревшая
+// операция становится SUPERSEDED, актуальная возвращается в очередь.
 func TestIntegrationDispatchReapsExpiredLease(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
 	seedDispatchQueue(t, stack)
@@ -606,7 +606,7 @@ func TestIntegrationDispatchReapsExpiredLease(t *testing.T) {
 
 // TestIntegrationDispatchLoadsEndpointFromManifest — payload собирается из
 // АКТУАЛЬНОЙ строки ноды, а испорченный agent_config даёт нулевой endpoint,
-// который отвергнет уже клиент агента (§9, решение 50).
+// который отвергнет уже клиент агента.
 //
 // Классификацию этого исхода проверяют юнит-тесты nodeagent: здесь важно ровно то,
 // за что отвечает SQL-слой, — что endpoint читается из колонки и что битый jsonb не
@@ -658,7 +658,7 @@ func TestIntegrationDispatchLoadsEndpointFromManifest(t *testing.T) {
 	}
 }
 
-// TestIntegrationDispatchAbsentCarriesNoCredential — §9: удаление матчится по
+// TestIntegrationDispatchAbsentCarriesNoCredential — удаление матчится по
 // accounting_id, и credential для него из базы даже не читается.
 func TestIntegrationDispatchAbsentCarriesNoCredential(t *testing.T) {
 	stack := newDispatchStack(t, time.Minute)
@@ -690,14 +690,14 @@ func TestIntegrationDispatchAbsentCarriesNoCredential(t *testing.T) {
 	}
 }
 
-// TestIntegrationPartialFleetReadiness — §18: fleet, где часть нод отвечает, а
+// TestIntegrationPartialFleetReadiness — fleet, где часть нод отвечает, а
 // часть нет.
 //
 // Стек берётся usage'овый: он единственный собирает манифест, материализацию,
 // доставку и ссылки поверх одного пула, а проверяется здесь именно то, что
 // видит customer после частично удавшейся доставки.
 //
-// Утверждение §16 и §5 вместе: недоступность ноды не меняет ни desired state, ни
+// Утверждение: недоступность ноды не меняет ни desired state, ни
 // состав fleet, а готовые ссылки отдаются, не дожидаясь неготовых. Обратное —
 // «пока не доставили всем, не показываем никому» — превратило бы одну упавшую
 // ноду в полную потерю сервиса для всех customer этого fleet.
@@ -738,7 +738,7 @@ func TestIntegrationPartialFleetReadiness(t *testing.T) {
 			}
 		case domain.LinkStatePending:
 			pending++
-			// §5: у недоставленной ссылки URI нет и быть не может — она бы не
+			// У недоставленной ссылки URI нет и быть не может — она бы не
 			// работала, а customer счёл бы её рабочей.
 			if link.URI != "" {
 				t.Errorf("PENDING-ссылка %s отдана с URI", link.Kind)
@@ -752,7 +752,7 @@ func TestIntegrationPartialFleetReadiness(t *testing.T) {
 		t.Errorf("READY %d, PENDING %d; ожидалось 1 и 2", ready, pending)
 	}
 
-	// §16: недоступность ноды не трогает desired state. Иначе повторная попытка
+	// Недоступность ноды не трогает desired state. Иначе повторная попытка
 	// доставила бы не то, что задумано, а то, во что состояние выродилось.
 	if got := scalar[int64](t, stack.pool,
 		`SELECT count(*) FROM vpn_accesses WHERE desired_state = 'PRESENT' AND retired_at IS NULL`); got != 3 {

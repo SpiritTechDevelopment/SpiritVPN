@@ -15,11 +15,11 @@ import (
 	nodeagentv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/nodeagent/v1"
 )
 
-// DefaultCallTimeout — deadline обычной операции (§9).
+// DefaultCallTimeout — deadline обычной операции.
 const DefaultCallTimeout = 5 * time.Second
 
 // Endpoint — как достучаться до агента одной ноды. Всё берётся из
-// vpn_nodes.agent_config, то есть из манифеста (§6).
+// vpn_nodes.agent_config, то есть из манифеста.
 type Endpoint struct {
 	NodeID              string
 	Address             string
@@ -27,12 +27,12 @@ type Endpoint struct {
 	CertificateIdentity string
 }
 
-// key — ключ кеша каналов (решение 40).
+// key — ключ кеша каналов.
 //
 // В него входит всё, что задаёт соединение. Смена endpoint или TLS-имени в
-// манифесте сама даёт новый ключ, поэтому §6 «направляет следующие agent calls на
-// новый endpoint» выполняется без отдельной инвалидации: старый канал просто
-// перестаёт запрашиваться и закрывается.
+// манифесте сама даёт новый ключ, поэтому следующие вызовы уходят на новый
+// endpoint без отдельной инвалидации: старый канал просто перестаёт
+// запрашиваться и закрывается.
 func (e Endpoint) key() string {
 	return e.NodeID + "|" + e.Address + "|" + e.TLSServerName + "|" + e.CertificateIdentity
 }
@@ -40,7 +40,7 @@ func (e Endpoint) key() string {
 // validate отсекает endpoint, по которому вызов заведомо не состоится.
 //
 // Пустой CertificateIdentity особенно опасен: сверка идентичности его отвергнет
-// как подмену (§9, security failure), то есть испорченная колонка выглядела бы в
+// как подмену, то есть испорченная колонка выглядела бы в
 // логах атакой. Здесь она называется своим именем.
 func (e Endpoint) validate() error {
 	switch {
@@ -57,7 +57,7 @@ func (e Endpoint) validate() error {
 	}
 }
 
-// User — payload EnsureUserPresent (§9).
+// User — payload EnsureUserPresent.
 //
 // ClientUUID типизирован crypto.ClientUUID, а не строкой: открытое значение
 // живёт только внутри вызова и не должно попадать в лог по дороге.
@@ -82,7 +82,7 @@ type Config struct {
 	ReconcileTimeout time.Duration
 }
 
-// Client вызывает агентов, переиспользуя по одному соединению на ноду (§9).
+// Client вызывает агентов, переиспользуя по одному соединению на ноду.
 type Client struct {
 	cert             tls.Certificate
 	roots            *x509.CertPool
@@ -134,12 +134,12 @@ func New(cfg Config) (*Client, error) {
 	}, nil
 }
 
-// EnsureUserPresent ставит юзера на ноду (§9).
+// EnsureUserPresent ставит юзера на ноду.
 //
 // operation_id уходит полем запроса, а не только trace-метадатой, как допускает
-// §9: вендорный контракт объявляет его обязательным и строит на нём собственную
+// Вендорный контракт объявляет его обязательным и строит на нём собственную
 // идемпотентность («повтор с другим payload — permanent error»). Контракт
-// принадлежит другому репозиторию, и здесь он побеждает текст спеки (решение 38).
+// принадлежит другому репозиторию, и здесь он побеждает текст спеки.
 func (c *Client) EnsureUserPresent(
 	ctx context.Context,
 	endpoint Endpoint,
@@ -159,7 +159,7 @@ func (c *Client) EnsureUserPresent(
 		User: &nodeagentv1.User{
 			AccountingId: user.AccountingID,
 			// Единственная точка, где открытый client_uuid покидает тип и уходит
-			// на провод. Дальше он живёт только в памяти агента (§7).
+			// на провод. Дальше он живёт только в памяти агента.
 			CredentialUuid: user.ClientUUID.Reveal().String(),
 			Flow:           user.Flow,
 			EgressKey:      user.EgressKey,
@@ -169,7 +169,7 @@ func (c *Client) EnsureUserPresent(
 	return classifyWithIdentity(agent, result, err)
 }
 
-// EnsureUserAbsent снимает юзера с ноды (§9).
+// EnsureUserAbsent снимает юзера с ноды.
 //
 // credential_uuid здесь не передаётся вовсе: удаление матчится по accounting_id
 // (Xray email), и расшифровывать credential ради него незачем.

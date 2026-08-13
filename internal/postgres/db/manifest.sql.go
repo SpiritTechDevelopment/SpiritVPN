@@ -21,7 +21,7 @@ type GetLastManifestRevisionRow struct {
 	Digest   string
 }
 
-// Последняя принятая revision и её canonical digest (§6). Ноль строк означает,
+// Последняя принятая revision и её canonical digest. Ноль строк означает,
 // что манифест не принимался ни разу.
 func (q *Queries) GetLastManifestRevision(ctx context.Context) (GetLastManifestRevisionRow, error) {
 	row := q.db.QueryRow(ctx, getLastManifestRevision)
@@ -48,7 +48,7 @@ type InsertAuditEventParams struct {
 	SanitizedMetadata []byte
 }
 
-// Запись аудита (§15). sanitized_metadata не содержит секретов и customer ID.
+// Запись аудита. sanitized_metadata не содержит секретов и customer ID.
 func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error {
 	_, err := q.db.Exec(ctx, insertAuditEvent,
 		arg.ActorType,
@@ -87,7 +87,7 @@ INSERT INTO manifest_materialization_jobs (revision, status)
 VALUES ($1, 'PENDING')
 `
 
-// Durable-джоба fan-out customer access (§6, §13). Ставится в той же транзакции,
+// Durable-джоба fan-out customer access. Ставится в той же транзакции,
 // что и проекция: иначе принятый снапшот остался бы без материализации.
 func (q *Queries) InsertMaterializationJob(ctx context.Context, revision int64) error {
 	_, err := q.db.Exec(ctx, insertMaterializationJob, revision)
@@ -101,7 +101,7 @@ ORDER BY vpn_fleet_id
 `
 
 // ВСЕ принятые fleet, а не только текущие: принятый vpn_fleet_id не удаляется и
-// обязан присутствовать в каждом следующем снапшоте (§4, §6, §17).
+// обязан присутствовать в каждом следующем снапшоте.
 func (q *Queries) ListAcceptedFleetIDs(ctx context.Context) ([]int64, error) {
 	rows, err := q.db.Query(ctx, listAcceptedFleetIDs)
 	if err != nil {
@@ -137,7 +137,7 @@ type ListAllBridgeRoutesRow struct {
 }
 
 // ВСЕ связи, включая удалённые: routing_key занят навсегда, и оживление его с
-// другой парой (entry, exit) запрещено (§6).
+// другой парой (entry, exit) запрещено.
 func (q *Queries) ListAllBridgeRoutes(ctx context.Context) ([]ListAllBridgeRoutesRow, error) {
 	rows, err := q.db.Query(ctx, listAllBridgeRoutes)
 	if err != nil {
@@ -229,11 +229,11 @@ const lockManifestIngest = `-- name: LockManifestIngest :exec
 SELECT pg_advisory_xact_lock($1::bigint)
 `
 
-// Приём infrastructure manifest (§6) и его проекция в таблицы топологии (§11).
+// Приём infrastructure manifest и его проекция в таблицы топологии.
 //
-// Весь снапшот применяется одной транзакцией: §6 требует «применяется атомарно
+// Весь снапшот применяется одной транзакцией: атомарно
 // или не применяется вообще». Физических удалений здесь нет ни одного — строки
-// помечаются current = false и живут вечно (§6, §11).
+// помечаются current = false и живут вечно.
 // Сериализует приём манифеста: одновременно применяется не более одного снапшота.
 //
 // Приём манифеста читает всю проекцию и тут же её переписывает, поэтому без
@@ -242,7 +242,7 @@ SELECT pg_advisory_xact_lock($1::bigint)
 // вместе с транзакцией и берётся до первого чтения.
 //
 // Цена нулевая: манифест применяет CI/CD инфраструктуры, это редкая операция, а
-// команды customer этот lock не берут и не ждут (решение 28).
+// команды customer этот lock не берут и не ждут.
 func (q *Queries) LockManifestIngest(ctx context.Context, lockKey int64) error {
 	_, err := q.db.Exec(ctx, lockManifestIngest, lockKey)
 	return err
@@ -299,8 +299,8 @@ SET current    = false,
 WHERE node_id = ANY($1::text[])
 `
 
-// Ноды, глобально исчезнувшие из манифеста (§6). manifest_revision не трогается
-// и остаётся последней revision, в которой нода присутствовала (решение 23).
+// Ноды, глобально исчезнувшие из манифеста. manifest_revision не трогается
+// и остаётся последней revision, в которой нода присутствовала.
 func (q *Queries) RetireNodes(ctx context.Context, nodeIds []string) error {
 	_, err := q.db.Exec(ctx, retireNodes, nodeIds)
 	return err
@@ -329,7 +329,7 @@ type UpsertBridgeRouteParams struct {
 }
 
 // Апсерт связи. entry_node_id и exit_node_id намеренно НЕ обновляются: пара
-// неизменяема для существующего routing_key (§6). Домен это проверяет и
+// неизменяема для существующего routing_key. Домен это проверяет и
 // отклоняет манифест раньше; здесь то же правило закреплено структурно, чтобы
 // будущая дыра в проверке не переставила молча входную ноду у выданных access.
 func (q *Queries) UpsertBridgeRoute(ctx context.Context, arg UpsertBridgeRouteParams) error {
@@ -402,11 +402,11 @@ type UpsertVpnNodeParams struct {
 }
 
 // Апсерт ноды. Идентичность (node_id) стабильна, endpoint и публичные параметры
-// изменяемы между revisions (§6, §17).
+// изменяемы между revisions.
 //
 // desired_revision НЕ трогается: приём манифеста не меняет состав desired-юзеров
-// ноды и не создаёт agent operations (§13, решение 22). Ноду, вернувшуюся в
-// манифест, апсерт оживляет на месте — current снова true (решение 24).
+// ноды и не создаёт agent operations. Ноду, вернувшуюся в
+// манифест, апсерт оживляет на месте — current снова true.
 func (q *Queries) UpsertVpnNode(ctx context.Context, arg UpsertVpnNodeParams) error {
 	_, err := q.db.Exec(ctx, upsertVpnNode,
 		arg.NodeID,

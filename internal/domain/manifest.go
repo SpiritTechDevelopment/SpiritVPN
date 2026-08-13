@@ -7,18 +7,18 @@ import (
 )
 
 // ManifestSchemaVersion — единственная поддерживаемая версия схемы манифеста для
-// этого документа (§6).
+// этого документа.
 const ManifestSchemaVersion = 1
 
-// Значения, которые v1 поддерживает в единственном варианте (§6). Другие
+// Значения, которые v1 поддерживает в единственном варианте. Другие
 // отклоняются на приёме; потребители проекции их не перепроверяют.
 const (
 	TransportTCP       = "tcp"
 	FlowXTLSRprxVision = "xtls-rprx-vision"
 )
 
-// Лимиты §13. Константы, а не конфигурация: ручка без потребителя — это ещё один
-// способ выкатить непроверенную нагрузкой топологию (решение 26). Лимит самого
+// Лимиты размера манифеста. Константы, а не конфигурация: ручка без потребителя — это ещё один
+// способ выкатить непроверенную нагрузкой топологию. Лимит самого
 // RPC в 4 MiB отдельно не задаётся — он совпадает с дефолтом gRPC.
 const (
 	MaxManifestFleets    = 100
@@ -27,21 +27,21 @@ const (
 	MaxNodesPerFleet     = 10
 )
 
-// fingerprintPattern — §6: ASCII-токен длиной 1–64 из [A-Za-z0-9._-]. Значение
+// fingerprintPattern — ASCII-токен длиной 1–64 из [A-Za-z0-9._-]. Значение
 // backend не преобразует, а кладёт в параметр fp URI как есть, поэтому проверять
 // его надо здесь, до записи.
 var fingerprintPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,64}$`)
 
-// ManifestNode — одна логическая нода снапшота (§6).
+// ManifestNode — одна логическая нода снапшота.
 type ManifestNode struct {
 	NodeID NodeID
 	Agent  NodeAgent
 	// Public включает display_name: в манифесте он лежит рядом с node_id, но
-	// хранится и читается вместе с публичными параметрами (решения 16 и 19).
+	// хранится и читается вместе с публичными параметрами.
 	Public NodePublic
 }
 
-// ManifestBridge — направленная связь внутри fleet (§6).
+// ManifestBridge — направленная связь внутри fleet.
 type ManifestBridge struct {
 	RoutingKey  string
 	EntryNodeID NodeID
@@ -50,14 +50,14 @@ type ManifestBridge struct {
 	DisplayName string
 }
 
-// ManifestFleet — один fleet снапшота (§6).
+// ManifestFleet — один fleet снапшота.
 type ManifestFleet struct {
 	FleetID int64
 	NodeIDs []NodeID
 	Bridges []ManifestBridge
 }
 
-// ManifestSnapshot — полный versioned snapshot топологии (§6).
+// ManifestSnapshot — полный versioned snapshot топологии.
 //
 // allow_destructive сюда не входит: он request-scoped, действует только на один
 // вызов и в желаемое состояние не превращается. Из-за этого он не участвует и в
@@ -69,7 +69,7 @@ type ManifestSnapshot struct {
 	Fleets        []ManifestFleet
 }
 
-// ValidateManifest проверяет снапшот сам по себе (§6).
+// ValidateManifest проверяет снапшот сам по себе.
 //
 // Только те правила, которым не нужно принятое состояние: форма, лимиты,
 // уникальность внутри снапшота и ссылочная целостность. Правила, сравнивающие
@@ -86,7 +86,7 @@ func ValidateManifest(s ManifestSnapshot) error {
 	}
 	// Revision здесь int64, а не uint64 с провода: колонка manifest_revisions.revision
 	// объявлена как bigint, и сужение закрепляется на границе gRPC вместе с проверкой
-	// диапазона — тем же приёмом, что и секундная точность expires_at (решение 11).
+	// диапазона — тем же приёмом, что и секундная точность expires_at.
 	// Неположительное значение сюда дойти не должно, но проверка оставлена: молча
 	// принятая отрицательная revision сломала бы монотонность навсегда.
 	if s.Revision <= 0 {
@@ -105,7 +105,7 @@ func ValidateManifest(s ManifestSnapshot) error {
 	return validateManifestFleets(s.Fleets, known)
 }
 
-// validateManifestSize проверяет лимиты §13 до всего остального: разбирать по
+// validateManifestSize проверяет лимиты размера до всего остального: разбирать по
 // косточкам снапшот, который заведомо не будет принят, незачем.
 func validateManifestSize(s ManifestSnapshot) error {
 	if len(s.Nodes) > MaxManifestNodes {
@@ -155,7 +155,7 @@ func validateManifestNodes(nodes []ManifestNode) (map[NodeID]struct{}, error) {
 	return known, nil
 }
 
-// validateNodeAgent — §6: endpoint и TLS identity валидируются до записи. Без них
+// validateNodeAgent — endpoint и TLS identity валидируются до записи. Без них
 // dispatcher не сможет ни дозвониться до агента, ни проверить, что говорит именно
 // с ним.
 func validateNodeAgent(node ManifestNode) error {
@@ -185,7 +185,7 @@ func validateNodeAgent(node ManifestNode) error {
 }
 
 // validateNodePublic — обязательные REALITY-поля и единственные поддерживаемые
-// значения transport и flow (§6).
+// значения transport и flow.
 //
 // Строже, чем NodePublic.Usable: тот отвечает на вопрос «соберётся ли URI» и
 // применяется к тому, что уже лежит в проекции. Здесь же решается, пускать ли
@@ -263,19 +263,19 @@ func validateFleetMembers(fleet ManifestFleet, known map[NodeID]struct{}) (map[N
 	return members, nil
 }
 
-// pairKey — направленная пара концов связи; ключ уникальности §6.
+// pairKey — направленная пара концов связи; ключ уникальности.
 type pairKey struct {
 	entry NodeID
 	exit  NodeID
 }
 
-// validateFleetBridges — §6: routing_key и пара (entry, exit) уникальны внутри
+// validateFleetBridges — routing_key и пара (entry, exit) уникальны внутри
 // fleet, BRIDGE и EXIT различны и входят в тот же fleet, egress_tag непуст.
 //
 // Уникальность пары — правило только про снапшот, хотя выглядит как правило про
 // хранимое состояние. Удалённая связь остаётся строкой с current = false, но
 // уникальным индексом не учитывается, поэтому освободившуюся пару может занять
-// новый routing_key. Именно это §6 и называет переносом route.
+// новый routing_key. Это и есть перенос route.
 //
 // А вот неизменяемость пары у СУЩЕСТВУЮЩЕГО routing_key сравнивает снапшот с
 // принятым состоянием и потому живёт в PlanManifest.

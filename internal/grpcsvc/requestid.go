@@ -16,7 +16,7 @@ const requestIDMetadataKey = "x-request-id"
 // maxRequestIDLen ограничивает то, что попадёт в каждую запись лога.
 const maxRequestIDLen = 64
 
-// RequestIDUnaryInterceptor кладёт в контекст идентификатор запроса (§15).
+// RequestIDUnaryInterceptor кладёт в контекст идентификатор запроса.
 //
 // Значение берётся из metadata вызывающего, если оно пригодно, иначе
 // генерируется. Приоритет у входящего именно для сквозной корреляции: одна
@@ -57,7 +57,7 @@ func requestID(ctx context.Context, newID func() string) string {
 // КАЖДУЮ запись запроса и раздувает лог линейно.
 //
 // Непригодное значение не отвергает запрос, а молча заменяется сгенерированным:
-// корреляция — удобство наблюдаемости, а не правило §5, и ронять из-за неё
+// корреляция — удобство наблюдаемости, а не правило контракта, и ронять из-за неё
 // команду product-сервиса неправильно.
 func sanitizeRequestID(raw string) (string, bool) {
 	if raw == "" || len(raw) > maxRequestIDLen {

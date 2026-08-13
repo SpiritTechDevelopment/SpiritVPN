@@ -23,7 +23,7 @@ func TestPlanOperationResult(t *testing.T) {
 			completed:  true,
 		},
 		{
-			// §9: permanent-ошибки не хот-лупятся, восстановление — через
+			// Permanent-ошибки не хот-лупятся, восстановление — через
 			// изменение desired state или ReconcileUsers.
 			name:       "постоянный отказ терминален",
 			outcome:    AttemptPermanent,
@@ -64,7 +64,7 @@ func TestPlanOperationResult(t *testing.T) {
 	}
 }
 
-// TestSupersededStopsRetriesOnly — решение 47: устаревшая desired_version
+// TestSupersededStopsRetriesOnly — устаревшая desired_version
 // прекращает повторы, но не переписывает уже состоявшийся терминальный исход.
 func TestSupersededStopsRetriesOnly(t *testing.T) {
 	retry := PlanOperationResult(AttemptRetryable, 0, tNow, 0.5).Superseded()
@@ -89,7 +89,7 @@ func TestSupersededStopsRetriesOnly(t *testing.T) {
 	}
 }
 
-// TestBackoffDelayGrowsAndCaps — §9: от 1 секунды экспоненциально до потолка в
+// TestBackoffDelayGrowsAndCaps — от 1 секунды экспоненциально до потолка в
 // 5 минут.
 func TestBackoffDelayGrowsAndCaps(t *testing.T) {
 	// При нулевом jitter задержка равна нижней половине — она фиксирована.

@@ -81,7 +81,7 @@ func newLinksHarness(sources ...app.AccessLinkSource) (*app.GetCustomerAccessLin
 	return app.NewGetCustomerAccessLinks(repo, sealer), repo, sealer
 }
 
-// TestExecuteReturnsURIOnlyForReady — §5: поле uri присутствует только у READY.
+// TestExecuteReturnsURIOnlyForReady — поле uri присутствует только у READY.
 // Заодно проверяется, что расшифровка выполняется ровно один раз, по числу
 // готовых ссылок, а не по числу access.
 func TestExecuteReturnsURIOnlyForReady(t *testing.T) {
@@ -140,7 +140,7 @@ func TestExecuteNeverOpensBlockedCredential(t *testing.T) {
 	}
 }
 
-// TestExecuteFragmentPerKind — §8: фрагмент FREEDOM берётся из имени ноды,
+// TestExecuteFragmentPerKind — фрагмент FREEDOM берётся из имени ноды,
 // BRIDGE — из имени связи. Развилка идёт по kind, поэтому проверяются оба.
 func TestExecuteFragmentPerKind(t *testing.T) {
 	freedom := readySource()
@@ -191,7 +191,7 @@ func TestExecuteEmptyBridgeNameStaysEmpty(t *testing.T) {
 	}
 }
 
-// TestExecuteDegradesUnusableNode — решение 18: рассогласованная проекция ломает
+// TestExecuteDegradesUnusableNode — рассогласованная проекция ломает
 // свою ссылку, а не весь ответ, и расшифровки по ней не происходит.
 func TestExecuteDegradesUnusableNode(t *testing.T) {
 	broken := readySource()
@@ -233,7 +233,7 @@ func TestExecuteDegradesUnopenableCredential(t *testing.T) {
 	}
 }
 
-// TestExecuteValidatesCustomerID — §3: пустой customer_id невалиден, и до базы
+// TestExecuteValidatesCustomerID — пустой customer_id невалиден, и до базы
 // такой запрос доходить не должен, иначе пустая строка стала бы поиском.
 func TestExecuteValidatesCustomerID(t *testing.T) {
 	uc, repo, _ := newLinksHarness()
@@ -248,7 +248,7 @@ func TestExecuteValidatesCustomerID(t *testing.T) {
 }
 
 // TestExecutePropagatesRepositoryError — ErrCustomerNotFound доезжает до
-// транспорта нетронутым: именно из него получается NOT_FOUND (§5).
+// транспорта нетронутым: именно из него получается NOT_FOUND.
 func TestExecutePropagatesRepositoryError(t *testing.T) {
 	uc, repo, _ := newLinksHarness()
 	repo.err = domain.ErrCustomerNotFound
@@ -258,8 +258,8 @@ func TestExecutePropagatesRepositoryError(t *testing.T) {
 	}
 }
 
-// TestExecuteEmptyFleetReturnsEmptyList — fleet может временно не содержать нод
-// (§4), и это не ошибка: у существующего customer просто нет ссылок.
+// TestExecuteEmptyFleetReturnsEmptyList — fleet может временно не содержать нод,
+// и это не ошибка: у существующего customer просто нет ссылок.
 func TestExecuteEmptyFleetReturnsEmptyList(t *testing.T) {
 	uc, repo, _ := newLinksHarness()
 

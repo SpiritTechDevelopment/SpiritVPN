@@ -24,7 +24,7 @@ type AcceptNodeReconcileParams struct {
 	NodeID          string
 }
 
-// Принимает результат reconcile, если desired state ноды не уехал (§10).
+// Принимает результат reconcile, если desired state ноды не уехал.
 //
 // Условие в WHERE, а не отдельным чтением, и по той же причине, что у
 // SetAccessApplyState: только так проверка атомарна. Ноль строк означает, что
@@ -32,7 +32,7 @@ type AcceptNodeReconcileParams struct {
 // устарел, принимать его нельзя.
 //
 // Ревизия сравнивается ЗДЕСЬ, а не приезжает от агента: вендорный контракт
-// ReconcileUsers её не передаёт и не возвращает (решение 82).
+// ReconcileUsers её не передаёт и не возвращает.
 func (q *Queries) AcceptNodeReconcile(ctx context.Context, arg AcceptNodeReconcileParams) (int64, error) {
 	result, err := q.db.Exec(ctx, acceptNodeReconcile, arg.DesiredRevision, arg.NodeID)
 	if err != nil {
@@ -64,7 +64,7 @@ WITH claimed AS (
         LIMIT 1
     )
     -- needs_bootstrap возвращается ДО сброса: по нему шаг выбирает между полным
-    -- набором и дешёвой сверкой инвентаря (§10). Флаг снимает не захват, а
+    -- набором и дешёвой сверкой инвентаря. Флаг снимает не захват, а
     -- принятый результат.
     RETURNING node_id, agent_config, public_config, desired_revision, needs_bootstrap
 )
@@ -85,14 +85,14 @@ type ClaimNodeForReconcileRow struct {
 	NeedsBootstrap  bool
 }
 
-// Authoritative reconcile: приведение ноды к точному desired state (§10).
+// Authoritative reconcile: приведение ноды к точному desired state.
 //
-// Обычные изменения доставляет диспетчер по одному юзеру (§9); эти запросы — про
+// Обычные изменения доставляет диспетчер по одному юзеру; эти запросы — про
 // инициализацию и починку, то есть про случаи, когда доставлять уже нечего,
 // потому что нода потеряла состояние целиком или разошлась с ним незаметно.
 // Берёт ноду, которую пора reconcile-ить.
 //
-// Два повода, оба из §10. needs_bootstrap — локальное состояние агента новое или
+// Поводов два. needs_bootstrap — локальное состояние агента новое или
 // повреждено, и без полного набора он не имеет права удалять юзеров, то есть
 // сам из этого состояния не выйдет. Таймер — периодическая коррекция дрейфа:
 // расхождение, о котором никто не сообщил, иначе жило бы вечно.
@@ -132,7 +132,7 @@ type CompleteNodeOperationsByReconcileParams struct {
 	NodeID    string
 }
 
-// Завершает операции ноды, которые reconcile уже удовлетворил (§10).
+// Завершает операции ноды, которые reconcile уже удовлетворил.
 //
 // Только ожидающие: IN_FLIGHT держит другая горутина диспетчера, и трогать её
 // строку значило бы дописывать результат за неё. Она завершится сама и увидит
@@ -180,11 +180,11 @@ type ListNodeDesiredUsersRow struct {
 	EncryptionKeyID     string
 }
 
-// Полный набор desired PRESENT юзеров ноды (§10).
+// Полный набор desired PRESENT юзеров ноды.
 //
 // «Фактически разрешённые» означает три ограничения, а не одно. Истёкшие
 // entitlement и исчерпавшие node quota в набор не входят, ДАЖЕ если expiry или
-// usage worker ещё не успели перевести их access в ABSENT: §10 требует этого
+// usage worker ещё не успели перевести их access в ABSENT: это требуется
 // явно, а reconcile авторитетен — то, чего нет в наборе, агент удалит.
 //
 // Порядок по access_id, чтобы payload двух подряд идущих reconcile отличался
@@ -279,7 +279,7 @@ type SetNodeNeedsBootstrapParams struct {
 	NodeID         string
 }
 
-// Запоминает признак bootstrap, полученный от агента (§10).
+// Запоминает признак bootstrap, полученный от агента.
 //
 // Пишет pull worker: он и так разговаривает с каждой нодой каждые 15 секунд, а
 // reconcile-воркер спит между заходами и узнал бы об этом с задержкой в целый

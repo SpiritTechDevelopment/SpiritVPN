@@ -33,7 +33,7 @@ func pbBatch(spoolID string, sequence uint64, collectedAtMs int64) *nodeagentv1.
 	}
 }
 
-// TestNodeStateFromRejectsForeignNodeID — §10 запрещает принимать node_id из
+// TestNodeStateFromRejectsForeignNodeID — запрещает принимать node_id из
 // запроса; здесь та же логика для ответа. Нода определяется mTLS-идентичностью, и
 // расхождение означает, что соединение ведёт не туда, куда мы думаем.
 //
@@ -63,7 +63,7 @@ func TestNodeStateFromRejectsEmptyNodeID(t *testing.T) {
 	}
 }
 
-// TestNodeStateFromMapsHealth — три поля liveness §15. До среза метрик их не
+// TestNodeStateFromMapsHealth — три поля liveness. До среза метрик их не
 // читал никто, и ошибка перевода прошла бы незамеченной.
 func TestNodeStateFromMapsHealth(t *testing.T) {
 	state, err := nodeStateFrom(pulledEndpoint(), &nodeagentv1.GetNodeStateResponse{
@@ -111,7 +111,7 @@ func TestNodeStateFromWithoutXray(t *testing.T) {
 }
 
 // TestNodeStateFromMapsBatch — CollectedAt приезжает в миллисекундах и по нему
-// item сопоставляется с quota period (§12). Это НЕ время получения backend'ом,
+// item сопоставляется с quota period. Это НЕ время получения backend'ом,
 // поэтому перевод обязан быть точным.
 func TestNodeStateFromMapsBatch(t *testing.T) {
 	collectedAt := time.Date(2026, 8, 10, 11, 59, 0, 0, time.UTC)
@@ -149,7 +149,7 @@ func TestNodeStateFromMapsBatch(t *testing.T) {
 	}
 }
 
-// TestNodeStateFromRejectsBadCursor — ключ идемпотентности §12 это пара
+// TestNodeStateFromRejectsBadCursor — ключ идемпотентности это пара
 // (spool_id, sequence). Пустой spool_id сделал бы её неотличимой между спулами, а
 // нулевого sequence у выданного batch не бывает: агент нумерует с единицы.
 //
@@ -215,7 +215,7 @@ func TestNodeStateFromRejectsWholeResponseOnBadBatch(t *testing.T) {
 // --- вызов целиком, через настоящий mTLS ---------------------------------------
 
 // TestGetNodeStateDeliversCursorAndLimit — агенту уходит ровно то, что backend
-// durable закоммитил (§12).
+// durable закоммитил.
 //
 // Передать больше подтверждённого — значит разрешить агенту удалить из спула
 // неучтённый трафик, и восстановить его будет уже неоткуда.
@@ -248,7 +248,7 @@ func TestGetNodeStateDeliversCursorAndLimit(t *testing.T) {
 		t.Errorf("потолок batch %d, ожидался 16", got)
 	}
 
-	// §10 и §12: чего не запрашиваем, того не подтверждаем. Инвентарь юзеров
+	// Чего не запрашиваем, того не подтверждаем. Инвентарь юзеров
 	// принадлежит reconcile, и запросив его здесь, backend заставил бы агента
 	// считать его подтверждённым.
 	if agent.stateReq.GetIncludeUsers() {
@@ -265,7 +265,7 @@ func TestGetNodeStateDeliversCursorAndLimit(t *testing.T) {
 }
 
 // TestGetNodeStateClassifiesTransportFailure — отказ транспорта получает тот же
-// стабильный код, что и у Ensure: словарь исходов один на оба пути (§15).
+// стабильный код, что и у Ensure: словарь исходов один на оба пути.
 func TestGetNodeStateClassifiesTransportFailure(t *testing.T) {
 	agent := &fakeAgent{stateErr: status.Error(codes.Unavailable, "перезапускаюсь")}
 	client, endpoint := newHarness(t, agent)
@@ -278,7 +278,7 @@ func TestGetNodeStateClassifiesTransportFailure(t *testing.T) {
 	if outcome.Code != CodeUnavailable {
 		t.Errorf("код %s, ожидался %s", outcome.Code, CodeUnavailable)
 	}
-	// Недоступность ноды штатна (§16) и оператора будить не должна.
+	// Недоступность ноды штатна и оператора будить не должна.
 	if outcome.Alert {
 		t.Error("обычная недоступность подняла alert")
 	}
@@ -304,7 +304,7 @@ func TestGetNodeStateAlertsOnUnparsableResponse(t *testing.T) {
 }
 
 // TestGetNodeStateRejectsIncompleteEndpoint — непригодный agent_config отсекается
-// до набора номера и остаётся retryable (решение 50): чинится он следующим
+// до набора номера и остаётся retryable: чинится он следующим
 // манифестом, поэтому permanent означал бы, что чинить уже нечего.
 func TestGetNodeStateRejectsIncompleteEndpoint(t *testing.T) {
 	agent := &fakeAgent{}
@@ -360,7 +360,7 @@ func TestGetNodeStateIdentityMismatchIsPermanent(t *testing.T) {
 		t.Errorf("код %q, ожидался %q", outcome.Code, CodeIdentityMismatch)
 	}
 	if !outcome.Alert {
-		t.Error("подмена идентичности не подняла alert (§9: security failure)")
+		t.Error("подмена идентичности не подняла alert: это security failure")
 	}
 	if agent.calls != 0 {
 		t.Errorf("агент получил %d вызовов: спул подтверждён чужой ноде", agent.calls)

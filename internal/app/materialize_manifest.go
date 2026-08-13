@@ -10,25 +10,25 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
-// MaterializeManifest — воркер материализации манифеста (§6, §13).
+// MaterializeManifest — воркер материализации манифеста.
 //
 // Раздаёт customer access под топологию, принятую ApplyFleetManifest: новая нода
 // даёт FREEDOM, новая связь — BRIDGE, исчезнувшая цель — RETIRED/ABSENT.
-// Выполняется вне RPC-транзакции манифеста, потому что 50 000 customer (§13) в
-// одной транзакции нарушили бы требование §11.1 о коротких транзакциях.
+// Выполняется вне RPC-транзакции манифеста, потому что 50 000 customer в
+// одной транзакции нарушили бы требование о коротких транзакциях.
 //
 // Сетевых вызовов агентам здесь нет: операции только кладутся в outbox, как и в
-// ApplyCustomerAccess (§9).
+// ApplyCustomerAccess.
 type MaterializeManifest struct {
 	Repo   MaterializationRepository
 	IDs    IDs
 	Sealer CredentialSealer
 
 	// Owner попадает в lease_owner. Идентифицирует реплику, а не процесс-одиночку:
-	// по нему видно, чей lease протух (§15).
+	// по нему видно, чей lease протух.
 	Owner string
 	// LeaseTTL — на сколько берётся джоба. Переживший падение lease подбирает
-	// следующий воркер, продолжая с курсора (§13).
+	// следующий воркер, продолжая с курсора.
 	LeaseTTL time.Duration
 }
 
@@ -45,11 +45,11 @@ func NewMaterializeManifest(
 
 // ProcessNext выполняет один шаг: берёт джобу и обрабатывает ОДНОГО customer.
 //
-// Шаг маленький намеренно. §13 разрешает пакеты до 500 строк, но это потолок, а
-// не цель: у customer максимум ~100 access (≤10 нод и ≤90 связей на fleet),
-// поэтому один customer в потолок укладывается всегда. Взамен §11.1 «сначала row
+// Шаг маленький намеренно. Потолок пакета — 500 строк, но это именно потолок:
+// у customer максимум ~100 access (≤10 нод и ≤90 связей на fleet), поэтому один
+// customer в него укладывается всегда. Взамен «сначала row
 // lock корневой строки» выполняется тривиально, и не нужно упорядочивать
-// блокировки нескольких customer внутри одной транзакции (решение 30).
+// блокировки нескольких customer внутри одной транзакции.
 //
 // progressed=false означает, что работы нет: вызывающему цикл стоит подождать.
 func (uc *MaterializeManifest) ProcessNext(ctx context.Context) (progressed bool, err error) {
@@ -62,9 +62,9 @@ func (uc *MaterializeManifest) ProcessNext(ctx context.Context) (progressed bool
 			return nil
 		}
 
-		// Обход идёт по ВСЕМ customer в порядке customer_id (решение 29):
+		// Обход идёт по ВСЕМ customer в порядке customer_id:
 		// затронутые fleet из manifest_revision не вычисляются — у удалённых строк
-		// остаётся прежняя revision (решение 23), и удаления таким фильтром не
+		// остаётся прежняя revision, и удаления таким фильтром не
 		// находятся.
 		customerID, nextErr := tx.NextCustomer(ctx, job.Cursor)
 		if nextErr != nil {
@@ -82,7 +82,7 @@ func (uc *MaterializeManifest) ProcessNext(ctx context.Context) (progressed bool
 		progressed = true
 		// Курсор двигается в той же транзакции, что и изменения customer: прогресс
 		// становится ровно-однократным, и падение воркера не требует отдельной
-		// сверки (решение 34).
+		// сверки.
 		return tx.AdvanceCursor(ctx, job.Revision, customerID)
 	})
 	if err != nil {
@@ -93,7 +93,7 @@ func (uc *MaterializeManifest) ProcessNext(ctx context.Context) (progressed bool
 
 // materializeCustomer приводит набор access одного customer к текущей топологии.
 //
-// Порядок чтений совпадает с нормативным порядком блокировок §11.1 и с порядком
+// Порядок чтений совпадает с нормативным порядком блокировок и с порядком
 // в ApplyCustomerAccess: entitlement → quota_periods → node_quota_usage, и лишь
 // потом не берущие locks чтения топологии и access.
 func (uc *MaterializeManifest) materializeCustomer(
@@ -111,7 +111,7 @@ func (uc *MaterializeManifest) materializeCustomer(
 		return fmt.Errorf("блокировка entitlement: %w", err)
 	}
 	if entitlement == nil {
-		// Customer исчез между выборкой и блокировкой. Удалений в v1 нет (§4),
+		// Customer исчез между выборкой и блокировкой. Удалений в v1 нет,
 		// так что это недостижимо, но молча материализовать пустоту хуже, чем
 		// пропустить шаг: курсор всё равно сдвинется.
 		return nil
@@ -185,7 +185,7 @@ func (uc *MaterializeManifest) materializeManifestPlan(
 		materialized.NewAccesses = append(materialized.NewAccesses, access)
 
 		// Как и в Apply: родившийся ABSENT операции не получает — отсутствие уже
-		// является состоянием Xray по умолчанию (решение 3.2, решение 6).
+		// является состоянием Xray по умолчанию.
 		if spec.DesiredState != domain.DesiredStatePresent {
 			continue
 		}
@@ -205,7 +205,7 @@ func (uc *MaterializeManifest) materializeManifestPlan(
 	}
 
 	// Repoint доставляется обычной операцией: агент переиздаёт персональное
-	// правило по новому egress_key (§6, §9).
+	// правило по новому egress_key.
 	for _, change := range plan.Repoints {
 		operation, err := uc.newOperationFor(change.EntryNodeID, change.AccessID, change.DesiredState, change.DesiredVersion)
 		if err != nil {
@@ -230,7 +230,7 @@ func (uc *MaterializeManifest) materializeManifestPlan(
 }
 
 // newAccessFor выдаёт новой цели идентичность и credential. Каждое поколение
-// получает новые client_uuid и accounting_id (§4).
+// получает новые client_uuid и accounting_id.
 func (uc *MaterializeManifest) newAccessFor(spec domain.NewAccessSpec) (NewAccess, error) {
 	accessID, err := uc.IDs.NewAccessID()
 	if err != nil {

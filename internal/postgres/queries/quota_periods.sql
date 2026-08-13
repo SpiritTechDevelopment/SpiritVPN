@@ -1,7 +1,7 @@
--- Периоды учёта квоты (§5, §11).
+-- Периоды учёта квоты.
 
--- Блокирует текущий период — единственный с closed_at IS NULL (§11, §11.1 шаг 2).
--- Отсутствие строки у существующего customer нарушает инвариант §11.
+-- Блокирует текущий период — единственный с closed_at IS NULL.
+-- Отсутствие строки у существующего customer нарушает инвариант.
 -- name: LockOpenQuotaPeriod :one
 SELECT *
 FROM quota_periods
@@ -12,7 +12,7 @@ FOR UPDATE;
 -- Закрывает текущий период при renewal. closed_at берётся из now(), то есть из
 -- момента начала транзакции; ровно то же значение получает started_at нового
 -- периода, поэтому периоды образуют полуоткрытые интервалы [started_at, closed_at)
--- без пересечения и без дыры, в которую провалилась бы дельта трафика (§11).
+-- без пересечения и без дыры, в которую провалилась бы дельта трафика.
 -- name: CloseOpenQuotaPeriod :exec
 UPDATE quota_periods
 SET closed_at = now()
@@ -27,7 +27,7 @@ INSERT INTO quota_periods (
     quota_period_id, customer_id, started_at, usage_quota_bytes
 ) VALUES ($1, $2, now(), $3);
 
--- Меняет лимит открытого периода без сброса накопленного расхода (§5, правило 7).
+-- Меняет лимит открытого периода без сброса накопленного расхода.
 -- name: UpdateQuotaPeriodQuota :exec
 UPDATE quota_periods
 SET usage_quota_bytes = $2

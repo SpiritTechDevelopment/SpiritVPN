@@ -12,28 +12,28 @@ import (
 	manifestv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/manifest/v1"
 )
 
-// Role — роль вызывающего сервиса (§14).
+// Role — роль вызывающего сервиса.
 type Role string
 
 const (
 	RoleCustomerAccessWriter Role = "customer-access-writer"
 	RoleCustomerAccessReader Role = "customer-access-reader"
 
-	// RoleManifestWriter — infrastructure CI/CD (§14). Отдельная identity: она
+	// RoleManifestWriter — infrastructure CI/CD. Отдельная identity: она
 	// переписывает топологию целиком и продуктовому сервису не выдаётся.
 	RoleManifestWriter Role = "manifest-writer"
 )
 
-// methodRoles — роль, требуемая каждым методом (решение 14).
+// methodRoles — роль, требуемая каждым методом.
 //
 // Таблица работает deny by default: метода здесь нет — значит он запрещён всем.
 // Это её главное свойство и оно важнее содержимого. Следующие срезы добавят и
 // методы, и сервисы; тот, кто забудет строчку здесь, получит PERMISSION_DENIED
 // на первом же вызове вместо метода, молча открытого всему миру.
 //
-// Иерархии ролей нет: writer НЕ подразумевает reader. §14 перечисляет их как
-// отдельные роли, а здесь это ещё и по существу — чтение отдаёт VLESS URI с
-// client_uuid внутри, то есть сами credentials (§5, §8). Сервис, которому нужно
+// Иерархии ролей нет: writer не подразумевает reader. Это отдельные роли, и
+// разделение здесь по существу — чтение отдаёт VLESS URI с
+// client_uuid внутри, то есть сами credentials. Сервис, которому нужно
 // и то и другое, перечисляется в обоих списках конфигурации явно.
 var methodRoles = map[string]Role{
 	customerv1.CustomerAccessService_ApplyCustomerAccess_FullMethodName:    RoleCustomerAccessWriter,
@@ -61,7 +61,7 @@ func NewAuthorizer(roles map[Role][]string) *Authorizer {
 			// Пустая идентичность отбрасывается второй раз, хотя config это уже
 			// сделал. Дублирование намеренно: совпадение пустого с пустым
 			// раздаёт роль любому валидному сертификату, и цена ошибки здесь
-			// несоизмерима с ценой лишней строки (решение 13).
+			// несоизмерима с ценой лишней строки.
 			if id == "" {
 				continue
 			}
@@ -73,7 +73,7 @@ func NewAuthorizer(roles map[Role][]string) *Authorizer {
 	return authorizer
 }
 
-// UnaryInterceptor проверяет право вызывающего на метод (§14).
+// UnaryInterceptor проверяет право вызывающего на метод.
 func (a *Authorizer) UnaryInterceptor() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
@@ -121,7 +121,7 @@ func (a *Authorizer) authorize(ctx context.Context, method string) error {
 // tls.RequireAndVerifyClientCert это на практике один и тот же лист, но привычка
 // должна быть правильной.
 //
-// CN не используется (решение 13): как идентичность он давно отставлен — Go
+// CN не используется: как идентичность он давно отставлен — Go
 // выкинул CN-fallback из проверки имени хоста ещё в 1.15, — уникальности не
 // гарантирует, а у cert-manager и step-ca бывает пустым. Пустая идентичность,
 // встретив пустой элемент в списке разрешённых, раздала бы роль любому

@@ -22,11 +22,11 @@ type readinessCheck struct {
 	run  func(context.Context) error
 }
 
-// newHTTPServer собирает служебную поверхность (§15).
+// newHTTPServer собирает служебную поверхность.
 //
 // Все три endpoint'а живут на служебном порту и наружу не публикуются. Для
 // /metrics это существенно, а не наследование: выдача раскрывает размер fleet,
-// объём трафика и состав очередей. Аутентификации у него нет — §14 её для
+// объём трафика и состав очередей. Аутентификации у него нет — её для
 // служебного порта не требует, и границей служит сеть.
 func newHTTPServer(addr string, checks []readinessCheck, metrics http.Handler) *http.Server {
 	mux := http.NewServeMux()
@@ -45,7 +45,7 @@ func newHTTPServer(addr string, checks []readinessCheck, metrics http.Handler) *
 
 // handleLive отвечает всегда.
 //
-// §15: liveness не зависит ни от PostgreSQL, ни от нод. Проверка базы здесь
+// Liveness не зависит ни от PostgreSQL, ни от нод. Проверка базы здесь
 // означала бы, что кратковременная недоступность БД приводит к перезапуску всех
 // подов сразу — то есть превращает деградацию в полный отказ.
 func handleLive(w http.ResponseWriter, _ *http.Request) {
@@ -53,7 +53,7 @@ func handleLive(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte("ok\n"))
 }
 
-// handleReady требует доступную БД, совместимую схему и валидный ключ (§15).
+// handleReady требует доступную БД, совместимую схему и валидный ключ.
 func handleReady(checks []readinessCheck) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), readinessTimeout)
@@ -80,7 +80,7 @@ func handleReady(checks []readinessCheck) http.HandlerFunc {
 // спрашивать схему у недоступной базы нет.
 //
 // latest приходит параметром, а не читается здесь: ту же версию публикует
-// метрика binary_schema_version (§15), и вычислять её дважды значило бы завести
+// метрика binary_schema_version, и вычислять её дважды значило бы завести
 // два источника одного числа.
 func readinessChecks(pool *pgxpool.Pool, cipher *crypto.Cipher, latest uint) []readinessCheck {
 	return []readinessCheck{
@@ -118,7 +118,7 @@ func schemaCheck(pool *pgxpool.Pool, latest uint) func(context.Context) error {
 		}
 
 		// dirty означает прерванную миграцию: схема в неизвестном состоянии, и
-		// принимать на ней команды нельзя (§11).
+		// принимать на ней команды нельзя.
 		if dirty {
 			return fmt.Errorf("схема dirty на версии %d", version)
 		}

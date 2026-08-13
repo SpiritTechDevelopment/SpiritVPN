@@ -8,12 +8,12 @@ import (
 	"testing"
 )
 
-// goldenDigest — digest примера §6 (validSnapshot).
+// goldenDigest — digest примера validSnapshot.
 //
 // Литерал здесь пиннит канонический payload побайтово: digest — SHA-256 ровно от
 // него, и любое изменение раскладки, порядка полей или экранирования сдвинет эту
 // строку. Менять её можно только осознанно и понимая, что все уже сохранённые в
-// manifest_revisions digest станут несравнимыми с вновь вычисляемыми (решение 20).
+// manifest_revisions digest станут несравнимыми с вновь вычисляемыми.
 const goldenDigest = "ac2e6ab0d7a84fa83a4f5b681bba638d0b80eeee4537452564e4f5ab0a236300"
 
 func TestCanonicalizeManifestGolden(t *testing.T) {
@@ -31,7 +31,7 @@ func TestCanonicalizeManifestGolden(t *testing.T) {
 	}
 }
 
-// TestCanonicalizeManifestExcludesRevision — §6: rollback выполняется ПРЕЖНИМ
+// TestCanonicalizeManifestExcludesRevision — rollback выполняется ПРЕЖНИМ
 // desired snapshot под новой большей revision. Это работает только если revision
 // в digest не входит.
 func TestCanonicalizeManifestExcludesRevision(t *testing.T) {
@@ -75,7 +75,7 @@ func TestCanonicalizeManifestIgnoresInputOrder(t *testing.T) {
 }
 
 // TestCanonicalizeManifestSeesContentChange — обратная сторона: содержательное
-// изменение обязано двигать digest, иначе конфликт §6 не обнаружится.
+// изменение обязано двигать digest, иначе конфликт не обнаружится.
 func TestCanonicalizeManifestSeesContentChange(t *testing.T) {
 	base := validSnapshot()
 	_, digestBase := CanonicalizeManifest(base)

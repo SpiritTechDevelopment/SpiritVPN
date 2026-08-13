@@ -1,8 +1,8 @@
--- Приём infrastructure manifest (§6) и его проекция в таблицы топологии (§11).
+-- Приём infrastructure manifest и его проекция в таблицы топологии.
 --
--- Весь снапшот применяется одной транзакцией: §6 требует «применяется атомарно
+-- Весь снапшот применяется одной транзакцией: атомарно
 -- или не применяется вообще». Физических удалений здесь нет ни одного — строки
--- помечаются current = false и живут вечно (§6, §11).
+-- помечаются current = false и живут вечно.
 
 -- Сериализует приём манифеста: одновременно применяется не более одного снапшота.
 --
@@ -12,11 +12,11 @@
 -- вместе с транзакцией и берётся до первого чтения.
 --
 -- Цена нулевая: манифест применяет CI/CD инфраструктуры, это редкая операция, а
--- команды customer этот lock не берут и не ждут (решение 28).
+-- команды customer этот lock не берут и не ждут.
 -- name: LockManifestIngest :exec
 SELECT pg_advisory_xact_lock(@lock_key::bigint);
 
--- Последняя принятая revision и её canonical digest (§6). Ноль строк означает,
+-- Последняя принятая revision и её canonical digest. Ноль строк означает,
 -- что манифест не принимался ни разу.
 -- name: GetLastManifestRevision :one
 SELECT revision, digest
@@ -32,7 +32,7 @@ WHERE current
 ORDER BY node_id;
 
 -- ВСЕ принятые fleet, а не только текущие: принятый vpn_fleet_id не удаляется и
--- обязан присутствовать в каждом следующем снапшоте (§4, §6, §17).
+-- обязан присутствовать в каждом следующем снапшоте.
 -- name: ListAcceptedFleetIDs :many
 SELECT vpn_fleet_id
 FROM vpn_fleets
@@ -45,7 +45,7 @@ WHERE current
 ORDER BY vpn_fleet_id, node_id;
 
 -- ВСЕ связи, включая удалённые: routing_key занят навсегда, и оживление его с
--- другой парой (entry, exit) запрещено (§6).
+-- другой парой (entry, exit) запрещено.
 -- name: ListAllBridgeRoutes :many
 SELECT vpn_fleet_id, routing_key, entry_node_id, exit_node_id, current
 FROM vpn_bridge_routes
@@ -59,11 +59,11 @@ INSERT INTO manifest_revisions (revision, digest, canonical_payload)
 VALUES ($1, $2, $3);
 
 -- Апсерт ноды. Идентичность (node_id) стабильна, endpoint и публичные параметры
--- изменяемы между revisions (§6, §17).
+-- изменяемы между revisions.
 --
 -- desired_revision НЕ трогается: приём манифеста не меняет состав desired-юзеров
--- ноды и не создаёт agent operations (§13, решение 22). Ноду, вернувшуюся в
--- манифест, апсерт оживляет на месте — current снова true (решение 24).
+-- ноды и не создаёт agent operations. Ноду, вернувшуюся в
+-- манифест, апсерт оживляет на месте — current снова true.
 -- name: UpsertVpnNode :exec
 INSERT INTO vpn_nodes (node_id, agent_config, public_config, manifest_revision, current)
 VALUES ($1, $2, $3, $4, true)
@@ -90,7 +90,7 @@ SET manifest_revision = EXCLUDED.manifest_revision,
     current           = true;
 
 -- Апсерт связи. entry_node_id и exit_node_id намеренно НЕ обновляются: пара
--- неизменяема для существующего routing_key (§6). Домен это проверяет и
+-- неизменяема для существующего routing_key. Домен это проверяет и
 -- отклоняет манифест раньше; здесь то же правило закреплено структурно, чтобы
 -- будущая дыра в проверке не переставила молча входную ноду у выданных access.
 -- name: UpsertBridgeRoute :exec
@@ -104,8 +104,8 @@ SET egress_tag        = EXCLUDED.egress_tag,
     manifest_revision = EXCLUDED.manifest_revision,
     current           = true;
 
--- Ноды, глобально исчезнувшие из манифеста (§6). manifest_revision не трогается
--- и остаётся последней revision, в которой нода присутствовала (решение 23).
+-- Ноды, глобально исчезнувшие из манифеста. manifest_revision не трогается
+-- и остаётся последней revision, в которой нода присутствовала.
 -- name: RetireNodes :exec
 UPDATE vpn_nodes
 SET current    = false,
@@ -134,13 +134,13 @@ WHERE (route.vpn_fleet_id, route.routing_key) IN (
       ON fleets.position = keys.position
 );
 
--- Durable-джоба fan-out customer access (§6, §13). Ставится в той же транзакции,
+-- Durable-джоба fan-out customer access. Ставится в той же транзакции,
 -- что и проекция: иначе принятый снапшот остался бы без материализации.
 -- name: InsertMaterializationJob :exec
 INSERT INTO manifest_materialization_jobs (revision, status)
 VALUES ($1, 'PENDING');
 
--- Запись аудита (§15). sanitized_metadata не содержит секретов и customer ID.
+-- Запись аудита. sanitized_metadata не содержит секретов и customer ID.
 -- name: InsertAuditEvent :exec
 INSERT INTO audit_events (
     actor_type, actor_id, action, target_type, target_id,

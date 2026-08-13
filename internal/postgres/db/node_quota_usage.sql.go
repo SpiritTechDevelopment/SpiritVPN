@@ -24,10 +24,9 @@ type InsertNodeQuotaUsageParams struct {
 	NodeIds       []string
 }
 
-// Заводит нулевые строки расхода всем нодам fleet при открытии периода (§5).
+// Заводит нулевые строки расхода всем нодам fleet при открытии периода.
 // Внутри уже открытого периода Apply строк не создаёт: ноде, добавленной в fleet
-// позже, строку создаёт materialization job вместе с её FREEDOM access (§13,
-// решение 5).
+// позже, строку создаёт materialization job вместе с её FREEDOM access.
 //
 // Строки новые, конфликтующих locks они не берут, поэтому порядок вставки внутри
 // одного оператора значения не имеет.
@@ -51,8 +50,8 @@ type LockNodeQuotaUsageRow struct {
 	ExhaustedAt *time.Time
 }
 
-// Расход трафика customer по нодам внутри периода (§5, §11).
-// Блокирует строки расхода в порядке node_id (§11.1, шаг 3). total_bytes —
+// Расход трафика customer по нодам внутри периода.
+// Блокирует строки расхода в порядке node_id. total_bytes —
 // generated-колонка, поэтому читается, но не пишется.
 func (q *Queries) LockNodeQuotaUsage(ctx context.Context, quotaPeriodID uuid.UUID) ([]LockNodeQuotaUsageRow, error) {
 	rows, err := q.db.Query(ctx, lockNodeQuotaUsage, quotaPeriodID)
@@ -88,8 +87,8 @@ type SetNodeQuotaExhaustedParams struct {
 	ExhaustedAt   *time.Time
 }
 
-// Ставит и снимает отметку исчерпания под новый лимит в рамках того же периода
-// (§5). Непустой exhausted_at ставит отметку, NULL снимает её. Значение приходит
+// Ставит и снимает отметку исчерпания под новый лимит в рамках того же периода.
+// Непустой exhausted_at ставит отметку, NULL снимает её. Значение приходит
 // из now() той же транзакции, поэтому отметка и решение о desired state опираются
 // на один и тот же момент времени.
 func (q *Queries) SetNodeQuotaExhausted(ctx context.Context, arg SetNodeQuotaExhaustedParams) error {

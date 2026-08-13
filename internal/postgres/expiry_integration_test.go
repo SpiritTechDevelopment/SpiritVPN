@@ -71,7 +71,7 @@ func seedActiveCustomer(t *testing.T, stack expiryStack) {
 }
 
 // expireCustomer отматывает срок в прошлое, минуя ApplyCustomerAccess: сокращение
-// expires_at командой запрещено доменом (§5, правило 9).
+// expires_at командой запрещено доменом.
 func expireCustomer(t *testing.T, stack expiryStack) {
 	t.Helper()
 
@@ -100,8 +100,8 @@ func drainExpiry(t *testing.T, uc *app.ExpireCustomers) int {
 	return steps
 }
 
-// TestIntegrationExpiryRevokesAccessEndToEnd — §13: истечение переводит access в
-// ABSENT и создаёт Remove; §9 доставляет их до агента.
+// TestIntegrationExpiryRevokesAccessEndToEnd — истечение переводит access в
+// ABSENT и создаёт Remove; диспетчер доставляет их до агента.
 func TestIntegrationExpiryRevokesAccessEndToEnd(t *testing.T) {
 	stack := newExpiryStack(t)
 	seedActiveCustomer(t, stack)
@@ -121,7 +121,7 @@ func TestIntegrationExpiryRevokesAccessEndToEnd(t *testing.T) {
 		t.Errorf("операций удаления %d, ожидалось %d", got, seedOperationCount)
 	}
 
-	// Ссылки уже заблокированы по времени, независимо от доставки (§5).
+	// Ссылки уже заблокированы по времени, независимо от доставки.
 	links, err := stack.links.Execute(context.Background(), testCustomerID)
 	if err != nil {
 		t.Fatalf("GetCustomerAccessLinks: %v", err)
@@ -147,7 +147,7 @@ func TestIntegrationExpiryRevokesAccessEndToEnd(t *testing.T) {
 	}
 }
 
-// TestIntegrationExpiryIsIdempotent — §13: повторный запуск не создаёт вторых
+// TestIntegrationExpiryIsIdempotent — повторный запуск не создаёт вторых
 // Remove operations.
 func TestIntegrationExpiryIsIdempotent(t *testing.T) {
 	stack := newExpiryStack(t)
@@ -160,7 +160,7 @@ func TestIntegrationExpiryIsIdempotent(t *testing.T) {
 		`SELECT desired_version FROM customer_entitlements WHERE customer_id = $1`, testCustomerID)
 
 	// Второй проход обязан не найти работы вовсе: истёкший customer без PRESENT
-	// access в выборку не попадает, иначе воркер крутился бы вхолостую (решение 55).
+	// access в выборку не попадает, иначе воркер крутился бы вхолостую.
 	if got := drainExpiry(t, stack.expiry); got != 0 {
 		t.Fatalf("шагов на повторном проходе %d, ожидалось 0", got)
 	}
@@ -174,10 +174,10 @@ func TestIntegrationExpiryIsIdempotent(t *testing.T) {
 	}
 }
 
-// TestIntegrationExpiryBumpsNodeRevisionOnce — §11.1: транзакция увеличивает
+// TestIntegrationExpiryBumpsNodeRevisionOnce — транзакция увеличивает
 // desired_revision ноды ровно один раз, сколько бы access на ней ни гасло.
 //
-// У NL-1 их два: FREEDOM самой ноды и BRIDGE, где она входная (§4).
+// У NL-1 их два: FREEDOM самой ноды и BRIDGE, где она входная.
 func TestIntegrationExpiryBumpsNodeRevisionOnce(t *testing.T) {
 	stack := newExpiryStack(t)
 	seedActiveCustomer(t, stack)
@@ -198,7 +198,7 @@ func TestIntegrationExpiryBumpsNodeRevisionOnce(t *testing.T) {
 	}
 }
 
-// TestIntegrationExpirySupersedesPendingPresent — §9: недоставленный
+// TestIntegrationExpirySupersedesPendingPresent — недоставленный
 // EnsureUserPresent прежней версии обязан стать SUPERSEDED, иначе на ноду уехала
 // бы команда, ставящая юзера обратно уже после снятия.
 func TestIntegrationExpirySupersedesPendingPresent(t *testing.T) {
@@ -236,7 +236,7 @@ func TestIntegrationExpirySupersedesPendingPresent(t *testing.T) {
 	}
 }
 
-// TestIntegrationExpirySkipsLockedCustomer — §13: FOR UPDATE SKIP LOCKED, поэтому
+// TestIntegrationExpirySkipsLockedCustomer — FOR UPDATE SKIP LOCKED, поэтому
 // вторая реплика не ждёт занятого customer, а сразу берёт следующего.
 func TestIntegrationExpirySkipsLockedCustomer(t *testing.T) {
 	stack := newExpiryStack(t)
@@ -282,7 +282,7 @@ func TestIntegrationExpirySkipsLockedCustomer(t *testing.T) {
 	}
 }
 
-// TestIntegrationExpiryWritesAudit — §15: истечение customer обязано попадать в
+// TestIntegrationExpiryWritesAudit — истечение customer обязано попадать в
 // журнал аудита.
 func TestIntegrationExpiryWritesAudit(t *testing.T) {
 	stack := newExpiryStack(t)
@@ -301,7 +301,7 @@ func TestIntegrationExpiryWritesAudit(t *testing.T) {
 		 FROM audit_events WHERE action = 'CUSTOMER_EXPIRED'`); got != seedOperationCount {
 		t.Errorf("в аудите revoked_access = %d, ожидалось %d", got, seedOperationCount)
 	}
-	// Секретов в журнале быть не должно (§15).
+	// Секретов в журнале быть не должно.
 	if got := scalar[int64](t, stack.pool,
 		`SELECT count(*) FROM audit_events a JOIN vpn_accesses v ON true
 		 WHERE a.action = 'CUSTOMER_EXPIRED'
@@ -310,7 +310,7 @@ func TestIntegrationExpiryWritesAudit(t *testing.T) {
 	}
 }
 
-// TestIntegrationExpirySparesRenewedCustomer — §11.1: expiry перечитывает
+// TestIntegrationExpirySparesRenewedCustomer — expiry перечитывает
 // expires_at под locком, поэтому renewal, закоммиченный до захвата строки, не
 // отменяется.
 func TestIntegrationExpirySparesRenewedCustomer(t *testing.T) {
@@ -318,7 +318,7 @@ func TestIntegrationExpirySparesRenewedCustomer(t *testing.T) {
 	seedActiveCustomer(t, stack)
 	expireCustomer(t, stack)
 
-	// Renewal обычной командой: expires_at снова в будущем (§5, правило 8).
+	// Renewal обычной командой: expires_at снова в будущем.
 	renewed := time.Now().UTC().Add(60 * 24 * time.Hour)
 	if err := stack.customer.Execute(context.Background(), command(2, 1<<30, renewed)); err != nil {
 		t.Fatalf("renewal: %v", err)

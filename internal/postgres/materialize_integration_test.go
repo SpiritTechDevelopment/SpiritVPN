@@ -84,7 +84,7 @@ func seedCustomerOnManifest(t *testing.T, stack materializeStack) {
 }
 
 // TestIntegrationMaterializeCompletesJob — обход доходит до конца и закрывает
-// джобу, снимая lease (§13).
+// джобу, снимая lease.
 func TestIntegrationMaterializeCompletesJob(t *testing.T) {
 	stack := newMaterializeStack(t)
 	seedCustomerOnManifest(t, stack)
@@ -100,7 +100,7 @@ func TestIntegrationMaterializeCompletesJob(t *testing.T) {
 	}
 }
 
-// TestIntegrationMaterializeAddsNode — §13: новая нода даёт FREEDOM всем
+// TestIntegrationMaterializeAddsNode — новая нода даёт FREEDOM всем
 // неистёкшим customer fleet вместе с нулевой строкой расхода и операцией.
 func TestIntegrationMaterializeAddsNode(t *testing.T) {
 	stack := newMaterializeStack(t)
@@ -123,7 +123,7 @@ func TestIntegrationMaterializeAddsNode(t *testing.T) {
 		`SELECT desired_state FROM vpn_accesses WHERE entry_node_id = 'FR-1'`); got != "PRESENT" {
 		t.Errorf("desired_state %q, ожидался PRESENT", got)
 	}
-	// §13: новая нода получает нулевой node_quota_usage текущего периода.
+	// Новая нода получает нулевой node_quota_usage текущего периода.
 	if got := scalar[int64](t, stack.pool,
 		`SELECT count(*) FROM node_quota_usage u
 		 JOIN quota_periods p ON p.quota_period_id = u.quota_period_id
@@ -137,7 +137,7 @@ func TestIntegrationMaterializeAddsNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationMaterializeIsIdempotent — §13: повторная материализация одной
+// TestIntegrationMaterializeIsIdempotent — повторная материализация одной
 // revision ничего не добавляет.
 func TestIntegrationMaterializeIsIdempotent(t *testing.T) {
 	stack := newMaterializeStack(t)
@@ -165,7 +165,7 @@ func TestIntegrationMaterializeIsIdempotent(t *testing.T) {
 	}
 }
 
-// TestIntegrationMaterializeRetiresLiveNode — §13: удаление связи при живой
+// TestIntegrationMaterializeRetiresLiveNode — удаление связи при живой
 // входной ноде ретайрит access и создаёт Remove на неё.
 func TestIntegrationMaterializeRetiresLiveNode(t *testing.T) {
 	stack := newMaterializeStack(t)
@@ -181,7 +181,7 @@ func TestIntegrationMaterializeRetiresLiveNode(t *testing.T) {
 		`SELECT count(*) FROM vpn_accesses WHERE kind = 'BRIDGE' AND retired_at IS NOT NULL`); got != 1 {
 		t.Errorf("ретайрнутых BRIDGE %d, ожидался 1", got)
 	}
-	// Строка не удаляется: по ней приходит поздний traffic (§11).
+	// Строка не удаляется: по ней приходит поздний traffic.
 	if got := scalar[int64](t, stack.pool, `SELECT count(*) FROM vpn_accesses WHERE kind = 'BRIDGE'`); got != 1 {
 		t.Errorf("строк BRIDGE %d, ожидалась 1 — история не удаляется", got)
 	}
@@ -196,7 +196,7 @@ func TestIntegrationMaterializeRetiresLiveNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationMaterializeRetiresDeadNode — §6: на глобально удалённую ноду не
+// TestIntegrationMaterializeRetiresDeadNode — на глобально удалённую ноду не
 // уходит ни одной команды, а её незавершённые операции становятся SUPERSEDED.
 func TestIntegrationMaterializeRetiresDeadNode(t *testing.T) {
 	stack := newMaterializeStack(t)
@@ -222,7 +222,7 @@ func TestIntegrationMaterializeRetiresDeadNode(t *testing.T) {
 		 WHERE node_id = 'DE-1' AND operation_type = 'ENSURE_ABSENT'`); got != 0 {
 		t.Errorf("создано %d команд на глобально удалённую ноду", got)
 	}
-	// Прежние pending — superseded (§6).
+	// Прежние pending — superseded.
 	if got := scalar[int64](t, stack.pool,
 		`SELECT count(*) FROM agent_operations WHERE node_id = 'DE-1' AND status = 'PENDING'`); got != 0 {
 		t.Errorf("на удалённой ноде осталось %d PENDING-операций", got)
@@ -231,7 +231,7 @@ func TestIntegrationMaterializeRetiresDeadNode(t *testing.T) {
 		`SELECT count(*) FROM agent_operations WHERE node_id = 'DE-1' AND status = 'SUPERSEDED'`); got != 1 {
 		t.Errorf("SUPERSEDED-операций %d, ожидалась 1", got)
 	}
-	// Доставлять нечего, значит состояние доставки достигнуто (решение 6).
+	// Доставлять нечего, значит состояние доставки достигнуто.
 	if got := scalar[string](t, stack.pool,
 		`SELECT apply_state FROM vpn_accesses
 		 WHERE kind = 'FREEDOM' AND logical_target_key = 'DE-1'`); got != "APPLIED" {
@@ -239,7 +239,7 @@ func TestIntegrationMaterializeRetiresDeadNode(t *testing.T) {
 	}
 }
 
-// TestIntegrationMaterializeRepoint — §6: смена egress_tag меняет цель выхода,
+// TestIntegrationMaterializeRepoint — смена egress_tag меняет цель выхода,
 // сохраняя credentials и поколение.
 func TestIntegrationMaterializeRepoint(t *testing.T) {
 	stack := newMaterializeStack(t)
@@ -265,7 +265,7 @@ func TestIntegrationMaterializeRepoint(t *testing.T) {
 	if got := scalar[int64](t, stack.pool, `SELECT count(*) FROM vpn_accesses WHERE kind = 'BRIDGE'`); got != 1 {
 		t.Error("repoint создал новый access вместо обновления существующего")
 	}
-	// Переиздание правила доставляется обычным EnsureUserPresent (§9).
+	// Переиздание правила доставляется обычным EnsureUserPresent.
 	if got := scalar[int64](t, stack.pool,
 		`SELECT count(*) FROM agent_operations o
 		 JOIN vpn_accesses a ON a.access_id = o.access_id
@@ -274,8 +274,8 @@ func TestIntegrationMaterializeRepoint(t *testing.T) {
 	}
 }
 
-// TestIntegrationMaterializeCursorWalksAllCustomers — решение 29: обход идёт по
-// всем customer, по одному за шаг (решение 30).
+// TestIntegrationMaterializeCursorWalksAllCustomers — обход идёт по
+// всем customer, по одному за шаг.
 func TestIntegrationMaterializeCursorWalksAllCustomers(t *testing.T) {
 	stack := newMaterializeStack(t)
 	seedCustomerOnManifest(t, stack)
@@ -303,7 +303,7 @@ func TestIntegrationMaterializeCursorWalksAllCustomers(t *testing.T) {
 	}
 }
 
-// TestIntegrationMaterializeSkipsExpiredCustomer — §13 ограничивает создание
+// TestIntegrationMaterializeSkipsExpiredCustomer — ограничивает создание
 // неистёкшими customer.
 func TestIntegrationMaterializeSkipsExpiredCustomer(t *testing.T) {
 	stack := newMaterializeStack(t)
@@ -355,7 +355,7 @@ func TestIntegrationMaterializeFeedsCustomerLinks(t *testing.T) {
 	}
 }
 
-// Fault tests материализации (§18). Проверяют не то, что воркер делает, а то,
+// Fault tests материализации. Проверяют не то, что воркер делает, а то,
 // что остаётся после его внезапной смерти.
 
 // errWorkerCrashed изображает смерть процесса на середине шага.
@@ -404,7 +404,7 @@ func (t *crashingMaterializationTx) AdvanceCursor(ctx context.Context, revision 
 	return nil
 }
 
-// TestIntegrationMaterializeCrashLeavesNoPartialCustomer — §18: смерть воркера
+// TestIntegrationMaterializeCrashLeavesNoPartialCustomer — смерть воркера
 // посреди customer не оставляет ни половины изменений, ни съеденной работы.
 //
 // Всё держится на решении 34: курсор двигается той же транзакцией, что и
@@ -458,7 +458,7 @@ func TestIntegrationMaterializeCrashLeavesNoPartialCustomer(t *testing.T) {
 	}
 }
 
-// TestIntegrationMaterializeResumesFromCursorAfterCrash — §18: подобранная джоба
+// TestIntegrationMaterializeResumesFromCursorAfterCrash — подобранная джоба
 // продолжает обход с курсора, а не с начала.
 //
 // Цена ошибки здесь не в порче данных — материализация идемпотентна, — а в том,

@@ -15,9 +15,9 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/postgres/db"
 )
 
-// WithinMaterializationTx выполняет один шаг воркера в одной транзакции (§13).
+// WithinMaterializationTx выполняет один шаг воркера в одной транзакции.
 //
-// READ COMMITTED с явными row locks, как и командный путь (§11.1): шаг меняет
+// READ COMMITTED с явными row locks, как и командный путь: шаг меняет
 // состояние одного customer и обязан подчиняться тому же порядку блокировок.
 func (r *Repository) WithinMaterializationTx(ctx context.Context, fn func(app.MaterializationTx) error) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
@@ -46,7 +46,7 @@ type materializeTx struct {
 	applyTx
 }
 
-// ClaimJob берёт lease самой старой незавершённой джобы (§13). nil означает, что
+// ClaimJob берёт lease самой старой незавершённой джобы. nil означает, что
 // работы нет.
 func (t *materializeTx) ClaimJob(
 	ctx context.Context,
@@ -97,8 +97,8 @@ func (t *materializeTx) CompleteJob(ctx context.Context, revision int64) error {
 	return t.queries.CompleteMaterializationJob(ctx, revision)
 }
 
-// LoadLiveNodes — ноды текущего манифеста глобально, а не только внутри fleet
-// (§6). Тот же запрос, что читает проекцию приём манифеста.
+// LoadLiveNodes — ноды текущего манифеста глобально, а не только внутри fleet.
+// Тот же запрос, что читает проекцию приём манифеста.
 func (t *materializeTx) LoadLiveNodes(ctx context.Context) ([]domain.NodeID, error) {
 	nodes, err := t.queries.ListCurrentNodeIDs(ctx)
 	if err != nil {
@@ -107,7 +107,7 @@ func (t *materializeTx) LoadLiveNodes(ctx context.Context) ([]domain.NodeID, err
 	return nodeIDsFromStrings(nodes), nil
 }
 
-// WriteMaterialization записывает план в нормативном порядке блокировок §11.1:
+// WriteMaterialization записывает план в нормативном порядке блокировок:
 //
 //  1. customer_entitlements
 //  3. node_quota_usage
@@ -144,7 +144,7 @@ func (t *materializeTx) WriteMaterialization(ctx context.Context, plan app.Mater
 }
 
 // writeTouchedNodes блокирует ноды в порядке node_id и ровно один раз
-// увеличивает каждой desired_revision (§11.1).
+// увеличивает каждой desired_revision.
 func (t *materializeTx) writeTouchedNodes(ctx context.Context, nodes []domain.NodeID) error {
 	if len(nodes) == 0 {
 		return nil
@@ -165,7 +165,7 @@ func (t *materializeTx) writeTouchedNodes(ctx context.Context, nodes []domain.No
 }
 
 // writeMaterializedAccesses создаёт, гасит, смещает и ретайрит access. Все списки
-// плана отсортированы по access_id (§11.1).
+// плана отсортированы по access_id.
 func (t *materializeTx) writeMaterializedAccesses(ctx context.Context, plan app.MaterializedManifestPlan) error {
 	for _, access := range plan.NewAccesses {
 		if err := t.queries.InsertVpnAccess(ctx, db.InsertVpnAccessParams{
@@ -222,10 +222,10 @@ func (t *materializeTx) writeMaterializedAccesses(ctx context.Context, plan app.
 }
 
 // writeMaterializedOperations supersede-ит устаревшие операции и кладёт новые в
-// outbox (§9).
+// outbox.
 //
 // Supersede выполняется для КАЖДОГО изменённого access, включая ретайр на
-// глобально удалённой ноде: §6 прямо требует supersede-ить его pending-операции,
+// глобально удалённой ноде: его pending-операции нужно supersede-ить,
 // и это единственный способ не оставить в очереди команду на endpoint, которого
 // больше нет.
 func (t *materializeTx) writeMaterializedOperations(ctx context.Context, plan app.MaterializedManifestPlan) error {
@@ -276,7 +276,7 @@ func (t *materializeTx) supersede(ctx context.Context, accessID uuid.UUID, desir
 //
 // Живая нода получает EnsureUserAbsent, значит доставка ещё предстоит (PENDING).
 // У глобально удалённой ноды операции нет: юзер исчез вместе с её runtime, и
-// PENDING означал бы вечно недоставленную операцию в метрике §15 (§6, решение 6).
+// PENDING означал бы вечно недоставленную операцию в метрике.
 func applyStateForRetire(issueOperation bool) string {
 	if issueOperation {
 		return string(domain.ApplyStatePending)

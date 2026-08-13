@@ -26,7 +26,7 @@ type InsertCustomerEntitlementParams struct {
 	LastCommandNumber pgtype.Numeric
 }
 
-// Создаёт корневую строку первым успешным Apply (§5). Вставка, а не upsert:
+// Создаёт корневую строку первым успешным Apply. Вставка, а не upsert:
 // отсутствие строки уже установлено под lock, а конфликт по первичному ключу
 // означал бы, что сериализация на корневой строке не сработала, и такое обязано
 // провалить команду, а не тихо перезаписать чужое состояние.
@@ -49,9 +49,9 @@ WHERE customer_id = $1
 FOR UPDATE
 `
 
-// Запросы к корневой строке customer (§5, §11.1).
+// Запросы к корневой строке customer.
 // Блокирует корневую строку customer — первый шаг любой транзакции, меняющей
-// состояние одного customer (нормативный порядок блокировок, §11.1). Отсутствие
+// состояние одного customer (нормативный порядок блокировок). Отсутствие
 // строки означает нового customer.
 func (q *Queries) LockCustomerEntitlement(ctx context.Context, customerID string) (CustomerEntitlement, error) {
 	row := q.db.QueryRow(ctx, lockCustomerEntitlement, customerID)
@@ -85,9 +85,9 @@ type UpdateCustomerEntitlementParams struct {
 }
 
 // Фиксирует принятую команду существующего customer. last_command_number
-// двигается при успешном commit, в том числе на валидном no-op (§5, правило 3);
+// двигается при успешном commit, в том числе на валидном no-op;
 // отклонённые команды сюда не доходят. vpn_fleet_id не обновляется: смена fleet в
-// v1 запрещена и отсекается доменом раньше (§5, правило 5).
+// v1 запрещена и отсекается доменом раньше.
 func (q *Queries) UpdateCustomerEntitlement(ctx context.Context, arg UpdateCustomerEntitlementParams) error {
 	_, err := q.db.Exec(ctx, updateCustomerEntitlement,
 		arg.CustomerID,

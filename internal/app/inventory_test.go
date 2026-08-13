@@ -12,7 +12,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 )
 
-// Сверка desired state с фактическим инвентарём Xray (§10).
+// Сверка desired state с фактическим инвентарём Xray.
 
 const inventoryMaxAge = 10 * time.Minute
 
@@ -96,7 +96,7 @@ func TestCompareInventoryFindsDrift(t *testing.T) {
 			want:    map[app.DriftKind]int{app.DriftMismatch: 1},
 		},
 		{
-			// Решение 87, сверх дословных «UUID/flow» BACKEND_TECHNICAL_SPEC.md §16: доступ работает, но
+			// Сверх пары UUID и flow: доступ работает, но
 			// трафик BRIDGE уходит через чужой выход.
 			name:    "тот же accounting_id с другим egress",
 			desired: []nodeagent.User{present},
@@ -147,7 +147,7 @@ func TestCompareInventoryFindsDrift(t *testing.T) {
 	}
 }
 
-// TestCompareInventoryRejectsUnusableSnapshot — §10 и решение 88: непригодный
+// TestCompareInventoryRejectsUnusableSnapshot — непригодный
 // снимок отвергается целиком.
 //
 // Usable=false здесь принципиально не то же самое, что «расхождений нет».

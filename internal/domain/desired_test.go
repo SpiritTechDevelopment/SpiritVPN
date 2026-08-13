@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// §4: эффективный access требует одновременно неистёкшего срока и неисчерпанной
+// Эффективный access требует одновременно неистёкшего срока и неисчерпанной
 // квоты его ноды.
 func TestDesiredStateFor(t *testing.T) {
 	tests := []struct {
@@ -110,7 +110,7 @@ func TestPlanDesiredChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "результат отсортирован по access_id — порядок блокировок §11.1",
+			name: "результат отсортирован по access_id — нормативный порядок блокировок",
 			accesses: []Access{
 				{ID: accessID(9), EntryNodeID: "NL-1", DesiredState: DesiredStatePresent},
 				{ID: accessID(2), EntryNodeID: "NL-1", DesiredState: DesiredStatePresent},

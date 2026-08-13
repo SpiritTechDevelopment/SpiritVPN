@@ -41,7 +41,7 @@ func (s *stubApply) Execute(_ context.Context, request app.ApplyCustomerCommand)
 // заслоняло бы то, что они проверяют.
 func (s *stubApply) cmd() domain.ApplyCommand { return s.request.Command }
 
-// validRequest — запрос, проходящий валидацию §5. Тесты меняют в нём только то,
+// validRequest — запрос, проходящий валидацию. Тесты меняют в нём только то,
 // что проверяют.
 func validRequest() *customerv1.ApplyCustomerAccessRequest {
 	return &customerv1.ApplyCustomerAccessRequest{
@@ -67,7 +67,7 @@ func requireCode(t *testing.T, err error, want codes.Code) *status.Status {
 }
 
 // TestApplyCustomerAccessMapsDomainErrors — таблица «доменная ошибка → код»
-// (§5, шапка domain/errors.go). Обёрнутые случаи проверяют, что сопоставление
+// (перечень — в шапке domain/errors.go). Обёрнутые случаи проверяют, что сопоставление
 // идёт через errors.Is и переживает fmt.Errorf в use case.
 func TestApplyCustomerAccessMapsDomainErrors(t *testing.T) {
 	tests := []struct {
@@ -137,12 +137,12 @@ func TestApplyCustomerAccessHidesInfrastructureDetails(t *testing.T) {
 	}
 }
 
-// TestApplyCustomerAccessPinsExpiresAtPrecision пиннит решение 11: граница
+// TestApplyCustomerAccessPinsExpiresAtPrecision пиннит границу
 // секундной точности проходит здесь, на транспорте.
 //
 // timestamptz хранит микросекунды. Наносекунды в expires_at прочитались бы из
 // базы строго меньшим значением, и точный повтор команды классифицировался бы
-// как renewal со сбросом счётчиков трафика (§5, правило 8).
+// как renewal со сбросом счётчиков трафика.
 func TestApplyCustomerAccessPinsExpiresAtPrecision(t *testing.T) {
 	stub := &stubApply{}
 	srv := NewCustomerAccessServer(stub, &stubLinks{})
@@ -163,7 +163,7 @@ func TestApplyCustomerAccessPinsExpiresAtPrecision(t *testing.T) {
 	}
 }
 
-// TestApplyCustomerAccessMapsRequestFields — все пять полей §5 доезжают до
+// TestApplyCustomerAccessMapsRequestFields — все пять полей запроса доезжают до
 // команды без искажений.
 func TestApplyCustomerAccessMapsRequestFields(t *testing.T) {
 	stub := &stubApply{}
@@ -191,7 +191,7 @@ func TestApplyCustomerAccessMapsRequestFields(t *testing.T) {
 }
 
 // TestApplyCustomerAccessSuccessReturnsEmptyResponse — успех отвечает пустым
-// сообщением, а не nil-указателем (§5).
+// сообщением, а не nil-указателем.
 func TestApplyCustomerAccessSuccessReturnsEmptyResponse(t *testing.T) {
 	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{})
 
@@ -204,7 +204,7 @@ func TestApplyCustomerAccessSuccessReturnsEmptyResponse(t *testing.T) {
 	}
 }
 
-// TestApplyCustomerAccessMapsCallerContext — решение 12: закрытый контекст
+// TestApplyCustomerAccessMapsCallerContext — закрытый контекст
 // вызывающего не выдаётся за отказ backend.
 func TestApplyCustomerAccessMapsCallerContext(t *testing.T) {
 	tests := []struct {
@@ -248,7 +248,7 @@ func TestApplyCustomerAccessMapsCallerContext(t *testing.T) {
 }
 
 // TestApplyCustomerAccessInternalCancellationStaysInternal — вторая половина
-// решения 12 и главная причина, по которой отмена определяется по контексту, а
+// разбора отмены и главная причина, по которой она определяется по контексту, а
 // не по тексту ошибки.
 //
 // Контекст вызывающего жив, а изнутри пришла context.Canceled: отменил себя сам
@@ -334,7 +334,7 @@ func linksContext() (context.Context, *serverStream) {
 
 // TestGetCustomerAccessLinksMapsStates — таблица «доменное состояние → protobuf».
 // Здесь же проверяется контракт optional-полей: причина есть только у BLOCKED,
-// URI — только у READY (§5).
+// URI — только у READY.
 func TestGetCustomerAccessLinksMapsStates(t *testing.T) {
 	uri := "vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443?security=reality#NL"
 
@@ -443,7 +443,7 @@ func TestGetCustomerAccessLinksMapsStates(t *testing.T) {
 	}
 }
 
-// TestGetCustomerAccessLinksSetsNoStore — §5: ответ с URI не кешируется.
+// TestGetCustomerAccessLinksSetsNoStore — ответ с URI не кешируется.
 func TestGetCustomerAccessLinksSetsNoStore(t *testing.T) {
 	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{})
 
@@ -459,8 +459,8 @@ func TestGetCustomerAccessLinksSetsNoStore(t *testing.T) {
 }
 
 // TestGetCustomerAccessLinksFailsWithoutNoStore — если запрет кеширования
-// выставить не удалось, запрос отклоняется, а не отдаёт URI без него: §5 требует
-// заголовок на любом ответе с credentials. До use case дело при этом не доходит.
+// выставить не удалось, запрос отклоняется, а не отдаёт URI без него: заголовок
+// обязателен на любом ответе с credentials. До use case дело при этом не доходит.
 func TestGetCustomerAccessLinksFailsWithoutNoStore(t *testing.T) {
 	stub := &stubLinks{}
 	srv := NewCustomerAccessServer(&stubApply{}, stub)
@@ -495,7 +495,7 @@ func TestGetCustomerAccessLinksPassesCustomerID(t *testing.T) {
 	}
 }
 
-// TestGetCustomerAccessLinksMapsErrors — §5: неизвестный customer даёт NOT_FOUND,
+// TestGetCustomerAccessLinksMapsErrors — неизвестный customer даёт NOT_FOUND,
 // пустой — INVALID_ARGUMENT, всё остальное обезличивается.
 func TestGetCustomerAccessLinksMapsErrors(t *testing.T) {
 	tests := []struct {
@@ -528,7 +528,7 @@ func TestGetCustomerAccessLinksMapsErrors(t *testing.T) {
 }
 
 // TestGetCustomerAccessLinksEmptyList — customer без ссылок отвечает пустым
-// списком, а не NOT_FOUND: NOT_FOUND означает отсутствие самого customer (§5).
+// списком, а не NOT_FOUND: NOT_FOUND означает отсутствие самого customer.
 func TestGetCustomerAccessLinksEmptyList(t *testing.T) {
 	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{})
 

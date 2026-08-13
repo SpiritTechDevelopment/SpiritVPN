@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// OperationStatus — статус строки agent_operations (§9).
+// OperationStatus — статус строки agent_operations.
 //
 // Жизненный цикл:
 //
@@ -35,27 +35,26 @@ const (
 	AttemptPermanent AttemptOutcome = "PERMANENT"
 )
 
-// Параметры backoff из §9: начальная задержка 1 секунда, максимум 5 минут,
+// Параметры backoff: начальная задержка 1 секунда, максимум 5 минут,
 // число попыток не ограничено, пока desired state актуален.
 const (
 	BackoffInitial = time.Second
 	BackoffMax     = 5 * time.Minute
 )
 
-// OperationResultPlan — что записать по итогу одной попытки (§9).
+// OperationResultPlan — что записать по итогу одной попытки.
 type OperationResultPlan struct {
 	Status OperationStatus
 	// NextAttemptAt непусто только у RETRY_WAIT: остальные статусы либо
 	// терминальны, либо ждут не времени, а нового desired state.
 	NextAttemptAt *time.Time
-	// ApplyState — как исход проецируется на строку access (решение 41).
+	// ApplyState — как исход проецируется на строку access.
 	ApplyState ApplyState
 	// Completed отмечает терминальный исход: он же completed_at строки операции.
 	Completed bool
 }
 
-// Superseded корректирует план под access, чья desired_version уже ушла вперёд
-// (§9, решение 47).
+// Superseded корректирует план под access, чья desired_version уже ушла вперёд.
 //
 // Терминальные исходы сохраняются как есть: agent_operations является ещё и
 // журналом исполнения, и запись «эта операция доехала» правдива независимо от
@@ -76,8 +75,7 @@ func (p OperationResultPlan) Superseded() OperationResultPlan {
 	return p
 }
 
-// PlanOperationResult раскладывает исход попытки в состояние операции и access
-// (§9, решение 41).
+// PlanOperationResult раскладывает исход попытки в состояние операции и access.
 //
 // jitter приходит параметром в [0,1): домен детерминирован и случайности не
 // производит, как и времени. Вызывающий слой берёт его у своего источника.
@@ -96,7 +94,7 @@ func PlanOperationResult(
 		}
 
 	case AttemptPermanent:
-		// Терминальное состояние. §9: восстановление выполняется изменением
+		// Терминальное состояние: восстановление выполняется изменением
 		// некорректного desired state либо повторным ReconcileUsers, а не
 		// бесконечным повтором — permanent-ошибки не хот-лупятся.
 		return OperationResultPlan{
@@ -115,7 +113,7 @@ func PlanOperationResult(
 	}
 }
 
-// BackoffDelay — задержка перед следующей попыткой (§9).
+// BackoffDelay — задержка перед следующей попыткой.
 //
 // Экспонента от BackoffInitial с потолком BackoffMax. Jitter применяется к
 // половине задержки, а не ко всей: полный jitter мог бы дать задержку около

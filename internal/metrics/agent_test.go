@@ -177,8 +177,8 @@ func TestAgentLastSuccessOnlyOnSuccess(t *testing.T) {
 	}
 }
 
-// TestAgentAlertsCounted закрывает решение 52: alert §9 был временно подменён
-// логом уровня ERROR, потому что метрик не существовало.
+// TestAgentAlertsCounted проверяет, что alert попадает в метрику. Раньше он был
+// подменён логом уровня ERROR, потому что метрик не существовало.
 func TestAgentAlertsCounted(t *testing.T) {
 	registry := New()
 	agent := wrapAgent(t, registry, &fakeAgent{
@@ -197,7 +197,7 @@ func TestAgentAlertsCounted(t *testing.T) {
 	}
 }
 
-// TestPullPublishesNodeHealth — §15 требует health ноды, и до этого среза
+// TestPullPublishesNodeHealth — требует health ноды, и до этого среза
 // XrayReachable, XrayUptime и NeedsBootstrap не читал никто.
 func TestPullPublishesNodeHealth(t *testing.T) {
 	registry := New()
@@ -277,7 +277,7 @@ func TestUsagePullCappedWhenBatchesAtLimit(t *testing.T) {
 	}
 }
 
-// TestReconcileCountsDrift — §10: сводка изменений полного набора становится
+// TestReconcileCountsDrift — сводка изменений полного набора становится
 // тремя сериями reconcile_drift_total, и результат доезжает до вызывающего
 // нетронутым. Ненулевой removed на живой ноде — расхождение, о котором никто не
 // сообщал, и alert строится именно по нему.
@@ -362,7 +362,7 @@ func TestAgentPassesOutcomeThrough(t *testing.T) {
 	}
 }
 
-// TestInventoryObservationsClassifySnapshot — §10: пригодность снимка считается
+// TestInventoryObservationsClassifySnapshot — пригодность снимка считается
 // отдельно от успеха вызова.
 //
 // Агент, который исправно отвечает усечённым снимком, из сверки выпадает молча:

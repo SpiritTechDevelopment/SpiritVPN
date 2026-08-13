@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// ApplyDecision — как трактуется принятая команда ApplyCustomerAccess (§5).
+// ApplyDecision — как трактуется принятая команда ApplyCustomerAccess.
 type ApplyDecision int
 
 const (
@@ -33,8 +33,8 @@ func (d ApplyDecision) String() string {
 	}
 }
 
-// ValidateCustomerID проверяет непрозрачную product-идентичность (§3: 1..256
-// байт). Правило общее для обоих методов §5, поэтому вынесено отдельно:
+// ValidateCustomerID проверяет непрозрачную product-идентичность: 1..256 байт.
+// Правило общее для обоих методов, поэтому вынесено отдельно:
 // GetCustomerAccessLinks обязан отличать пустой customer_id (INVALID_ARGUMENT)
 // от неизвестного (NOT_FOUND), а не искать пустую строку в базе.
 func ValidateCustomerID(customerID string) error {
@@ -44,7 +44,7 @@ func ValidateCustomerID(customerID string) error {
 	return nil
 }
 
-// ValidateApplyCommand проверяет форму запроса (§5: все поля обязательны,
+// ValidateApplyCommand проверяет форму запроса: все поля обязательны,
 // vpn_fleet_id > 0, usage_quota_bytes > 0, command_number > 0).
 //
 // Вызывается ДО обращения к БД: невалидный запрос не должен ни блокировать
@@ -65,12 +65,12 @@ func ValidateApplyCommand(cmd ApplyCommand) error {
 	return nil
 }
 
-// IsStaleCommand сообщает, что команда переупорядочена или доставлена повторно
-// (§5, правило 2): её номер не больше сохранённого. Такая команда завершается
+// IsStaleCommand сообщает, что команда переупорядочена или доставлена повторно:
+// её номер не больше сохранённого. Такая команда завершается
 // идемпотентным OK без единого side effect — last_command_number она тоже не
 // двигает.
 //
-// Порядок обязателен: проверка идёт под lock корневой строки (§11.1) и ДО поиска
+// Порядок обязателен: проверка идёт под lock корневой строки и ДО поиска
 // fleet. Иначе повтор старой команды для fleet, успевшего исчезнуть из manifest,
 // вернул бы NOT_FOUND вместо OK.
 //
@@ -83,13 +83,13 @@ func IsStaleCommand(cmd ApplyCommand, ent *Entitlement) bool {
 	return cmd.CommandNumber <= ent.LastCommandNumber
 }
 
-// ClassifyApply определяет род принятой команды по правилам 5, 8 и 9 §5.
+// ClassifyApply определяет род принятой команды.
 //
 // Предусловия, обеспечиваемые вызывающим слоем: команда прошла
 // ValidateApplyCommand, не является устаревшей по IsStaleCommand, и fleet
 // существует в текущем manifest.
 func ClassifyApply(now time.Time, cmd ApplyCommand, ent *Entitlement) (ApplyDecision, error) {
-	// Новый customer: создание требует момента окончания в будущем (§5).
+	// Новый customer: создание требует момента окончания в будущем.
 	if ent == nil {
 		if !cmd.ExpiresAt.After(now) {
 			return 0, ErrExpiryNotInFuture

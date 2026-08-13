@@ -12,10 +12,10 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/postgres/db"
 )
 
-// WithinExpiryTx выполняет один шаг expiry worker в одной транзакции (§13).
+// WithinExpiryTx выполняет один шаг expiry worker в одной транзакции.
 //
 // READ COMMITTED с явными row locks, как и остальные пути: шаг меняет состояние
-// одного customer и подчиняется тому же порядку блокировок §11.1.
+// одного customer и подчиняется тому же нормативному порядку блокировок.
 func (r *Repository) WithinExpiryTx(ctx context.Context, fn func(app.ExpiryTx) error) error {
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
@@ -60,7 +60,7 @@ func (t *expiryTx) LockNextDueCustomer(ctx context.Context) (*app.ExpiredCustome
 	return &app.ExpiredCustomer{CustomerID: row.CustomerID, Entitlement: entitlement}, nil
 }
 
-// WriteExpiry записывает план в нормативном порядке блокировок §11.1:
+// WriteExpiry записывает план в нормативном порядке блокировок:
 //
 //  5. vpn_nodes
 //  6. vpn_accesses
@@ -68,7 +68,7 @@ func (t *expiryTx) LockNextDueCustomer(ctx context.Context) (*app.ExpiredCustome
 //
 // Шаги 1–3 пропущены: корневая строка уже заблокирована выборкой due customer, а
 // quota_periods и node_quota_usage истечение не трогает вовсе — desired state
-// истёкшего customer равен ABSENT независимо от расхода (решение 56).
+// истёкшего customer равен ABSENT независимо от расхода.
 func (t *expiryTx) WriteExpiry(ctx context.Context, plan app.MaterializedExpiryPlan) error {
 	if err := t.queries.BumpEntitlementDesiredVersion(ctx, db.BumpEntitlementDesiredVersionParams{
 		CustomerID:     plan.CustomerID,
@@ -95,7 +95,7 @@ func (t *expiryTx) WriteExpiry(ctx context.Context, plan app.MaterializedExpiryP
 }
 
 // writeExpiredNodes блокирует ноды в порядке node_id и ровно один раз увеличивает
-// каждой desired_revision, сколько бы access customer на ней ни было (§11.1).
+// каждой desired_revision, сколько бы access customer на ней ни было.
 func (t *expiryTx) writeExpiredNodes(ctx context.Context, nodes []domain.NodeID) error {
 	if len(nodes) == 0 {
 		return nil
@@ -109,7 +109,7 @@ func (t *expiryTx) writeExpiredNodes(ctx context.Context, nodes []domain.NodeID)
 	}
 	// Нода, на которой стоит живой access, обязана существовать в vpn_nodes:
 	// строки оттуда не удаляются никогда, исчезнувшие лишь помечаются
-	// current=false (§6). Расхождение означает рассогласованную проекцию.
+	// current=false. Расхождение означает рассогласованную проекцию.
 	if len(locked) != len(nodeIDs) {
 		return fmt.Errorf("postgres: заблокировано %d нод из %d — проекция топологии рассогласована",
 			len(locked), len(nodeIDs))
@@ -121,8 +121,7 @@ func (t *expiryTx) writeExpiredNodes(ctx context.Context, nodes []domain.NodeID)
 // writeExpiryOperations supersede-ит устаревшие операции и кладёт Remove в outbox.
 //
 // Supersede обязателен: у access мог висеть недоставленный EnsureUserPresent
-// прежней версии, и без него на ноду уехала бы команда, ставящая юзера обратно
-// (§9).
+// прежней версии, и без него на ноду уехала бы команда, ставящая юзера обратно.
 func (t *expiryTx) writeExpiryOperations(ctx context.Context, plan app.MaterializedExpiryPlan) error {
 	for _, change := range plan.Plan.DesiredChanges {
 		if err := t.queries.SupersedeStaleOperations(ctx, db.SupersedeStaleOperationsParams{

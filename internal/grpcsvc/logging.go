@@ -10,13 +10,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// LoggingUnaryInterceptor пишет по одной записи на вызов (§15).
+// LoggingUnaryInterceptor пишет по одной записи на вызов.
 //
 // Запись содержит request_id, стабильный error code и идентичность вызывающего.
-// operation_id и node_id §15 требует тоже, но они принадлежат не RPC, а
+// operation_id и node_id нужны тоже, но они принадлежат не RPC, а
 // operation dispatcher'у, и появятся в его логах — здесь их взять неоткуда.
 //
-// Тело запроса не логируется никогда: в нём customer_id, а §15 допускает его
+// Тело запроса не логируется никогда: в нём customer_id, а он допустим
 // только в ограниченных audit records. По той же причине не логируется и ответ —
 // GetCustomerAccessLinks вернёт VLESS URI с credentials внутри.
 func LoggingUnaryInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
@@ -45,7 +45,7 @@ func LoggingUnaryInterceptor(logger *slog.Logger) grpc.UnaryServerInterceptor {
 
 // levelFor разводит исходы по уровням так, чтобы error означал «разбирайся».
 //
-// Отказ по правилам §5 — это штатная работа сервиса, а не поломка: продление с
+// Отказ по правилам контракта — штатная работа сервиса, а не поломка: продление с
 // сокращением срока или неизвестный fleet происходят из-за того, что прислал
 // вызывающий. На error остаётся только то, в чём виноват backend.
 func levelFor(code codes.Code) slog.Level {

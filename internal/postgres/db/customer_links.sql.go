@@ -23,17 +23,17 @@ type GetCustomerLinksHeaderRow struct {
 	ExpiresAt time.Time
 }
 
-// Чтение ссылок customer (§5 GetCustomerAccessLinks, §8 VLESS URI).
+// Чтение ссылок customer: GetCustomerAccessLinks и сборка VLESS URI.
 //
 // Путь read-only: ни одного FOR UPDATE. Все транзакции, меняющие состояние
-// customer, сериализуются на его корневой строке (§11.1), а этот запрос ничего
+// customer, сериализуются на его корневой строке, а этот запрос ничего
 // не меняет, поэтому единственное, что ему нужно, — согласованность двух
 // операторов между собой; её даёт снимок транзакции, а не блокировки.
 // Срок действия customer и время того же снимка одним оператором: обе величины
-// сравниваются друг с другом, и брать их из разных моментов нельзя (§5:
-// TIME_EXPIRED выводится из current_time >= expires_at).
+// сравниваются друг с другом, и брать их из разных моментов нельзя:
+// TIME_EXPIRED выводится из current_time >= expires_at.
 //
-// Ноль строк означает неизвестного customer — NOT_FOUND (§5). Пустой список
+// Ноль строк означает неизвестного customer — NOT_FOUND. Пустой список
 // ссылок у существующего customer таким исходом не является, поэтому запрос
 // отдельный, а не объединён с выборкой ссылок.
 func (q *Queries) GetCustomerLinksHeader(ctx context.Context, customerID string) (GetCustomerLinksHeaderRow, error) {
@@ -91,29 +91,29 @@ type ListCustomerAccessLinksRow struct {
 	QuotaExhausted      bool
 }
 
-// Все текущие ссылки customer в порядке ответа §5.
+// Все текущие ссылки customer в фиксированном порядке ответа.
 //
 // Из выборки исключены:
 //
-//   - ретайрнутые access — historical наружу не отдаётся (§5);
+//   - ретайрнутые access — historical наружу не отдаётся;
 //   - access, чья логическая цель отсутствует в текущем manifest, — по ней URI
-//     запрещена (§8), а показать её нечем: PENDING обещал бы ссылку, которая не
-//     появится, а BLOCKED требует причину, которой в контракте нет (решение 17).
-//     Такой access ретайрит materialization job (§6), но между commit манифеста и
+//     запрещена, а показать её нечем: PENDING обещал бы ссылку, которая не
+//     появится, а BLOCKED требует причину, которой в контракте нет.
+//     Такой access ретайрит materialization job, но между commit манифеста и
 //     её отработкой существует окно, ради которого фильтр и нужен;
 //   - access на входной ноде, глобально удалённой из manifest: backend прекращает
-//     выдавать её ссылки (§6).
+//     выдавать её ссылки.
 //
 // Ветка цели ровно одна на строку: kind в условии join'а гарантирует, что
 // FREEDOM сопоставляется с membership ноды, а BRIDGE — со связью, и обе сразу
 // совпасть не могут.
 //
-// Порядок сортировки — внутренний (kind, logical_target_key, access_id) из §5.
+// Порядок сортировки — внутренний: (kind, logical_target_key, access_id).
 // Значения kind ('BRIDGE', 'FREEDOM') — ASCII в верхнем регистре, их взаимный
 // порядок одинаков в любой collation.
-// Входная нода: для FREEDOM это сама цель, для BRIDGE — entry_node_id связи (§4).
-// Все параметры URI, кроме uuid, берутся именно отсюда (§8).
-// Открытый период у customer максимум один (partial unique index, §11); его
+// Входная нода: для FREEDOM это сама цель, для BRIDGE — entry_node_id связи.
+// Все параметры URI, кроме uuid, берутся именно отсюда.
+// Открытый период у customer максимум один (partial unique index); его
 // отсутствие или отсутствие строки расхода означает «квота не исчерпана».
 func (q *Queries) ListCustomerAccessLinks(ctx context.Context, customerID string) ([]ListCustomerAccessLinksRow, error) {
 	rows, err := q.db.Query(ctx, listCustomerAccessLinks, customerID)

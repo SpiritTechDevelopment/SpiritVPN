@@ -14,12 +14,12 @@ import (
 
 // maxUsageBatchesPerPull — сколько batch забирается за один шаг.
 //
-// Потолок нужен, чтобы шаг оставался коротким: batch содержит до 5 000 items
-// (§12), и неограниченный ответ мог бы обрабатываться дольше собственного lease.
+// Потолок нужен, чтобы шаг оставался коротким: batch содержит до 5 000 items,
+// и неограниченный ответ мог бы обрабатываться дольше собственного lease.
 // Недобранное приедет следующим шагом — курсор двигается по каждому batch.
 const maxUsageBatchesPerPull = 16
 
-// UsageAgent — то, что pull worker требует от агента (§12).
+// UsageAgent — то, что pull worker требует от агента.
 //
 // Порт отдельный от AgentDispatcher: у чтения нет строки в agent_operations, и
 // сводить его исход к AttemptOutcome было бы натяжкой.
@@ -32,14 +32,14 @@ type UsageAgent interface {
 	) nodeagent.PullOutcome
 }
 
-// PullUsage — воркер учёта трафика (§12).
+// PullUsage — воркер учёта трафика.
 //
 // Единственный, кто наполняет node_quota_usage, и потому единственный, из-за кого
 // квота вообще может сработать. Агент в PostgreSQL не пишет: backend тянет у него
 // дельты и начисляет их сам.
 //
 // Шаг состоит из нескольких транзакций с сетевым вызовом между первой и
-// остальными: §11.1 запрещает держать транзакцию открытой во время обращения к
+// остальными: держать транзакцию открытой запрещено во время обращения к
 // агенту.
 type PullUsage struct {
 	Repo   UsageRepository
@@ -47,13 +47,13 @@ type PullUsage struct {
 	IDs    IDs
 	Logger *slog.Logger
 
-	// Owner попадает в lease_owner: по нему видно, чей lease протух (§15).
+	// Owner попадает в lease_owner: по нему видно, чей lease протух.
 	Owner string
 	// LeaseTTL должен с запасом перекрывать RPC вместе со всеми транзакциями
 	// групп, иначе вторая реплика начнёт опрашивать ту же ноду параллельно.
 	LeaseTTL time.Duration
 	// MinInterval — как часто опрашивается одна нода. Чаще, чем агент опрашивает
-	// Xray, дёргать нечего: он вернёт пустой ответ (§12).
+	// Xray, дёргать нечего: он вернёт пустой ответ.
 	MinInterval time.Duration
 }
 
@@ -97,7 +97,7 @@ func (uc *PullUsage) ProcessNext(ctx context.Context) (progressed bool, err erro
 
 	outcome := uc.Agent.GetNodeState(ctx, node.Endpoint, node.Cursor, maxUsageBatchesPerPull)
 	if !outcome.OK() {
-		// Недоступность ноды — не отказ шага: §16 требует, чтобы она не меняла ни
+		// Недоступность ноды — не отказ шага: она не меняет ни
 		// состава fleet, ни desired state. Записывать нечего, ретрай произойдёт
 		// сам собой на следующем интервале.
 		uc.logPullFailure(ctx, node.NodeID, outcome)
@@ -105,7 +105,7 @@ func (uc *PullUsage) ProcessNext(ctx context.Context) (progressed bool, err erro
 	}
 
 	// Признак bootstrap запоминается здесь, потому что этот вызов — единственный
-	// источник, из которого он вообще приходит. Реагирует на него reconcile (§10):
+	// источник, из которого он вообще приходит. Реагирует на него reconcile:
 	// агент с новым или повреждённым локальным состоянием не имеет права ничего
 	// удалять и сам из этого состояния не выйдет.
 	if err := uc.Repo.SetNodeNeedsBootstrap(ctx, node.NodeID, outcome.State.NeedsBootstrap); err != nil {
@@ -121,13 +121,13 @@ func (uc *PullUsage) consume(ctx context.Context, node ClaimedUsageNode, state *
 
 	for _, batch := range state.Batches {
 		// Смена spool_id означает новый спул: нумерация начинается с нуля, и
-		// сравнивать её с прежним acked_sequence нельзя (§12, решение 64).
+		// сравнивать её с прежним acked_sequence нельзя.
 		if batch.Cursor.SpoolID != cursor.SpoolID {
 			uc.logSpoolChange(ctx, node.NodeID, cursor, batch.Cursor)
 			cursor = nodeagent.UsageCursor{SpoolID: batch.Cursor.SpoolID}
 		}
 
-		// Монотонность: уже подтверждённый batch — идемпотентный no-op (§12, шаг 1).
+		// Монотонность: уже подтверждённый batch — идемпотентный no-op.
 		// Дедуп по items сработал бы и без этого, но лишних транзакций не будет.
 		if batch.Cursor.Sequence <= cursor.Sequence {
 			continue
@@ -135,7 +135,7 @@ func (uc *PullUsage) consume(ctx context.Context, node ClaimedUsageNode, state *
 
 		if err := uc.consumeBatch(ctx, node.NodeID, batch); err != nil {
 			// Курсор не двигаем: batch приедет снова, а уже начисленные items
-			// схлопнутся дедупом в no-op (решение 63).
+			// схлопнутся дедупом в no-op.
 			return err
 		}
 
@@ -149,7 +149,7 @@ func (uc *PullUsage) consume(ctx context.Context, node ClaimedUsageNode, state *
 }
 
 // consumeBatch раскладывает один batch по группам и обрабатывает каждую своей
-// короткой транзакцией (§11.1).
+// короткой транзакцией.
 func (uc *PullUsage) consumeBatch(ctx context.Context, nodeID domain.NodeID, batch nodeagent.UsageBatch) error {
 	ref := UsageBatchRef{NodeID: nodeID, SpoolID: batch.Cursor.SpoolID, Sequence: batch.Cursor.Sequence}
 
@@ -175,7 +175,7 @@ func (uc *PullUsage) consumeBatch(ctx context.Context, nodeID domain.NodeID, bat
 	return nil
 }
 
-// resolve делит items batch на опознанные и карантинные (§12, шаги 2 и 6).
+// resolve делит items batch на опознанные и карантинные.
 func (uc *PullUsage) resolve(
 	ctx context.Context,
 	nodeID domain.NodeID,
@@ -217,7 +217,7 @@ func (uc *PullUsage) resolve(
 }
 
 // consumeGroup обрабатывает одну группу (customer_id, node_id, quota_period_id) в
-// одной транзакции (§11.1, §12 шаги 3–5).
+// одной транзакции.
 func (uc *PullUsage) consumeGroup(
 	ctx context.Context,
 	ref UsageBatchRef,
@@ -237,7 +237,7 @@ func (uc *PullUsage) consumeGroup(
 			return fmt.Errorf("блокировка entitlement: %w", err)
 		}
 		if entitlement == nil {
-			// Access есть, а корневой строки нет. Удалений в v1 не бывает (§4),
+			// Access есть, а корневой строки нет. Удалений в v1 не бывает,
 			// поэтому это рассогласование, а не гонка.
 			quarantine = group.Items
 			return nil
@@ -248,8 +248,8 @@ func (uc *PullUsage) consumeGroup(
 			return fmt.Errorf("блокировка периода: %w", err)
 		}
 		if period == nil {
-			// Подходящего периода нет вовсе — не «закрыт», а не существует
-			// (решение 65). Начислять некуда, и молча терять трафик нельзя.
+			// Подходящего периода нет вовсе — не «закрыт», а не существует.
+			// Начислять некуда, и молча терять трафик нельзя.
 			quarantine = group.Items
 			return nil
 		}
@@ -270,7 +270,7 @@ func (uc *PullUsage) consumeGroup(
 		}
 		if len(fresh) == 0 {
 			// Весь batch этой группы уже начислен: повторный pull, перезапуск
-			// воркера или повтор batch (§12). Ровно то, ради чего дедуп и нужен.
+			// воркера или повтор batch. Ровно то, ради чего дедуп и нужен.
 			return nil
 		}
 
@@ -369,8 +369,8 @@ func (uc *PullUsage) logPullFailure(ctx context.Context, nodeID domain.NodeID, o
 		slog.String("message", outcome.Message))
 }
 
-// logSpoolChange — потеря спула. §12 называет её принятой погрешностью учёта, но
-// молчать о ней нельзя: она означает безвозвратно потерянный трафик (§15).
+// logSpoolChange — потеря спула. Это принятая погрешность учёта, но
+// молчать о ней нельзя: она означает безвозвратно потерянный трафик.
 func (uc *PullUsage) logSpoolChange(
 	ctx context.Context,
 	nodeID domain.NodeID,

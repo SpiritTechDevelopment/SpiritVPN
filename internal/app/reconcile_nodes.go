@@ -15,7 +15,7 @@ import (
 // Коды исходов, которые производит сам reconcile, а не агент и не транспорт.
 //
 // Как и у диспетчера, стоят рядом с тем, кто их порождает, и как и там,
-// переименование любого — изменение контракта наблюдаемости §15.
+// переименование любого — изменение контракта наблюдаемости.
 const (
 	// CodeReconcileStale — desired state ноды уехал, пока набор был на проводе.
 	CodeReconcileStale = "RECONCILE_STALE"
@@ -25,7 +25,7 @@ const (
 	CodeReconcileApplied = "RECONCILE_APPLIED"
 )
 
-// ReconcileNodes — authoritative reconcile (§10).
+// ReconcileNodes — authoritative reconcile.
 //
 // Второй слой восстановления ноды и единственный источник удалений. Первый слой,
 // add-only self-heal из локального снапшота, живёт на агенте, поднимает юзеров
@@ -33,11 +33,11 @@ const (
 // удаление по отставшему снапшоту сняло бы живого юзера. Лишний юзер переживаем,
 // потерянный — нет, поэтому все удаления здесь.
 //
-// Обычные изменения сюда не приходят: их по одному доставляет диспетчер (§9).
+// Обычные изменения сюда не приходят: их по одному доставляет диспетчер.
 // Reconcile нужен там, где доставлять уже нечего, — нода потеряла состояние
 // целиком (needs_bootstrap) или разошлась с ним незаметно (таймер).
 //
-// Шаг состоит из двух транзакций с сетевым вызовом между ними: §11.1 запрещает
+// Шаг состоит из двух транзакций с сетевым вызовом между ними: запрещено
 // держать транзакцию открытой во время обращения к агенту.
 //
 //	tx1  lease + зафиксированная desired_revision + полный набор
@@ -61,7 +61,7 @@ type ReconcileNodes struct {
 	MinInterval time.Duration
 
 	// MaxObservationAge — предел давности наблюдения Xray. Инвентарь старше него
-	// описывает уже неизвестно что, и сверяться с ним нельзя (§10).
+	// описывает уже неизвестно что, и сверяться с ним нельзя.
 	MaxObservationAge time.Duration
 }
 
@@ -115,7 +115,7 @@ func (uc *ReconcileNodes) ProcessNext(ctx context.Context) (progressed bool, err
 
 	// Полный набор — дорогой вызов: до 2000 юзеров, каждого агент применяет к Xray
 	// по одному. Ноде с потерянным состоянием он нужен целиком, всем остальным
-	// достаточно убедиться, что расхождения нет (§10). До этого среза набор летел
+	// достаточно убедиться, что расхождения нет. До этого среза набор летел
 	// на каждую ноду каждый интервал, и дрейф чинился вслепую.
 	if !node.NeedsBootstrap && !uc.drifted(ctx, *node, users) {
 		return true, nil
@@ -128,7 +128,7 @@ func (uc *ReconcileNodes) ProcessNext(ctx context.Context) (progressed bool, err
 
 	result := uc.Agent.ReconcileUsers(ctx, node.Endpoint, operationID.String(), users)
 	if result.Result != domain.AttemptSucceeded {
-		// Недоступность ноды — не отказ шага: §16 требует, чтобы она не меняла ни
+		// Недоступность ноды — не отказ шага: она не меняет ни
 		// состава fleet, ни desired state. Повтор произойдёт сам собой, потому что
 		// повод для reconcile никуда не делся.
 		uc.logFailure(ctx, node.NodeID, result)
@@ -138,12 +138,12 @@ func (uc *ReconcileNodes) ProcessNext(ctx context.Context) (progressed bool, err
 	return true, uc.accept(ctx, *node, result)
 }
 
-// drifted сверяет ноду с её фактическим инвентарём (§10).
+// drifted сверяет ноду с её фактическим инвентарём.
 //
 // false означает «полный набор сейчас не нужен», а не «нода в порядке»: сюда же
 // попадают недоступный агент и непригодное наблюдение. Это осознанно. Гнать набор
 // на ноду, которая только что не ответила, бессмысленно, а гнать его по
-// непригодному наблюдению запрещено (решение 88). В обоих случаях ничего не
+// непригодному наблюдению запрещено. В обоих случаях ничего не
 // потеряно: повод для reconcile никуда не делся, и следующий интервал повторит
 // попытку.
 func (uc *ReconcileNodes) drifted(ctx context.Context, node ClaimedReconcileNode, users []nodeagent.User) bool {
@@ -188,7 +188,7 @@ func (uc *ReconcileNodes) drifted(ctx context.Context, node ClaimedReconcileNode
 func (uc *ReconcileNodes) materialize(ctx context.Context, node ClaimedReconcileNode) ([]nodeagent.User, bool) {
 	// Пустой flow означает, что public_config ноды не разобрался: колонка битая
 	// либо не заполнена. Отправить набор с чужим flow — сломать на ноде всех
-	// разом, поэтому такая нода пропускается целиком (решение 18 гасит по этой же
+	// разом, поэтому такая нода пропускается целиком (ссылки гаснут по этой же
 	// причине одну ссылку, здесь на кону вся нода).
 	if node.Flow == "" {
 		uc.Logger.LogAttrs(ctx, slog.LevelError, "reconcile пропущен: public_config ноды непригоден",
@@ -199,7 +199,7 @@ func (uc *ReconcileNodes) materialize(ctx context.Context, node ClaimedReconcile
 	users := make([]nodeagent.User, 0, len(node.Users))
 	for _, user := range node.Users {
 		// Открытый client_uuid живёт только внутри этого вызова: payload
-		// собирается в память и не логируется (§10).
+		// собирается в память и не логируется.
 		clientUUID, err := uc.Sealer.Open(user.Credential)
 		if err != nil {
 			uc.Logger.LogAttrs(ctx, slog.LevelError, "reconcile пропущен: client_uuid не расшифровывается",
@@ -221,7 +221,7 @@ func (uc *ReconcileNodes) materialize(ctx context.Context, node ClaimedReconcile
 }
 
 // accept записывает результат отдельной транзакцией с повторной проверкой
-// desired_revision (§11.1).
+// desired_revision.
 func (uc *ReconcileNodes) accept(
 	ctx context.Context,
 	node ClaimedReconcileNode,
@@ -244,7 +244,7 @@ func (uc *ReconcileNodes) accept(
 	if !accepted {
 		// desired state уехал, пока набор был на проводе. Ничего не потеряно:
 		// более новое состояние уже доставляют обычные Ensure, а следующий проход
-		// сверит набор заново (§10).
+		// сверит набор заново.
 		uc.Logger.LogAttrs(ctx, slog.LevelInfo, "результат reconcile устарел",
 			slog.String("node_id", string(node.NodeID)),
 			slog.String("code", CodeReconcileStale),

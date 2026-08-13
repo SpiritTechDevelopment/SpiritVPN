@@ -87,7 +87,7 @@ func newTestCA(t *testing.T) *testCA {
 }
 
 // issue выпускает сертификат. CN намеренно не совпадает ни с чем: идентичность
-// читается только из SAN (решение 13 и его зеркало, решение 36).
+// читается только из SAN.
 func (ca *testCA) issue(
 	t *testing.T,
 	dnsNames []string,
@@ -237,7 +237,7 @@ func (a *fakeAgent) GetNodeState(
 
 // startAgent поднимает поддельного агента на localhost с настоящим mTLS.
 //
-// Агент требует и проверяет клиентский сертификат: §9 требует, чтобы он принимал
+// Агент требует и проверяет клиентский сертификат: он принимает
 // только идентичность backend, и рукопожатие обязано проверяться в обе стороны.
 func startAgent(t *testing.T, ca *testCA, agent *fakeAgent, serverSANs []string, serverURIs []string) string {
 	t.Helper()
@@ -305,7 +305,7 @@ func testUser() User {
 // --- тесты --------------------------------------------------------------------
 
 // TestEnsureUserPresentDeliversPayload — путь целиком: рукопожатие, сверка
-// идентичности и payload §9 на той стороне.
+// идентичности и payload на той стороне.
 func TestEnsureUserPresentDeliversPayload(t *testing.T) {
 	agent := &fakeAgent{result: applied()}
 	client, endpoint := newHarness(t, agent)
@@ -318,7 +318,7 @@ func TestEnsureUserPresentDeliversPayload(t *testing.T) {
 
 	req := agent.presentReq
 	if req.GetOperationId() != "op-1" {
-		t.Errorf("operation_id %q: контракт строит на нём идемпотентность (решение 38)", req.GetOperationId())
+		t.Errorf("operation_id %q: контракт строит на нём идемпотентность", req.GetOperationId())
 	}
 	if got := req.GetUser().GetAccountingId(); got != testUser().AccountingID {
 		t.Errorf("accounting_id %q", got)
@@ -327,7 +327,7 @@ func TestEnsureUserPresentDeliversPayload(t *testing.T) {
 		t.Errorf("credential_uuid не доехал в открытом виде: %q", got)
 	}
 	if got := req.GetUser().GetEgressKey(); got != "de-exit" {
-		t.Errorf("egress_key %q: без него агент не построит per-user rule (§9)", got)
+		t.Errorf("egress_key %q: без него агент не построит per-user rule", got)
 	}
 	if got := req.GetUser().GetFlow(); got != domain.FlowXTLSRprxVision {
 		t.Errorf("flow %q", got)
@@ -335,7 +335,7 @@ func TestEnsureUserPresentDeliversPayload(t *testing.T) {
 }
 
 // TestEnsureUserAbsentSendsNoCredential — удаление матчится по accounting_id, и
-// расшифровывать client_uuid ради него незачем (§9).
+// расшифровывать client_uuid ради него незачем.
 func TestEnsureUserAbsentSendsNoCredential(t *testing.T) {
 	agent := &fakeAgent{result: applied()}
 	client, endpoint := newHarness(t, agent)
@@ -353,7 +353,7 @@ func TestEnsureUserAbsentSendsNoCredential(t *testing.T) {
 	}
 }
 
-// TestClassifyAgentStatuses — решение 37: gRPC OK и ApplyStatus в теле независимы.
+// TestClassifyAgentStatuses — gRPC OK и ApplyStatus в теле независимы.
 func TestClassifyAgentStatuses(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -389,7 +389,7 @@ func TestClassifyAgentStatuses(t *testing.T) {
 	}
 }
 
-// TestClassifyTransportCodes — таблица §9: что повторяется, а что терминально.
+// TestClassifyTransportCodes — что повторяется, а что терминально.
 func TestClassifyTransportCodes(t *testing.T) {
 	tests := []struct {
 		code  codes.Code
@@ -404,7 +404,7 @@ func TestClassifyTransportCodes(t *testing.T) {
 		{codes.Unauthenticated, domain.AttemptPermanent, true},
 		{codes.PermissionDenied, domain.AttemptPermanent, true},
 		{codes.Unimplemented, domain.AttemptPermanent, true},
-		// Неопознанное повторяется, но не молча (§9).
+		// Неопознанное повторяется, но не молча.
 		{codes.Internal, domain.AttemptRetryable, true},
 	}
 
@@ -425,7 +425,7 @@ func TestClassifyTransportCodes(t *testing.T) {
 	}
 }
 
-// TestIdentityMismatchIsPermanent — решение 36 и главный тест этого пакета.
+// TestIdentityMismatchIsPermanent — и главный тест этого пакета.
 //
 // Сертификат подписан нашим CA и имеет верное DNS-имя, поэтому рукопожатие и
 // проверка цепочки проходят. Но URI SAN принадлежит другой ноде: без явной сверки
@@ -456,7 +456,7 @@ func TestIdentityMismatchIsPermanent(t *testing.T) {
 		t.Errorf("код %q, ожидался %q", outcome.Code, CodeIdentityMismatch)
 	}
 	if !outcome.Alert {
-		t.Error("подмена идентичности не подняла alert (§9: security failure)")
+		t.Error("подмена идентичности не подняла alert: это security failure")
 	}
 	if agent.calls != 0 {
 		t.Errorf("агент получил %d вызовов: credentials уехали чужой ноде", agent.calls)
@@ -464,7 +464,7 @@ func TestIdentityMismatchIsPermanent(t *testing.T) {
 }
 
 // TestIncompleteEndpointIsRejectedBeforeDialing — неполный agent_config отсекается
-// до соединения и называется своим именем (решение 50).
+// до соединения и называется своим именем.
 //
 // Пустой certificate_identity проверяется отдельным случаем: без гарды он дошёл бы
 // до сверки идентичности и приехал бы наружу как IDENTITY_MISMATCH, то есть
@@ -514,7 +514,7 @@ func TestEmptyExpectedIdentityNeverMatches(t *testing.T) {
 	}
 }
 
-// TestReusesConnectionPerNode — §9: на ноду переиспользуется один канал.
+// TestReusesConnectionPerNode — на ноду переиспользуется один канал.
 func TestReusesConnectionPerNode(t *testing.T) {
 	agent := &fakeAgent{result: applied()}
 	client, endpoint := newHarness(t, agent)
@@ -533,8 +533,8 @@ func TestReusesConnectionPerNode(t *testing.T) {
 	}
 }
 
-// TestEndpointChangeReplacesConnection — решение 40: смена endpoint в манифесте
-// сама переводит доставку на новый адрес и закрывает прежнее соединение (§6).
+// TestEndpointChangeReplacesConnection — смена endpoint в манифесте
+// сама переводит доставку на новый адрес и закрывает прежнее соединение.
 func TestEndpointChangeReplacesConnection(t *testing.T) {
 	ca := newTestCA(t)
 	client, err := New(ca.issueBackendFiles(t))
@@ -593,7 +593,7 @@ func TestNewRejectsBrokenMaterial(t *testing.T) {
 	})
 }
 
-// TestReconcileUsersMarksSetComplete — §10 и вендорный контракт: complete=true —
+// TestReconcileUsersMarksSetComplete — и вендорный контракт: complete=true —
 // это утверждение, что набор авторитетный, а не усечённый по дороге. Без него
 // агент не имеет права удалять backend-owned юзеров, которых в наборе нет, то
 // есть reconcile перестаёт быть reconcile.
@@ -626,16 +626,16 @@ func TestReconcileUsersMarksSetComplete(t *testing.T) {
 		t.Errorf("credential_uuid не доехал в открытом виде: %q", got)
 	}
 	if got := users[0].GetEgressKey(); got != "de-exit" {
-		t.Errorf("egress_key %q: без него агент не восстановит per-user rule (§10)", got)
+		t.Errorf("egress_key %q: без него агент не восстановит per-user rule", got)
 	}
 
-	// Сводка изменений — то, по чему виден найденный дрейф (§15).
+	// Сводка изменений — то, по чему виден найденный дрейф.
 	if result.Added != 1 || result.Removed != 2 || result.Unchanged != 3 {
 		t.Errorf("сводка изменений потеряна: %+v", result)
 	}
 }
 
-// TestReconcileUsersSendsEmptySet — §10: пустой набор легален и означает
+// TestReconcileUsersSendsEmptySet — пустой набор легален и означает
 // «backend-owned юзеров на ноде нет». Он обязан доехать как пустой список с тем
 // же complete, а не превратиться в отсутствие вызова.
 func TestReconcileUsersSendsEmptySet(t *testing.T) {

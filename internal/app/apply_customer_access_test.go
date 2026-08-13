@@ -17,7 +17,7 @@ import (
 )
 
 // Тесты use case проверяют то, чего не видно ни в домене, ни в SQL: ПОРЯДОК шагов
-// внутри транзакции. §5 и §11.1 задают его нормативно, и нарушения дают тихие
+// внутри транзакции. Порядок нормативен, и нарушения дают тихие
 // баги — например, повтор старой команды для исчезнувшего fleet вернул бы
 // NOT_FOUND вместо идемпотентного OK.
 //
@@ -161,7 +161,7 @@ func (s *stubSealer) KeyID() string { return "test" }
 
 var testNow = time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
 
-// Идентичность вызывающего и корреляция запроса; уезжают в audit_events (§15).
+// Идентичность вызывающего и корреляция запроса; уезжают в audit_events.
 const (
 	testActor     = "product-svc"
 	testRequestID = "req-1"
@@ -176,7 +176,7 @@ func newHarness(tx *fakeTx) (*app.ApplyCustomerAccess, *fakeRepo, *countingIDs, 
 
 // request оборачивает доменную команду в то, что принимает use case.
 //
-// validCommand остаётся доменной, потому что тесты правил §5 меняют её поля:
+// validCommand остаётся доменной, потому что тесты правил меняют её поля:
 // actor и request_id к этим правилам отношения не имеют и добавляются здесь.
 func request(cmd domain.ApplyCommand) app.ApplyCustomerCommand {
 	return app.ApplyCustomerCommand{Command: cmd, Actor: testActor, RequestID: testRequestID}
@@ -195,7 +195,7 @@ func validCommand() domain.ApplyCommand {
 // --- тесты ------------------------------------------------------------------
 
 // Невалидный запрос не должен ни открывать транзакцию, ни блокировать корневую
-// строку, ни двигать last_command_number (§5, шаг 1).
+// строку, ни двигать last_command_number.
 func TestExecuteValidatesBeforeTouchingDatabase(t *testing.T) {
 	commands := map[string]func(*domain.ApplyCommand){
 		"пустой customer_id": func(c *domain.ApplyCommand) { c.CustomerID = "" },
@@ -224,7 +224,7 @@ func TestExecuteValidatesBeforeTouchingDatabase(t *testing.T) {
 
 // Устаревшая команда завершается идемпотентным OK без единого side effect, и
 // проверка идёт ДО поиска fleet: иначе повтор старой команды для исчезнувшего
-// fleet вернул бы NOT_FOUND вместо OK (§5, правило 2).
+// fleet вернул бы NOT_FOUND вместо OK.
 func TestExecuteStaleCommandStopsBeforeFleetLookup(t *testing.T) {
 	tx := &fakeTx{
 		now: testNow,
@@ -260,7 +260,7 @@ func TestExecuteStaleCommandStopsBeforeFleetLookup(t *testing.T) {
 }
 
 // SELECT now() — первый оператор транзакции, и он предшествует блокировке корневой
-// строки (решение 2, §11.1).
+// строки.
 func TestExecuteReadsTransactionTimeFirst(t *testing.T) {
 	tx := &fakeTx{
 		now:          testNow,
@@ -281,7 +281,7 @@ func TestExecuteReadsTransactionTimeFirst(t *testing.T) {
 	}
 }
 
-// Неизвестный fleet возвращает NOT_FOUND и не пишет плана (§5, правило 6).
+// Неизвестный fleet возвращает NOT_FOUND и не пишет плана.
 func TestExecuteUnknownFleet(t *testing.T) {
 	tx := &fakeTx{now: testNow, fleetCurrent: false}
 	uc, repo, _, _ := newHarness(tx)
@@ -294,12 +294,12 @@ func TestExecuteUnknownFleet(t *testing.T) {
 		t.Fatal("отклонённая команда не должна писать план")
 	}
 	if repo.committed {
-		t.Fatal("отклонённая команда обязана откатывать транзакцию: номер не двигается (§5, правило 3)")
+		t.Fatal("отклонённая команда обязана откатывать транзакцию: номер не двигается")
 	}
 }
 
 // Первый Apply создаёт корневую строку, открывает период, материализует access под
-// топологию и выпускает по операции на каждый PRESENT (§5).
+// топологию и выпускает по операции на каждый PRESENT.
 func TestExecuteCreatesCustomer(t *testing.T) {
 	tx := &fakeTx{
 		now:          testNow,
@@ -347,7 +347,7 @@ func TestExecuteCreatesCustomer(t *testing.T) {
 		t.Fatal("новому периоду не выдан идентификатор")
 	}
 
-	// link_count = fleet_node_count + bridge_relation_count (§4).
+	// link_count = fleet_node_count + bridge_relation_count.
 	if len(plan.NewAccesses) != 3 {
 		t.Fatalf("создано %d access, ожидалось 3", len(plan.NewAccesses))
 	}
@@ -355,7 +355,7 @@ func TestExecuteCreatesCustomer(t *testing.T) {
 		t.Fatalf("создано %d операций, ожидалось 3", len(plan.Operations))
 	}
 
-	// Каждый новый access получает собственные accounting_id и client_uuid (§4).
+	// Каждый новый access получает собственные accounting_id и client_uuid.
 	if ids.accountingIDs != 3 || ids.clientUUIDs != 3 || sealer.sealed != 3 {
 		t.Fatalf("accounting=%d client_uuid=%d sealed=%d, ожидалось по 3",
 			ids.accountingIDs, ids.clientUUIDs, sealer.sealed)
@@ -372,10 +372,10 @@ func TestExecuteCreatesCustomer(t *testing.T) {
 		accountingIDs[access.AccountingID] = struct{}{}
 	}
 	if len(accountingIDs) != 3 {
-		t.Fatal("accounting_id обязан быть уникальным на access (§9)")
+		t.Fatal("accounting_id обязан быть уникальным на access")
 	}
 
-	// Все операции на создание — EnsureUserPresent первой версии (§9, решение 3).
+	// Все операции на создание — EnsureUserPresent первой версии.
 	for _, op := range plan.Operations {
 		if op.DesiredState != domain.DesiredStatePresent {
 			t.Fatalf("операция с desired_state %q", op.DesiredState)
@@ -390,10 +390,10 @@ func TestExecuteCreatesCustomer(t *testing.T) {
 }
 
 // Access, родившийся ABSENT (истёкший customer), операции не получает: юзера на
-// ноде не было, а отсутствие — состояние Xray по умолчанию (решение 3.2).
+// ноде не было, а отсутствие — состояние Xray по умолчанию.
 func TestExecuteAbsentAtBirthIssuesNoOperation(t *testing.T) {
-	// Существующий истёкший customer: повтор его команды с тем же expiry допустим
-	// (§5, правило 7), а новая нода fleet даёт ABSENT-access.
+	// Существующий истёкший customer: повтор его команды с тем же expiry допустим,
+	// а новая нода fleet даёт ABSENT-access.
 	expired := testNow.Add(-time.Hour)
 	tx := &fakeTx{
 		now:          testNow,
@@ -438,7 +438,7 @@ func TestExecuteAbsentAtBirthIssuesNoOperation(t *testing.T) {
 	}
 	// Период не открывается заново, поэтому и его идентификатор не нужен.
 	if ids.periodIDs != 0 {
-		t.Fatal("тот же expiry не открывает новый период (§5, правило 7)")
+		t.Fatal("тот же expiry не открывает новый период")
 	}
 	if plan.PeriodID != tx.openPeriod.ID {
 		t.Fatal("изменения квоты обязаны писаться в уже открытый период")
@@ -446,7 +446,7 @@ func TestExecuteAbsentAtBirthIssuesNoOperation(t *testing.T) {
 }
 
 // Точный повтор принятой команды с бо́льшим номером не меняет целевого состояния:
-// операций нет, период не открывается, но номер команды двигается (§5, правило 4).
+// операций нет, период не открывается, но номер команды двигается.
 func TestExecuteAcceptedNoOpStillAdvancesCommandNumber(t *testing.T) {
 	periodID := uuid.New()
 	accessID := uuid.New()
@@ -489,7 +489,7 @@ func TestExecuteAcceptedNoOpStillAdvancesCommandNumber(t *testing.T) {
 	}
 
 	// У существующего customer период и расход блокируются до чтения топологии —
-	// нормативный порядок §11.1.
+	// нормативный порядок блокировок.
 	want := []string{
 		"Now", "LockEntitlement", "FleetIsCurrent",
 		"LockOpenQuotaPeriod", "LockNodeQuotaUsage",
@@ -510,7 +510,7 @@ func TestExecuteAcceptedNoOpStillAdvancesCommandNumber(t *testing.T) {
 		t.Fatalf("CommandNumber = %d, ожидалось 5", plan.CommandNumber)
 	}
 	if plan.Plan.EntitlementDesiredVersion != 3 {
-		t.Fatalf("desired_version = %d, на пустом плане он не растёт (решение 3.5)",
+		t.Fatalf("desired_version = %d, на пустом плане он не растёт",
 			plan.Plan.EntitlementDesiredVersion)
 	}
 	if len(plan.Operations) != 0 || len(plan.NewAccesses) != 0 {
@@ -522,7 +522,7 @@ func TestExecuteAcceptedNoOpStillAdvancesCommandNumber(t *testing.T) {
 }
 
 // Исчерпание квоты на одной ноде переводит в ABSENT только её access и порождает
-// EnsureUserAbsent только для неё; на других нодах доступ сохраняется (§4, §5).
+// EnsureUserAbsent только для неё; на других нодах доступ сохраняется.
 func TestExecuteQuotaDecreaseBlocksOnlyExhaustedNode(t *testing.T) {
 	periodID := uuid.New()
 	accessA, accessB := uuid.New(), uuid.New()
@@ -621,7 +621,7 @@ func TestExecutePropagatesSealError(t *testing.T) {
 	}
 }
 
-// --- аудит команды customer (§15) ---------------------------------------------
+// --- аудит команды customer ---------------------------------------------
 
 // existingCustomerTx — уже заведённый customer с открытым периодом. Основа для
 // решений RENEWAL и QUOTA_CHANGE: оба требуют сохранённой корневой строки.
@@ -664,7 +664,7 @@ func applyForAudit(t *testing.T, tx *fakeTx, cmd domain.ApplyCommand) []app.Audi
 	return tx.audits
 }
 
-// TestApplyAuditsDecision — §15 перечисляет «Apply/renewal» раздельно, поэтому
+// TestApplyAuditsDecision — перечисляет «Apply/renewal» раздельно, поэтому
 // решение домена попадает в action, а не в метаданные: фильтр по колонке дешевле
 // и надёжнее разбора jsonb.
 func TestApplyAuditsDecision(t *testing.T) {
@@ -751,7 +751,7 @@ func TestApplyAuditsEmptyPlan(t *testing.T) {
 }
 
 // TestApplyAuditCarriesCaller — actor и request_id связывают запись с
-// mTLS-идентичностью вызывающего и логами того же запроса (§15).
+// mTLS-идентичностью вызывающего и логами того же запроса.
 func TestApplyAuditCarriesCaller(t *testing.T) {
 	audits := applyForAudit(t, newCustomerTx(), validCommand())
 	if len(audits) != 1 {
@@ -763,7 +763,7 @@ func TestApplyAuditCarriesCaller(t *testing.T) {
 		t.Errorf("actor %q request %q, ожидались %q и %q",
 			event.ActorID, event.RequestID, testActor, testRequestID)
 	}
-	// customer_id разрешён §15 именно в audit records и живёт в target_id.
+	// customer_id разрешён именно в audit records и живёт в target_id.
 	if event.TargetID != validCommand().CustomerID {
 		t.Errorf("target_id %q, ожидался %q", event.TargetID, validCommand().CustomerID)
 	}
@@ -772,7 +772,7 @@ func TestApplyAuditCarriesCaller(t *testing.T) {
 	}
 }
 
-// TestApplyAuditMetadataCarriesNoSecrets — §15 запрещает секреты в журнале.
+// TestApplyAuditMetadataCarriesNoSecrets — запрещает секреты в журнале.
 //
 // Проверка идёт по ЗНАЧЕНИЯМ, а не по именам ключей: accounting_id и client_uuid
 // опасны именно как значения, и попасть туда они могут под любым именем.
@@ -797,8 +797,8 @@ func TestApplyAuditMetadataCarriesNoSecrets(t *testing.T) {
 	}
 }
 
-// TestApplyStaleCommandWritesNoAudit — устаревшая команда не имеет side effects
-// (§5, правило 2), и запись о ней означала бы изменение, которого не было.
+// TestApplyStaleCommandWritesNoAudit — устаревшая команда не имеет side effects,
+// и запись о ней означала бы изменение, которого не было.
 // Повтор доставки иначе плодил бы дубликаты одного и того же no-op.
 func TestApplyStaleCommandWritesNoAudit(t *testing.T) {
 	tx := existingCustomerTx()

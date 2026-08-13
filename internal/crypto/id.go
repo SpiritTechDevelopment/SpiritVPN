@@ -42,14 +42,14 @@ func (g *Generator) NewAccessID() (uuid.UUID, error) {
 }
 
 // NewQuotaPeriodID — внутренний идентификатор периода квоты; во внешний контракт
-// не попадает (§5).
+// не попадает.
 func (g *Generator) NewQuotaPeriodID() (uuid.UUID, error) {
 	return g.newUUID("quota_period_id")
 }
 
 // NewOperationID — первичный ключ agent_operations. Колонка объявлена без
 // DEFAULT намеренно: идентификаторы выдаёт backend, чтобы их источник не был
-// размазан между Go и SQL (§9, §11).
+// размазан между Go и SQL.
 func (g *Generator) NewOperationID() (uuid.UUID, error) {
 	return g.newUUID("operation_id")
 }
@@ -59,7 +59,7 @@ func (g *Generator) NewAccountingID() (string, error) {
 	return NewAccountingID(g.reader())
 }
 
-// NewClientUUID выдаёт секретный VLESS UUID клиентского access (§7).
+// NewClientUUID выдаёт секретный VLESS UUID клиентского access.
 //
 // Используется uuid.NewRandom с явной ошибкой, а не uuid.New: последний паникует
 // при отказе источника энтропии, и такой отказ обязан стать ошибкой команды, а не

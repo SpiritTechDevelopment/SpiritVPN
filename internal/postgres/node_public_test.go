@@ -6,7 +6,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
 )
 
-// TestNodePublicFromPinsColumnFormat пиннит раскладку public_config (решение 19).
+// TestNodePublicFromPinsColumnFormat пиннит раскладку public_config.
 //
 // Формат колонки фиксируется здесь, у единственного её читателя: срез приёма
 // манифеста обязан будет писать ровно эти ключи. Тест буквальный намеренно —
@@ -42,7 +42,7 @@ func TestNodePublicFromPinsColumnFormat(t *testing.T) {
 	}
 }
 
-// TestNodePublicFromDegradesOnBadInput — решение 18: нераспознанный jsonb не
+// TestNodePublicFromDegradesOnBadInput — нераспознанный jsonb не
 // является ошибкой запроса. Нулевая структура не проходит Usable, и ссылка на
 // этой ноде уходит наружу как FAILED, не задевая остальные.
 func TestNodePublicFromDegradesOnBadInput(t *testing.T) {

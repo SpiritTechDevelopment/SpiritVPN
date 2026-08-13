@@ -22,21 +22,21 @@ const (
 
 var (
 	// ErrUnknownKeyID — запись зашифрована ключом, которого у процесса нет. В v1
-	// active key ровно один, decrypt-only ключей нет (§7), поэтому такое означает
+	// active key ровно один, decrypt-only ключей нет, поэтому такое означает
 	// подмену конфигурации, а не штатную ротацию.
 	ErrUnknownKeyID = errors.New("crypto: запись зашифрована неизвестным ключом")
 
 	// ErrCiphertextInvalid — блоб не расшифровывается: повреждён, подделан либо
 	// зашифрован другим ключом. Отдельный сентинел нужен под метрику «ошибки
-	// расшифрования» (§15).
+	// расшифрования».
 	ErrCiphertextInvalid = errors.New("crypto: client_uuid не расшифровывается")
 )
 
 // SealedCredential — зашифрованный client_uuid в форме, которая ложится на
-// колонки vpn_accesses (§11): KeyID → encryption_key_id, Blob →
+// колонки vpn_accesses: KeyID → encryption_key_id, Blob →
 // encrypted_client_uuid.
 //
-// Спека описывает формат как `key_id + nonce + ciphertext` (§7); схема хранит
+// Спека описывает формат как `key_id + nonce + ciphertext`; схема хранит
 // key_id отдельной колонкой, поэтому в блобе остаётся `nonce || ciphertext||tag`,
 // а key_id дополнительно уходит в AAD и тем самым остаётся частью
 // аутентифицируемого сообщения.
@@ -50,7 +50,7 @@ func (s SealedCredential) IsZero() bool {
 	return s.KeyID == "" && len(s.Blob) == 0
 }
 
-// Cipher шифрует и расшифровывает client_uuid на одном active key (§7).
+// Cipher шифрует и расшифровывает client_uuid на одном active key.
 //
 // Алгоритм — AES-256-GCM из stdlib. Nonce случайный на каждый Seal: при 96-битном
 // nonce и порядке 10^5–10^6 записей на ключ вероятность повтора пренебрежима, а
@@ -118,7 +118,7 @@ func (c *Cipher) Seal(value ClientUUID) (SealedCredential, error) {
 }
 
 // Open расшифровывает client_uuid. Вызывать только там, где открытое значение
-// действительно нужно — в v1 это построение VLESS URI на время ответа (§8).
+// действительно нужно — в v1 это построение VLESS URI на время ответа.
 //
 // Ошибка намеренно не содержит ни блоба, ни подробностей от GCM: она попадает в
 // логи и метрики.
@@ -143,7 +143,7 @@ func (c *Cipher) Open(sealed SealedCredential) (ClientUUID, error) {
 }
 
 // SelfTest проверяет, что active key рабочий: readiness требует валидный
-// encryption key (§15). Проба фиктивная, к данным не обращается.
+// encryption key. Проба фиктивная, к данным не обращается.
 func (c *Cipher) SelfTest() error {
 	probe := NewClientUUID(uuid.UUID{
 		0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,

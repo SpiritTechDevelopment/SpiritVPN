@@ -51,7 +51,7 @@ func TestPoolCollectorReportsWithoutConnecting(t *testing.T) {
 }
 
 // TestPoolCollectorLabelsAreAllowed — коллектор пула объявляет метку строкой, а
-// не константой пакета, поэтому в белый список §15 она попадает отдельно.
+// не константой пакета, поэтому в белый список она попадает отдельно.
 func TestPoolCollectorLabelsAreAllowed(t *testing.T) {
 	pool, err := pgxpool.New(context.Background(),
 		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable")

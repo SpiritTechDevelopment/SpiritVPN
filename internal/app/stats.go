@@ -2,7 +2,7 @@ package app
 
 import "context"
 
-// StatsRepository — снимок состояния БД для метрик §15.
+// StatsRepository — снимок состояния БД для метрик.
 //
 // Порт read-only и вне транзакции: снимок ничего не решает и ни с чем не
 // сверяется, а согласованность между его частями никому не нужна — каждое
@@ -16,7 +16,7 @@ type StatsRepository interface {
 	CollectStats(ctx context.Context) (Stats, error)
 }
 
-// Stats — то, что §15 требует показать, но что живёт в БД, а не в процессе.
+// Stats — то, что публикуется в метриках, но живёт в БД, а не в процессе.
 //
 // Вторая половина метрик (latency вызовов агента, ошибки расшифрования, health
 // ноды) наблюдается по ходу работы и сюда не попадает: её снимают декораторы
@@ -31,12 +31,12 @@ type Stats struct {
 	// Quarantine — карантинные usage-items по причине.
 	Quarantine []QuarantineStat
 	// Leases — занятость lease по воркерам. Expiry сюда не входит: он обходится
-	// row lock'ом вместо lease (решение 54), и показывать у него нечего.
+	// row lock'ом вместо lease, и показывать у него нечего.
 	Leases []LeaseStat
 
-	// ManifestRevision — последняя принятая ревизия манифеста (§6).
+	// ManifestRevision — последняя принятая ревизия манифеста.
 	ManifestRevision int64
-	// MaterializedRevision — последняя ревизия, чей fan-out завершён (§13).
+	// MaterializedRevision — последняя ревизия, чей fan-out завершён.
 	// Отставание от ManifestRevision и есть materialization lag в ревизиях.
 	MaterializedRevision int64
 	// MaterializationLagSeconds — возраст самой старой незавершённой джобы.
@@ -48,20 +48,20 @@ type Stats struct {
 	// у погашенных снимать уже нечего, и в очереди воркера их нет.
 	ExpiredCustomers int64
 	// ExpiryLagSeconds — насколько просрочен самый старый непогашенный customer.
-	// Прямая мера задержки expiry worker (§15).
+	// Прямая мера задержки expiry worker.
 	ExpiryLagSeconds float64
 
 	// ExhaustedNodeQuotas — ноды с исчерпанной квотой в ОТКРЫТЫХ периодах.
 	// Закрытые периоды считать бессмысленно: их exhausted_at — история, а не
-	// действующая блокировка (§12).
+	// действующая блокировка.
 	ExhaustedNodeQuotas int64
 
 	// UsageDedupOldestAge — возраст самой старой записи реестра дедупа в
 	// секундах. В норме колеблется около окна ретенции и к нулю не стремится:
-	// младше окна не удаляется ничего (§12).
+	// младше окна не удаляется ничего.
 	UsageDedupOldestAge float64
 
-	// SchemaVersion и SchemaDirty — совместимость миграций (§15). Сверять с
+	// SchemaVersion и SchemaDirty — совместимость миграций. Сверять с
 	// версией, зашитой в бинарь, — работа потребителя: она константа процесса и
 	// в БД её нет.
 	SchemaVersion int64
@@ -85,11 +85,11 @@ type AccessStat struct {
 	Count        int64
 }
 
-// NodeCursorStat — состояние опроса одной ноды (§12).
+// NodeCursorStat — состояние опроса одной ноды.
 type NodeCursorStat struct {
 	NodeID string
 	// LastPullAgeSeconds — время с последней ПОПЫТКИ опроса, а не с последнего
-	// сдвига курсора (решение 61). Растёт, когда воркер до ноды не доходит.
+	// сдвига курсора. Растёт, когда воркер до ноды не доходит.
 	LastPullAgeSeconds float64
 	// AckedSequence — подтверждённая позиция в спуле. Само по себе число ни о чём
 	// не говорит, но его остановка при живом опросе означает, что нода перестала
@@ -101,7 +101,7 @@ type NodeCursorStat struct {
 	LeaseExpired bool
 }
 
-// QuarantineStat — карантинные items одной причины (§12).
+// QuarantineStat — карантинные items одной причины.
 type QuarantineStat struct {
 	Reason string
 	Count  int64

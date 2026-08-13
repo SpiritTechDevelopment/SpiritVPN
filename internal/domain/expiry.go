@@ -2,19 +2,19 @@ package domain
 
 import "time"
 
-// ExpiryPlan — что снять с истёкшего customer (§13).
+// ExpiryPlan — что снять с истёкшего customer.
 //
 // Список полей заметно короче, чем у ApplyPlan и MaterializationPlan, и это не
 // упущение: истечение ничего не создаёт и ничего не ретайрит, оно только гасит
 // уже существующее.
 type ExpiryPlan struct {
 	// DesiredChanges — access, уходящие в ABSENT. Отсортированы по access_id
-	// (порядок блокировок §11.1).
+	// (нормативный порядок блокировок).
 	DesiredChanges []DesiredChange
 
 	// TouchedNodes — ноды, с которых снимаются юзеры. Их строки блокируются в этом
 	// порядке, и каждой ровно один раз увеличивается desired_revision, сколько бы
-	// access customer на ней ни было (§11.1).
+	// access customer на ней ни было.
 	TouchedNodes []NodeID
 
 	// EntitlementDesiredVersion — новое значение счётчика корневой строки; на
@@ -27,17 +27,17 @@ func (p ExpiryPlan) IsNoOp() bool {
 	return len(p.DesiredChanges) == 0
 }
 
-// PlanExpiry строит план снятия доступа у истёкшего customer (§13).
+// PlanExpiry строит план снятия доступа у истёкшего customer.
 //
-// Причина TIME_EXPIRED выводится прямо из expires_at и нигде не хранится: §13
-// запрещает заводить под неё отдельную block row, а §5 — отдельный effective
-// state. Поэтому функция не принимает признак истечения параметром, а решает сама
+// Причина TIME_EXPIRED выводится прямо из expires_at и нигде не хранится: ни
+// отдельной block row, ни отдельного effective state под неё нет. Поэтому
+// функция не принимает признак истечения параметром, а решает сама
 // по тем же часам, что и остальной домен.
 //
 // Квота сюда не передаётся намеренно. Для истёкшего customer DesiredStateFor
 // вернёт ABSENT при любом её состоянии, поэтому читать node_quota_usage и брать
-// его locks воркеру незачем — шаг 3 нормативного порядка §11.1 просто
-// пропускается (решение 56).
+// его locks воркеру незачем — шаг 3 нормативного порядка просто
+// пропускается.
 //
 // accesses — ВСЕ нератайрнутые access customer, а не только согласованные с
 // топологией, как в PlanApply. Рассогласованный access истёкшего customer тоже
@@ -47,7 +47,7 @@ func PlanExpiry(now time.Time, entitlement Entitlement, accesses []Access) Expir
 	plan := ExpiryPlan{EntitlementDesiredVersion: entitlement.DesiredVersion}
 
 	// Неистёкший customer сюда попадает штатно: выборка воркера могла устареть,
-	// пока он ждал lock корневой строки, а renewal мог уже закоммититься (§11.1).
+	// пока он ждал lock корневой строки, а renewal мог уже закоммититься.
 	// Пустой план — правильный ответ, а не повод для ошибки.
 	if now.Before(entitlement.ExpiresAt) {
 		return plan

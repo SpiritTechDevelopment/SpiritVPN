@@ -14,7 +14,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
 )
 
-// Юнит-тесты диспетчера. Смысл слоя — порядок фаз: §11.1 требует, чтобы во время
+// Юнит-тесты диспетчера. Смысл слоя — порядок фаз: порядок фаз требует, чтобы во время
 // RPC не было открытой транзакции, а результат писался отдельной транзакцией с
 // повторной проверкой desired_version. Гейт по ноде и SKIP LOCKED живут в SQL и
 // проверяются интеграционно.
@@ -205,7 +205,7 @@ func applied() nodeagent.Outcome {
 	return nodeagent.Outcome{Result: domain.AttemptSucceeded, Code: nodeagent.CodeApplied}
 }
 
-// TestDispatchCallsAgentOutsideTransaction — §11.1: ни одна транзакция не остаётся
+// TestDispatchCallsAgentOutsideTransaction — ни одна транзакция не остаётся
 // открытой во время обращения к node-agent.
 func TestDispatchCallsAgentOutsideTransaction(t *testing.T) {
 	uc, repo, _ := newDispatchHarness(t, presentOperation(t), applied())
@@ -224,7 +224,7 @@ func TestDispatchCallsAgentOutsideTransaction(t *testing.T) {
 	}
 }
 
-// TestDispatchDeliversPayloadFromAccessRow — §9: payload собирается из строки
+// TestDispatchDeliversPayloadFromAccessRow — payload собирается из строки
 // access, а не хранится в operation.
 func TestDispatchDeliversPayloadFromAccessRow(t *testing.T) {
 	operation := presentOperation(t)
@@ -266,7 +266,7 @@ func TestDispatchDeliversPayloadFromAccessRow(t *testing.T) {
 	}
 }
 
-// TestDispatchAbsentSendsNoCredential — §9: удаление матчится по accounting_id,
+// TestDispatchAbsentSendsNoCredential — удаление матчится по accounting_id,
 // и расшифровывать credential ради него незачем.
 func TestDispatchAbsentSendsNoCredential(t *testing.T) {
 	operation := presentOperation(t)
@@ -287,8 +287,8 @@ func TestDispatchAbsentSendsNoCredential(t *testing.T) {
 	}
 }
 
-// TestDispatchRetryableSchedulesNextAttempt — §9: временный отказ повторяется с
-// backoff от времени БАЗЫ, а не от часов процесса (решение 2).
+// TestDispatchRetryableSchedulesNextAttempt — временный отказ повторяется с
+// backoff от времени БАЗЫ, а не от часов процесса.
 func TestDispatchRetryableSchedulesNextAttempt(t *testing.T) {
 	uc, repo, _ := newDispatchHarness(t, presentOperation(t), nodeagent.Outcome{
 		Result: domain.AttemptRetryable,
@@ -306,7 +306,7 @@ func TestDispatchRetryableSchedulesNextAttempt(t *testing.T) {
 	if result.NextAttemptAt == nil {
 		t.Fatal("нет next_attempt_at: операцию никто не подхватит")
 	}
-	// attempt_count = 1 (увеличен при взятии lease, решение 48), jitter = 0 —
+	// attempt_count = 1 (увеличен при взятии lease), jitter = 0 —
 	// нижняя половина от 2 секунд.
 	txNow, _ := repo.Now(context.Background())
 	if want := txNow.Add(time.Second); !result.NextAttemptAt.Equal(want) {
@@ -317,7 +317,7 @@ func TestDispatchRetryableSchedulesNextAttempt(t *testing.T) {
 	}
 }
 
-// TestDispatchPermanentIsTerminal — §9: permanent не хот-лупится.
+// TestDispatchPermanentIsTerminal — permanent не хот-лупится.
 func TestDispatchPermanentIsTerminal(t *testing.T) {
 	uc, repo, _ := newDispatchHarness(t, presentOperation(t), nodeagent.Outcome{
 		Result: domain.AttemptPermanent,
@@ -340,7 +340,7 @@ func TestDispatchPermanentIsTerminal(t *testing.T) {
 	}
 }
 
-// TestDispatchSkipsRPCWhenDesiredVersionMoved — §11.1: перед RPC проверяется
+// TestDispatchSkipsRPCWhenDesiredVersionMoved — перед RPC проверяется
 // актуальная desired_version, и устаревшую операцию агенту не отправляют.
 func TestDispatchSkipsRPCWhenDesiredVersionMoved(t *testing.T) {
 	operation := presentOperation(t)
@@ -369,9 +369,9 @@ func TestDispatchSkipsRPCWhenDesiredVersionMoved(t *testing.T) {
 	}
 }
 
-// TestDispatchStaleResultDoesNotOverwriteApplyState — §11.1: результат устаревшей
+// TestDispatchStaleResultDoesNotOverwriteApplyState — результат устаревшей
 // операции не меняет apply_state актуальной desired version, а сама операция
-// больше не повторяется (решение 47).
+// больше не повторяется.
 func TestDispatchStaleResultDoesNotOverwriteApplyState(t *testing.T) {
 	uc, repo, _ := newDispatchHarness(t, presentOperation(t), nodeagent.Outcome{
 		Result: domain.AttemptRetryable,
@@ -397,7 +397,7 @@ func TestDispatchStaleResultDoesNotOverwriteApplyState(t *testing.T) {
 }
 
 // TestDispatchSucceededStaleStaysSucceeded — терминальный исход правдив даже для
-// устаревшей версии: agent_operations — ещё и журнал исполнения (решение 47).
+// устаревшей версии: agent_operations — ещё и журнал исполнения.
 func TestDispatchSucceededStaleStaysSucceeded(t *testing.T) {
 	uc, repo, _ := newDispatchHarness(t, presentOperation(t), applied())
 	repo.fresh = false
@@ -429,7 +429,7 @@ func TestDispatchIdleReportsNoProgress(t *testing.T) {
 }
 
 // TestDispatchReapedLeaseIsProgress — собранный протухший lease вернул операцию в
-// очередь, и следующий шаг её заберёт: ждать незачем (решение 49).
+// очередь, и следующий шаг её заберёт: ждать незачем.
 func TestDispatchReapedLeaseIsProgress(t *testing.T) {
 	uc, repo, _ := newDispatchHarness(t, nil, applied())
 	repo.reaped = 3
@@ -443,7 +443,7 @@ func TestDispatchReapedLeaseIsProgress(t *testing.T) {
 	}
 }
 
-// TestDispatchCancelledContextWritesNothing — решение 51: отмена во время RPC не
+// TestDispatchCancelledContextWritesNothing — отмена во время RPC не
 // пишет результат. Операция остаётся IN_FLIGHT и достаётся сборщику lease.
 func TestDispatchCancelledContextWritesNothing(t *testing.T) {
 	uc, repo, agent := newDispatchHarness(t, presentOperation(t), applied())
@@ -468,7 +468,7 @@ func TestDispatchCancelledContextWritesNothing(t *testing.T) {
 
 // TestDispatchUnreadableCredentialRetriesWithAlert — нерасшифровываемый credential
 // не должен стать вечным FAILED: сменой desired state его не починить, потому что
-// провалится и следующее поколение (решение 50).
+// провалится и следующее поколение.
 func TestDispatchUnreadableCredentialRetriesWithAlert(t *testing.T) {
 	operation := presentOperation(t)
 	operation.Credential = crypto.SealedCredential{Blob: []byte("не шифротекст"), KeyID: "test-key"}

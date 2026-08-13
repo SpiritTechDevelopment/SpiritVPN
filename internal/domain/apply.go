@@ -22,7 +22,7 @@ type ApplyInput struct {
 	Topology FleetTopology
 
 	// Accesses — ВСЕ access customer, включая ретайрнутые: они нужны для расчёта
-	// поколения при повторном появлении ранее удалённой цели (§4).
+	// поколения при повторном появлении ранее удалённой цели.
 	Accesses []Access
 
 	// OpenPeriod — единственный период с closed_at IS NULL; nil допустим только
@@ -36,10 +36,10 @@ type ApplyInput struct {
 // ApplyPlan — полный набор изменений, который транзакция обязана записать. Домен
 // ничего не мутирует: он возвращает diff, а слой postgres его применяет.
 //
-// Такая форма даёт две вещи. Порядок блокировок §11.1 применяется к готовому
+// Такая форма даёт две вещи. Нормативный порядок блокировок применяется к готовому
 // плану — списки уже отсортированы по node_id и access_id, и он не зависит от
 // того, в каком порядке домен обходил входные данные. И пустой план является
-// формальным определением no-op из правил 4 и 7 §5: last_command_number
+// формальным определением no-op: last_command_number
 // двигается, операции не создаются.
 type ApplyPlan struct {
 	Decision ApplyDecision
@@ -50,21 +50,21 @@ type ApplyPlan struct {
 	// сохранённым.
 	ExpiresAt time.Time
 	// EntitlementDesiredVersion — новое значение customer_entitlements.desired_version;
-	// растёт только на непустом плане (решение 3.5).
+	// растёт только на непустом плане.
 	EntitlementDesiredVersion int64
 
 	// OpenNewPeriod — закрыть текущий период (если он есть) и открыть новый тем
-	// же timestamp; расход начинается с нуля (§5, §11).
+	// же timestamp; расход начинается с нуля.
 	OpenNewPeriod bool
 	// UpdatePeriodQuota — сменить лимит открытого периода, не трогая накопленный
-	// расход (§5, правило 7).
+	// расход.
 	UpdatePeriodQuota bool
 	// QuotaBytes — лимит на каждую ноду отдельно.
 	QuotaBytes uint64
 	// NodeQuotaInits — ноды, которым нужна строка расхода с нулевыми counters и
-	// пустым exhausted_at: все ноды fleet нового периода (§5). Внутри уже
+	// пустым exhausted_at: все ноды fleet нового периода. Внутри уже
 	// открытого периода Apply строк не заводит — ноде, добавленной в fleet позже,
-	// строку создаёт materialization job вместе с её FREEDOM access (§13).
+	// строку создаёт materialization job вместе с её FREEDOM access.
 	// Отсортированы по node_id.
 	NodeQuotaInits []NodeID
 	// NodeQuotaChanges — постановка и снятие exhausted_at под новый лимит внутри
@@ -80,13 +80,13 @@ type ApplyPlan struct {
 
 	// TouchedNodes — ноды, у которых меняется состав desired-юзеров. Их строки
 	// блокируются в этом порядке, и каждой ровно один раз увеличивается
-	// desired_revision, независимо от числа затронутых access (§11.1).
+	// desired_revision, независимо от числа затронутых access.
 	TouchedNodes []NodeID
 }
 
 // IsNoOp сообщает, что принятая команда не меняет целевого состояния. Такая
 // команда всё равно обновляет last_command_number, но не создаёт ни операций, ни
-// нового периода, ни повторного сброса трафика (§5, правило 4).
+// нового периода, ни повторного сброса трафика.
 func (p ApplyPlan) IsNoOp() bool {
 	return !p.CreateEntitlement &&
 		!p.OpenNewPeriod &&
@@ -97,7 +97,7 @@ func (p ApplyPlan) IsNoOp() bool {
 		len(p.DesiredChanges) == 0
 }
 
-// PlanApply строит план одной команды ApplyCustomerAccess (§5, правила 1–9).
+// PlanApply строит план одной команды ApplyCustomerAccess.
 //
 // Предусловия, обеспечиваемые вызывающим слоем в этом порядке:
 //
@@ -123,12 +123,12 @@ func PlanApply(in ApplyInput) (ApplyPlan, error) {
 
 	// Шаг 1. Состояние квоты, каким оно станет ПОСЛЕ этой транзакции. Именно оно,
 	// а не сохранённое, определяет desired state: понижение и повышение лимита
-	// должны отражаться немедленно (§5).
+	// должны отражаться немедленно.
 	exhausted := make(map[NodeID]bool)
 
 	if plan.OpenNewPeriod {
 		// Renewal атомарно даёт нулевой расход и пустой exhausted_at на каждой
-		// ноде fleet, поэтому исчерпанных нод после него нет по построению (§5).
+		// ноде fleet, поэтому исчерпанных нод после него нет по построению.
 		plan.NodeQuotaInits = sortedNodes(in.Topology.Nodes)
 	} else {
 		if in.OpenPeriod == nil {
@@ -145,7 +145,7 @@ func PlanApply(in ApplyInput) (ApplyPlan, error) {
 
 	// Шаг 2. Материализация набора access под текущую топологию. Из плана
 	// используется только Create: рассогласованные с manifest access (Retire,
-	// Repoint) Apply не трогает — их приводит в порядок materialization job (§6).
+	// Repoint) Apply не трогает — их приводит в порядок materialization job.
 	setPlan := PlanAccessSet(in.Topology, in.Accesses)
 
 	for _, spec := range setPlan.Create {
@@ -166,8 +166,8 @@ func PlanApply(in ApplyInput) (ApplyPlan, error) {
 	return plan, nil
 }
 
-// nextEntitlementVersion — счётчик фактических изменений desired state customer
-// (решение 3.5). Спекой он не используется; смысл в том, чтобы колонка не
+// nextEntitlementVersion — счётчик фактических изменений desired state customer.
+// Спекой он не используется; смысл в том, чтобы колонка не
 // оставалась вечным нулём.
 func nextEntitlementVersion(ent *Entitlement, plan ApplyPlan) int64 {
 	if ent == nil {
@@ -181,7 +181,7 @@ func nextEntitlementVersion(ent *Entitlement, plan ApplyPlan) int64 {
 
 // touchedNodes собирает ноды, которым в этой транзакции уедет хотя бы одна
 // операция. Новый access, родившийся ABSENT, ноду не затрагивает: операции у него
-// нет, состав юзеров Xray не меняется (решение 3.2).
+// нет, состав юзеров Xray не меняется.
 func touchedNodes(creates []NewAccessSpec, changes []DesiredChange) []NodeID {
 	seen := make(map[NodeID]struct{})
 
@@ -198,7 +198,7 @@ func touchedNodes(creates []NewAccessSpec, changes []DesiredChange) []NodeID {
 }
 
 // sortedNodes — копия списка нод, отсортированная по node_id (порядок
-// блокировок §11.1).
+// блокировок).
 func sortedNodes(nodes []NodeID) []NodeID {
 	if len(nodes) == 0 {
 		return nil

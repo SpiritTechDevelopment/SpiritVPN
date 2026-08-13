@@ -9,7 +9,7 @@ import "time"
 type SystemClock struct{}
 
 // Now возвращает текущее время процесса в UTC. UTC, а не локальная зона, потому
-// что весь внешний контракт и вся схема оперируют timestamptz в UTC (§5, §11).
+// что весь внешний контракт и вся схема оперируют timestamptz в UTC.
 func (SystemClock) Now() time.Time {
 	return time.Now().UTC()
 }

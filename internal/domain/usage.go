@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// UsageItemResult — исход обработки одного usage-item (§12).
+// UsageItemResult — исход обработки одного usage-item.
 //
 // Значения совпадают с колонкой traffic_usage_items_processed.result: item
 // регистрируется как обработанный при ЛЮБОМ исходе, иначе плохой item блокировал
@@ -21,7 +21,7 @@ const (
 	UsageItemQuarantined         UsageItemResult = "QUARANTINED"
 )
 
-// Причины карантина (§12). Стабильны: по ним строятся метрики §15.
+// Причины карантина. Стабильны: по ним строятся метрики.
 const (
 	QuarantineUnknownAccountingID = "UNKNOWN_ACCOUNTING_ID"
 	QuarantineNoQuotaPeriod       = "NO_QUOTA_PERIOD"
@@ -31,7 +31,7 @@ const (
 //
 // Сопоставление делает слой приложения по historical accounting mapping: колонка
 // accounting_id уникальна, значения не переиспользуются, а строки access не
-// удаляются, поэтому items учитываются и после expiry/retire (§4, §12).
+// удаляются, поэтому items учитываются и после expiry/retire.
 // Нераспознанный accounting_id сюда не доходит — он уходит в карантин раньше.
 type UsageItem struct {
 	AccountingID string
@@ -52,12 +52,12 @@ type UsageAccrual struct {
 	UplinkBytes   uint64
 	DownlinkBytes uint64
 	// Items — какие именно items вошли в начисление. Каждый регистрируется в
-	// реестре идемпотентности вместе с counters, в той же транзакции (§12).
+	// реестре идемпотентности вместе с counters, в той же транзакции.
 	Items []UsageItem
 }
 
 // UsageGroupPlan — что сделать с одной группой (customer_id, node_id,
-// quota_period_id) в одной короткой транзакции (§11.1).
+// quota_period_id) в одной короткой транзакции.
 type UsageGroupPlan struct {
 	// Accrual непусто только для открытого периода.
 	Accrual UsageAccrual
@@ -66,11 +66,11 @@ type UsageGroupPlan struct {
 	Result UsageItemResult
 
 	// ExhaustedAt непусто, когда именно эта транзакция впервые пересекает порог.
-	// Тогда же гасятся access и создаются Remove operations (§12, шаг 5).
+	// Тогда же гасятся access и создаются Remove operations.
 	ExhaustedAt *time.Time
 
 	// DesiredChanges — access customer на ЭТОЙ ноде, уходящие в ABSENT.
-	// Отсортированы по access_id (§11.1).
+	// Отсортированы по access_id.
 	DesiredChanges []DesiredChange
 }
 
@@ -81,7 +81,7 @@ func (p UsageGroupPlan) IsNoOp() bool {
 
 // UsageGroupInput — состояние, под которое считается группа.
 type UsageGroupInput struct {
-	// Now — время транзакции (решение 2). Им отмечается exhausted_at.
+	// Now — время транзакции. Им отмечается exhausted_at.
 	Now time.Time
 
 	// Items — НОВЫЕ items группы: уже прошедшие дедуп по
@@ -90,7 +90,7 @@ type UsageGroupInput struct {
 
 	// PeriodClosed отмечает период, закрытый к моменту обработки. Для него
 	// counters, exhausted_at и access не меняются, а items регистрируются с
-	// IGNORED_CLOSED_PERIOD (§11.1, §12).
+	// IGNORED_CLOSED_PERIOD.
 	PeriodClosed bool
 
 	// QuotaBytes — лимит периода на каждую ноду отдельно.
@@ -101,22 +101,22 @@ type UsageGroupInput struct {
 	NodeExhaustedAt *time.Time
 
 	// NodeAccesses — ВСЕ нератайрнутые access customer с этой входной нодой.
-	// §12 требует гасить их все, а не только тот, чей accounting_id приехал.
+	// Гасятся все, а не только тот, чей accounting_id приехал.
 	NodeAccesses []Access
 }
 
-// PlanUsageGroup считает одну группу (§12, шаги 3–5).
+// PlanUsageGroup считает одну группу.
 //
-// Порог — IsQuotaExhausted, то есть равенство лимиту уже является исчерпанием
-// (§4). Отметка ставится ровно один раз: если NodeExhaustedAt уже непуст,
+// Порог — IsQuotaExhausted, то есть равенство лимиту уже является исчерпанием.
+// Отметка ставится ровно один раз: если NodeExhaustedAt уже непуст,
 // повторно гасить нечего, а access этой ноды давно ABSENT.
 //
-// Квота — control-plane threshold наилучшего усилия (§12): дельта, не успевшая в
+// Квота — control-plane threshold наилучшего усилия: дельта, не успевшая в
 // спул, уменьшает учтённый total и увеличивает фактическое превышение. Это
 // принятый для v1 trade-off, и домен его не компенсирует.
 func PlanUsageGroup(in UsageGroupInput) UsageGroupPlan {
 	if in.PeriodClosed {
-		// §11.1: закрытый период не меняет ни counters, ни exhausted_at, ни
+		// Закрытый период не меняет ни counters, ни exhausted_at, ни
 		// access. Items всё равно регистрируются — иначе batch не подтвердится.
 		return UsageGroupPlan{Result: UsageItemIgnoredClosedPeriod}
 	}
@@ -131,8 +131,8 @@ func PlanUsageGroup(in UsageGroupInput) UsageGroupPlan {
 	}
 	plan.Accrual.Items = in.Items
 
-	// Отметка ставится только при ПЕРВОМ пересечении: §12 требует, чтобы порог
-	// активировался один раз, иначе каждая последующая пачка заново гасила бы уже
+	// Отметка ставится только при первом пересечении: порог активируется один
+	// раз, иначе каждая последующая пачка заново гасила бы уже
 	// погашенные access и плодила Remove operations.
 	if in.NodeExhaustedAt != nil || !IsQuotaExhausted(total, in.QuotaBytes) {
 		return plan
@@ -153,7 +153,7 @@ func PlanUsageGroup(in UsageGroupInput) UsageGroupPlan {
 // PlanDesiredChanges принимает срок и квоту вместе, а здесь решает только квота:
 // об истечении заботится expiry worker, и подмешивать сюда второе правило значило
 // бы дублировать его. Заведомо будущий момент отключает временну́ю половину
-// условия §4, оставляя работать квотную.
+// временную часть условия, оставляя работать квотную.
 var farFuture = time.Date(9999, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 // nodeOf возвращает входную ноду группы. Все access группы принадлежат одной
@@ -165,7 +165,7 @@ func nodeOf(accesses []Access) NodeID {
 	return accesses[0].EntryNodeID
 }
 
-// UsageGroupKey — ключ группировки items batch (§11.1).
+// UsageGroupKey — ключ группировки items batch.
 type UsageGroupKey struct {
 	CustomerID string
 	NodeID     NodeID
@@ -173,7 +173,7 @@ type UsageGroupKey struct {
 
 // GroupUsageItems раскладывает items batch по customer.
 //
-// Группировка нужна потому, что §11.1 запрещает обрабатывать batch одной большой
+// Группировка нужна потому, что batch нельзя обрабатывать одной большой
 // транзакцией: каждая группа блокирует свой корневой entitlement, и разные
 // customer идут независимо. Период в ключ не входит — он один на группу и
 // выбирается уже под locком, по collected_at.

@@ -27,7 +27,7 @@ func logPgxRecord(t *testing.T, data map[string]any) (map[string]any, string) {
 	return record, buf.String()
 }
 
-// TestPgxLoggerDropsQueryArgs — §15: customer_id допустим только в audit records.
+// TestPgxLoggerDropsQueryArgs — customer_id допустим только в audit records.
 // pgx кладёт аргументы запроса в data, и среди них едут и customer_id, и
 // зашифрованный credential.
 func TestPgxLoggerDropsQueryArgs(t *testing.T) {
@@ -90,7 +90,7 @@ func TestPgxLevelMapping(t *testing.T) {
 }
 
 // TestTracerLevelIsQuietOutsideDebug — успешный запрос в короткой транзакции
-// (§11.1) сам по себе ничего не сообщает, а объём такого лога пропорционален
+// сам по себе ничего не сообщает, а объём такого лога пропорционален
 // трафику.
 func TestTracerLevelIsQuietOutsideDebug(t *testing.T) {
 	if got := tracerLevel(slog.LevelDebug); got != tracelog.LogLevelDebug {

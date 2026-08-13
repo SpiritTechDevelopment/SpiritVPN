@@ -17,7 +17,7 @@ var (
 	_ app.Clock            = app.SystemClock{}
 )
 
-// Часы процесса отдают UTC: вся схема и внешний контракт оперируют UTC (§5, §11).
+// Часы процесса отдают UTC: вся схема и внешний контракт оперируют UTC.
 func TestSystemClockReturnsUTC(t *testing.T) {
 	before := time.Now().UTC()
 	got := app.SystemClock{}.Now()

@@ -10,7 +10,7 @@ import (
 	nodeagentv1 "github.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/nodeagent/v1"
 )
 
-// Стабильные коды исхода для логов и метрик §15.
+// Стабильные коды исхода для логов и метрик.
 //
 // Отделены от gRPC-кода и от текста агента: gRPC-код слишком груб (пять разных
 // причин делят permanent), а текст приходит с чужой стороны и меняется вместе с
@@ -48,12 +48,12 @@ type Outcome struct {
 	// Секретов не содержит: агент обязан их вычищать, а мы ничего своего сюда не
 	// добавляем.
 	Message string
-	// Alert отмечает исход, который §9 требует поднимать оператору: подмена
+	// Alert отмечает исход, который поднимается оператору: подмена
 	// идентичности и неопознанные transport/internal ошибки.
 	Alert bool
 }
 
-// classify сводит два канала ответа в один исход (решение 37).
+// classify сводит два канала ответа в один исход.
 //
 // Агент отвечает и gRPC-кодом, и ApplyStatus в теле, и они независимы: gRPC OK с
 // RETRYABLE_ERROR внутри — штатный ответ «сейчас не могу», а не успех.
@@ -69,8 +69,8 @@ func classify(result *nodeagentv1.OperationResult, err error) Outcome {
 		return Outcome{Result: domain.AttemptSucceeded, Code: CodeApplied, Message: message}
 
 	case nodeagentv1.ApplyStatus_APPLY_STATUS_ALREADY_APPLIED:
-		// §9: уже точное состояние возвращает OK. Идемпотентность повтора —
-		// именно то, на чём держится безопасность потерянного ответа (§16).
+		// Уже точное состояние возвращает OK. Идемпотентность повтора —
+		// именно то, на чём держится безопасность потерянного ответа.
 		return Outcome{Result: domain.AttemptSucceeded, Code: CodeAlreadyApplied, Message: message}
 
 	case nodeagentv1.ApplyStatus_APPLY_STATUS_RETRYABLE_ERROR:
@@ -91,7 +91,7 @@ func classify(result *nodeagentv1.OperationResult, err error) Outcome {
 	}
 }
 
-// classifyTransport разбирает ошибку вызова по таблице §9.
+// classifyTransport разбирает ошибку вызова по таблице транспортных кодов.
 func classifyTransport(err error) Outcome {
 	// Подмена идентичности проверяется первой: она приезжает завёрнутой в
 	// transport-ошибку рукопожатия, и по одному коду её от обычной недоступности
@@ -105,7 +105,7 @@ func classifyTransport(err error) Outcome {
 		}
 	}
 
-	// Непригодный agent_config — retryable, а не permanent (решение 50): чинится
+	// Непригодный agent_config — retryable, а не permanent: чинится
 	// он следующим манифестом, который desired_version access не двигает и новой
 	// операции не создаёт. Permanent означал бы, что чинить уже нечего.
 	if errors.Is(err, ErrEndpointIncomplete) {
@@ -137,7 +137,7 @@ func classifyTransport(err error) Outcome {
 		return Outcome{Result: domain.AttemptPermanent, Code: CodeUnimplemented, Message: err.Error(), Alert: true}
 
 	default:
-		// §9: прочие transport/internal ошибки повторяются с backoff и создают
+		// Прочие transport/internal ошибки повторяются с backoff и создают
 		// alert. Ретраится, потому что неизвестное скорее временно, чем нет;
 		// alert — потому что неизвестное не должно тихо копиться.
 		return Outcome{Result: domain.AttemptRetryable, Code: CodeTransport, Message: err.Error(), Alert: true}
