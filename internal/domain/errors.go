@@ -3,14 +3,7 @@ package domain
 import "errors"
 
 // Доменные ошибки. Пакет domain не знает про gRPC; сопоставление с кодами живёт в
-// grpcsvc и опирается на эти сентинелы через errors.Is.
-//
-// Ожидаемое сопоставление:
-//
-//	INVALID_ARGUMENT     — все ошибки валидации запроса и ErrExpiryNotInFuture
-//	NOT_FOUND            — ErrFleetNotFound (правило 6), ErrCustomerNotFound
-//	FAILED_PRECONDITION  — ErrFleetMismatch (правило 5), ErrExpiryRegression (правило 9)
-//	INTERNAL             — ErrOpenPeriodMissing
+// errorMapping (grpcsvc/errors.go) и опирается на эти сентинелы через errors.Is.
 var (
 	// ErrCustomerIDInvalid — customer_id пуст или длиннее 256 байт.
 	ErrCustomerIDInvalid = errors.New("domain: customer_id должен быть непустым и не длиннее 256 байт")
@@ -45,7 +38,7 @@ var (
 
 	// ErrExpiryRegression — expires_at меньше сохранённого.
 	// Сокращение срока в v1 не поддерживается. Устаревшая команда с меньшим
-	// expiry отсекается раньше правилом 2 по command_number и сюда не доходит.
+	// expiry отсекается раньше проверкой command_number и сюда не доходит.
 	ErrExpiryRegression = errors.New("domain: сокращение expires_at не поддерживается")
 
 	// ErrOpenPeriodMissing — у существующего customer нет открытого периода

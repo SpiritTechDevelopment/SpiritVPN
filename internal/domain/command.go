@@ -10,11 +10,11 @@ const (
 	// и начальный период квоты.
 	ApplyDecisionCreate ApplyDecision = iota + 1
 
-	// ApplyDecisionRenewal — expires_at строго больше сохранённого (правило 8):
+	// ApplyDecisionRenewal — expires_at строго больше сохранённого:
 	// закрывается текущий период, открывается новый с нулевым расходом.
 	ApplyDecisionRenewal
 
-	// ApplyDecisionQuotaChange — expires_at совпадает с сохранённым (правило 7):
+	// ApplyDecisionQuotaChange — expires_at совпадает с сохранённым:
 	// квота может измениться, накопленный трафик не сбрасывается. Если совпадает
 	// и квота, план окажется пустым.
 	ApplyDecisionQuotaChange
@@ -97,17 +97,17 @@ func ClassifyApply(now time.Time, cmd ApplyCommand, ent *Entitlement) (ApplyDeci
 		return ApplyDecisionCreate, nil
 	}
 
-	// Правило 5: смена fleet существующего customer в v1 не поддерживается.
+	// Смена fleet существующего customer в v1 не поддерживается.
 	if ent.FleetID != cmd.FleetID {
 		return 0, ErrFleetMismatch
 	}
 
 	switch {
-	// Правило 9: сокращение срока отклоняется.
+	// Сокращение срока отклоняется.
 	case cmd.ExpiresAt.Before(ent.ExpiresAt):
 		return 0, ErrExpiryRegression
 
-	// Правило 8: renewal. Требование «в будущем» здесь не избыточно: у уже
+	// Renewal. Требование «в будущем» здесь не избыточно: у уже
 	// истёкшего customer более поздний expires_at всё ещё может лежать в прошлом.
 	case cmd.ExpiresAt.After(ent.ExpiresAt):
 		if !cmd.ExpiresAt.After(now) {
@@ -115,7 +115,7 @@ func ClassifyApply(now time.Time, cmd ApplyCommand, ent *Entitlement) (ApplyDeci
 		}
 		return ApplyDecisionRenewal, nil
 
-	// Правило 7: тот же expiry — изменение квоты без сброса трафика. Момента в
+	// Тот же expiry — изменение квоты без сброса трафика. Момента в
 	// будущем не требует: истёкший customer вправе повторить свою команду, просто
 	// его access останутся ABSENT.
 	default:

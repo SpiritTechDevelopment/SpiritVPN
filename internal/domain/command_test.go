@@ -163,21 +163,21 @@ func TestClassifyApply(t *testing.T) {
 			wantErr:     ErrExpiryNotInFuture,
 		},
 		{
-			name:        "другой fleet — правило 5",
+			name:        "другой fleet",
 			expiresAt:   tFuture,
 			fleetID:     11,
 			entitlement: &Entitlement{FleetID: 10, ExpiresAt: tFuture},
 			wantErr:     ErrFleetMismatch,
 		},
 		{
-			name:        "сокращение срока — правило 9",
+			name:        "сокращение срока",
 			expiresAt:   tFuture,
 			fleetID:     10,
 			entitlement: &Entitlement{FleetID: 10, ExpiresAt: tLater},
 			wantErr:     ErrExpiryRegression,
 		},
 		{
-			name:         "более поздний срок — renewal, правило 8",
+			name:         "более поздний срок — renewal",
 			expiresAt:    tLater,
 			fleetID:      10,
 			entitlement:  &Entitlement{FleetID: 10, ExpiresAt: tFuture},
@@ -192,7 +192,7 @@ func TestClassifyApply(t *testing.T) {
 			wantErr:     ErrExpiryNotInFuture,
 		},
 		{
-			name:         "тот же срок — изменение квоты, правило 7",
+			name:         "тот же срок — изменение квоты",
 			expiresAt:    tFuture,
 			fleetID:      10,
 			entitlement:  &Entitlement{FleetID: 10, ExpiresAt: tFuture},

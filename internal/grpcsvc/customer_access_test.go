@@ -66,9 +66,11 @@ func requireCode(t *testing.T, err error, want codes.Code) *status.Status {
 	return st
 }
 
-// TestApplyCustomerAccessMapsDomainErrors — таблица «доменная ошибка → код»
-// (перечень — в шапке domain/errors.go). Обёрнутые случаи проверяют, что сопоставление
-// идёт через errors.Is и переживает fmt.Errorf в use case.
+// TestApplyCustomerAccessMapsDomainErrors — таблица «доменная ошибка → код» для
+// исходов командного пути, то есть для всех строк errorMapping, кроме
+// ErrCustomerNotFound: её закрывает TestGetCustomerAccessLinksMapsErrors.
+// Обёрнутые случаи проверяют, что сопоставление идёт через errors.Is и
+// переживает fmt.Errorf в use case.
 func TestApplyCustomerAccessMapsDomainErrors(t *testing.T) {
 	tests := []struct {
 		name string
