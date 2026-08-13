@@ -115,8 +115,7 @@ func (uc *ReconcileNodes) ProcessNext(ctx context.Context) (progressed bool, err
 
 	// Полный набор — дорогой вызов: до 2000 юзеров, каждого агент применяет к Xray
 	// по одному. Ноде с потерянным состоянием он нужен целиком, всем остальным
-	// достаточно убедиться, что расхождения нет. До этого среза набор летел
-	// на каждую ноду каждый интервал, и дрейф чинился вслепую.
+	// достаточно убедиться, что расхождения нет.
 	if !node.NeedsBootstrap && !uc.drifted(ctx, *node, users) {
 		return true, nil
 	}
@@ -188,8 +187,8 @@ func (uc *ReconcileNodes) drifted(ctx context.Context, node ClaimedReconcileNode
 func (uc *ReconcileNodes) materialize(ctx context.Context, node ClaimedReconcileNode) ([]nodeagent.User, bool) {
 	// Пустой flow означает, что public_config ноды не разобрался: колонка битая
 	// либо не заполнена. Отправить набор с чужим flow — сломать на ноде всех
-	// разом, поэтому такая нода пропускается целиком (ссылки гаснут по этой же
-	// причине одну ссылку, здесь на кону вся нода).
+	// разом, поэтому такая нода пропускается целиком. По непригодному
+	// public_config выдача ссылок гасит одну ссылку, здесь на кону вся нода.
 	if node.Flow == "" {
 		uc.Logger.LogAttrs(ctx, slog.LevelError, "reconcile пропущен: public_config ноды непригоден",
 			slog.String("node_id", string(node.NodeID)))

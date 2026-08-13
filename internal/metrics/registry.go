@@ -169,7 +169,7 @@ func New() *Registry {
 	}, []string{labelNode})
 
 	// Отдельный счётчик, а не фильтр по коду: Outcome.Alert выставляют исходы с
-	// Разными кодами (подмена идентичности, неопознанный transport, непригодный
+	// разными кодами (подмена идентичности, неопознанный transport, непригодный
 	// agent_config), и правило alert'а не должно перечислять их руками. Он же
 	// закрывает случай, когда alert был временно подменён логом уровня ERROR.
 	r.agentAlerts = prometheus.NewCounterVec(prometheus.CounterOpts{

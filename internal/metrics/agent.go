@@ -178,9 +178,6 @@ func (a *observedAgent) observe(
 }
 
 // observeNodeHealth снимает liveness ноды из ответа агента.
-//
-// До этого среза XrayReachable, XrayUptime и NeedsBootstrap не читал никто: они
-// приезжали в NodeState и там же оставались.
 func (a *observedAgent) observeNodeHealth(nodeID string, state *nodeagent.NodeState, maxBatches uint32) {
 	a.reg.nodeXrayReachable.WithLabelValues(nodeID).Set(boolGauge(state.XrayReachable))
 	a.reg.nodeXrayUptime.WithLabelValues(nodeID).Set(state.XrayUptime.Seconds())

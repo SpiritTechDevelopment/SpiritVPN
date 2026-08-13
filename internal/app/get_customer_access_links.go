@@ -77,8 +77,7 @@ func (uc *GetCustomerAccessLinks) link(snapshot CustomerLinks, access AccessLink
 	if err != nil {
 		// Тот же выбор, что и у непригодной входной ноды: нерабочий
 		// credential ломает свою ссылку, а не весь ответ. Причина отказа наружу
-		// не уходит — она инфраструктурная, и её место в метрике ошибок
-		// расшифрования, которой пока нет.
+		// не уходит: она инфраструктурная и видна в credential_open_errors_total.
 		return CustomerAccessLink{Kind: access.Kind, Status: domain.LinkStatus{State: domain.LinkStateFailed}}
 	}
 

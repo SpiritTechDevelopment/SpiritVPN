@@ -11,8 +11,8 @@ import (
 // аудиту.
 //
 // Actor и RequestID приходят с транспорта, а не добываются из контекста внутри:
-// use case не должен знать ни про mTLS, ни про метадату gRPC, а аудиту нужны
-// в audit records и того, и другого.
+// use case не должен знать ни про mTLS, ни про метадату gRPC, а в записи
+// audit_events стоят и актор, и request_id.
 type ApplyManifestCommand struct {
 	Snapshot         domain.ManifestSnapshot
 	AllowDestructive bool
@@ -110,8 +110,8 @@ func (uc *ApplyFleetManifest) Execute(
 // destructiveAudit собирает запись о принятом destructive-манифесте.
 //
 // В метаданных только счётчики и идентификаторы топологии: секретов и customer ID
-// здесь нет и быть не может — приём манифеста их вообще не видит (customer_id допустим
-// customer ID лишь в ограниченных audit records, и этот к ним не относится).
+// здесь нет и быть не может — приём манифеста их вообще не видит. Customer ID
+// разрешён лишь в части записей журнала, и эта к ним не относится.
 func destructiveAudit(cmd ApplyManifestCommand, plan domain.ManifestPlan) AuditEvent {
 	return AuditEvent{
 		ActorType:  auditActorTypeManifestWriter,

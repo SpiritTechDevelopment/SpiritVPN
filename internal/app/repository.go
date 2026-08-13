@@ -277,8 +277,8 @@ type ReconcileRepository interface {
 	ReleaseNodeReconcile(ctx context.Context, nodeID domain.NodeID, owner string) error
 
 	// AcceptReconcile применяет результат, если desired_revision ноды не
-	// сдвинулась. accepted=false означает, что desired state уехал, пока шёл
-	// ходили к агенту: набор на проводе устарел и принимать его нельзя.
+	// сдвинулась. accepted=false означает, что desired state уехал за время
+	// вызова агента: набор на проводе устарел и принимать его нельзя.
 	AcceptReconcile(ctx context.Context, acceptance ReconcileAcceptance) (accepted bool, err error)
 }
 
