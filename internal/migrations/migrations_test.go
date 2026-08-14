@@ -16,7 +16,7 @@ func TestEmbeddedSourceLoads(t *testing.T) {
 	if err != nil {
 		t.Fatalf("iofs.New: %v", err)
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	first, err := src.First()
 	if err != nil {
@@ -64,7 +64,7 @@ func readMigration(t *testing.T, open func() (io.ReadCloser, string, error)) str
 	if err != nil {
 		t.Fatalf("открыть миграцию: %v", err)
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	b, err := io.ReadAll(rc)
 	if err != nil {
 		t.Fatalf("прочитать миграцию: %v", err)

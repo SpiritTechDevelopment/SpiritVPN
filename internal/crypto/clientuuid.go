@@ -67,7 +67,7 @@ func (c ClientUUID) GoString() string {
 // %c) fmt печатает значение сам и выдал бы байты uuid в обход редакции.
 func (c ClientUUID) Format(f fmt.State, verb rune) {
 	if verb == 'q' {
-		fmt.Fprintf(f, "%q", redactedClientUUID)
+		_, _ = fmt.Fprintf(f, "%q", redactedClientUUID)
 		return
 	}
 	_, _ = io.WriteString(f, redactedClientUUID)

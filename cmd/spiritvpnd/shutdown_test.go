@@ -150,7 +150,7 @@ func TestShutdownWaitsForInFlightRPC(t *testing.T) {
 	if err != nil {
 		t.Fatalf("подключение: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	rpcErr := make(chan error, 1)
 	go func() {
@@ -232,7 +232,7 @@ func TestShutdownClosesBothSurfaces(t *testing.T) {
 	if err != nil {
 		t.Fatalf("подключение: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

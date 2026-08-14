@@ -39,12 +39,14 @@ func main() {
 	}
 }
 
-func run(cmd string, args []string) error {
+func run(cmd string, args []string) (runErr error) {
 	db, err := sql.Open("postgres", dsn())
 	if err != nil {
 		return fmt.Errorf("открыть базу: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		runErr = errors.Join(runErr, db.Close())
+	}()
 
 	if err := db.Ping(); err != nil {
 		return fmt.Errorf("подключиться к базе: %w", err)

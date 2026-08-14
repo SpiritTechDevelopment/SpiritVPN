@@ -56,8 +56,12 @@ func capture(t *testing.T, fn func()) (stdout, stderr string) {
 	fn()
 
 	os.Stdout, os.Stderr = savedOut, savedErr
-	outW.Close()
-	errW.Close()
+	if err := outW.Close(); err != nil {
+		t.Fatalf("закрыть stdout pipe: %v", err)
+	}
+	if err := errW.Close(); err != nil {
+		t.Fatalf("закрыть stderr pipe: %v", err)
+	}
 
 	return <-outCh, <-errCh
 }

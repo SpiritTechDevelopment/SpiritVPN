@@ -68,7 +68,13 @@ jobs:
       run: go mod download
 
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+      run: |
+        go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        # protobuf и sqlc генерируются и проверяются на расхождение в job build;
+        # их statements не относятся к покрытию поддерживаемого вручную кода.
+        awk 'NR == 1 || ($0 !~ /\/internal\/gen\// && $0 !~ /\/internal\/postgres\/db\//)' \
+          coverage.out > coverage.filtered.out
+        mv coverage.filtered.out coverage.out
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -92,9 +98,9 @@ jobs:
     # шага пропускает все последующие без `if: always()`, и отчёт исчезал бы
     # ровно тогда, когда по нему надо разбираться, почему покрытие просело.
     #
-    # Порог 80 при фактических 83.7% (интеграционные в этой job включены, иначе
-    # postgres даёт 3.6% и общая цифра не имеет смысла). Запас в три пункта —
-    # чтобы гейт ловил снятые тесты, а не шум от пары новых строк.
+    # Порог относится к поддерживаемому вручную коду: сгенерированные protobuf
+    # и sqlc исключены при подготовке профиля. Интеграционные тесты в этой job
+    # включены; без них покрытие postgres не отражает реальные пути адаптера.
     - name: Check coverage threshold
       run: |
         COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
@@ -173,11 +179,11 @@ jobs:
         go-version-file: go.mod
         cache-dependency-path: go.sum
 
-    - name: Install golangci-lint
-      run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
     - name: Run golangci-lint
-      run: golangci-lint run --timeout=5m
+      uses: golangci/golangci-lint-action@v9
+      with:
+        version: v2.12.2
+        args: --timeout=5m
 
   build:
     name: Build

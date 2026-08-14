@@ -136,7 +136,7 @@ func (k Key) GoString() string {
 // поведением fmt, а не выведено из документации.
 func (k Key) Format(f fmt.State, verb rune) {
 	if verb == 'q' {
-		fmt.Fprintf(f, "%q", k.String())
+		_, _ = fmt.Fprintf(f, "%q", k.String())
 		return
 	}
 	_, _ = io.WriteString(f, k.String())

@@ -58,12 +58,14 @@ func TestMain(m *testing.M) {
 
 // migrateUp накатывает схему тем же мигратором, что и деплой: тест обязан идти по
 // той же схеме, из которой sqlc сгенерировал код.
-func migrateUp(dsn string) error {
+func migrateUp(dsn string) (migrateErr error) {
 	sqlDB, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return err
 	}
-	defer sqlDB.Close()
+	defer func() {
+		migrateErr = errors.Join(migrateErr, sqlDB.Close())
+	}()
 
 	m, err := migrations.New(sqlDB)
 	if err != nil {

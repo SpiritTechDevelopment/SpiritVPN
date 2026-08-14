@@ -227,7 +227,7 @@ func TestConfigNeverPrintsSecrets(t *testing.T) {
 		"slog":  buf.String(),
 		"%v":    fmt.Sprintf("%v", cfg),
 		"%+v":   fmt.Sprintf("%+v", cfg),
-		"%s":    fmt.Sprintf("%s", cfg),
+		"%s":    fmt.Sprintf("%s", cfg), //nolint:staticcheck // Проверяется форматирование через fmt.Stringer.
 		"%q":    fmt.Sprintf("%q", cfg),
 		"Error": cfg.String(),
 	}
