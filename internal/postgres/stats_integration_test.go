@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"math"
 	"testing"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
@@ -141,5 +142,87 @@ func TestIntegrationStatsExpiryLagAppearsAndClears(t *testing.T) {
 	}
 	if got := operationCount(cleared, "PENDING"); got != seedOperationCount {
 		t.Errorf("операций PENDING %d, ожидалось %d", got, seedOperationCount)
+	}
+}
+
+// cursorStat находит состояние опроса конкретной ноды.
+func cursorStat(t *testing.T, stats app.Stats, nodeID string) app.NodeCursorStat {
+	t.Helper()
+
+	for _, stat := range stats.Cursors {
+		if stat.NodeID == nodeID {
+			return stat
+		}
+	}
+	t.Fatalf("ноды %s нет в снимке курсоров (%d строк)", nodeID, len(stats.Cursors))
+	return app.NodeCursorStat{}
+}
+
+// TestIntegrationStatsReportsNodeCursors — снимок отдаёт состояние опроса по
+// каждой текущей ноде.
+//
+// Проверка acked_sequence на верхней границе uint64 существенна: колонка
+// объявлена numeric(20,0) именно потому, что bigint этот диапазон не вмещает, и
+// конверсия в снимке идёт тем же хелпером, что и объёмы трафика. Обрежь её int64
+// — метрика показала бы отрицательное число или ноль на живом спуле.
+func TestIntegrationStatsReportsNodeCursors(t *testing.T) {
+	stack := newExpiryStack(t)
+	seedActiveCustomer(t, stack)
+
+	// NL-1 опрашивается штатно, у DE-1 повис lease умершего воркера.
+	exec(t, stack.pool,
+		`INSERT INTO node_usage_cursors (node_id, spool_id, acked_sequence, updated_at)
+		 VALUES ('NL-1', 'spool-1', 18446744073709551615::numeric, now() - interval '90 seconds')`)
+	exec(t, stack.pool,
+		`INSERT INTO node_usage_cursors
+		     (node_id, spool_id, acked_sequence, updated_at, lease_owner, lease_expires_at)
+		 VALUES ('DE-1', 'spool-2', 7, now() - interval '10 seconds',
+		         'умерший-воркер', now() - interval '1 second')`)
+
+	stats := collectStats(t, stack)
+
+	if len(stats.Cursors) != 2 {
+		t.Fatalf("строк курсоров %d, ожидалось 2", len(stats.Cursors))
+	}
+
+	healthy := cursorStat(t, stats, "NL-1")
+	if healthy.AckedSequence != math.MaxUint64 {
+		t.Errorf("acked_sequence NL-1 = %d, ожидалось %d: позиция спула обрезана",
+			healthy.AckedSequence, uint64(math.MaxUint64))
+	}
+	if healthy.LastPullAgeSeconds < 60 {
+		t.Errorf("возраст опроса NL-1 = %v, ожидался не меньше 60 секунд", healthy.LastPullAgeSeconds)
+	}
+	if healthy.LeaseExpired {
+		t.Error("NL-1 показан с протухшим lease, хотя lease у него не брали")
+	}
+
+	stale := cursorStat(t, stats, "DE-1")
+	if !stale.LeaseExpired {
+		t.Error("DE-1 не показан с протухшим lease: смерть воркера опроса не видна наружу")
+	}
+	if stale.AckedSequence != 7 {
+		t.Errorf("acked_sequence DE-1 = %d, ожидалось 7", stale.AckedSequence)
+	}
+}
+
+// Нода, снятая с манифеста, из снимка уходит: понодная серия по ней больше не
+// обновляется, и оставленная строка навсегда застыла бы на последнем значении.
+func TestIntegrationStatsCursorsExcludeRetiredNode(t *testing.T) {
+	stack := newExpiryStack(t)
+	seedActiveCustomer(t, stack)
+
+	exec(t, stack.pool,
+		`INSERT INTO node_usage_cursors (node_id, spool_id, acked_sequence, updated_at)
+		 VALUES ('NL-1', 'spool-1', 3, now())`)
+
+	if got := len(collectStats(t, stack).Cursors); got != 1 {
+		t.Fatalf("подготовка: строк курсоров %d, ожидалась 1", got)
+	}
+
+	exec(t, stack.pool, `UPDATE vpn_nodes SET current = false WHERE node_id = 'NL-1'`)
+
+	if got := len(collectStats(t, stack).Cursors); got != 0 {
+		t.Errorf("строк курсоров %d после снятия ноды с манифеста, ожидалось 0", got)
 	}
 }

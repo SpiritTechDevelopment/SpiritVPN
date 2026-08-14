@@ -622,3 +622,75 @@ func TestIntegrationApplyStaleCommandWritesNoAudit(t *testing.T) {
 		t.Errorf("записей аудита %d, ожидалась 1: устаревшая команда добавила свою", got)
 	}
 }
+
+// TestIntegrationApplySerializesConcurrentCommands — две команды на одного
+// customer не идут одновременно.
+//
+// Порядок команд задаёт command_number, но сам по себе он ничего не
+// сериализует: две транзакции, прочитавшие один и тот же снимок, обе сочли бы
+// свой номер актуальным и обе записали бы своё состояние. Сериализацию даёт
+// FOR UPDATE на корневой строке, и проверить его можно только конкурентно —
+// последовательные вызовы проходят и без него.
+func TestIntegrationApplySerializesConcurrentCommands(t *testing.T) {
+	apply, pool := newFixture(t)
+	seedTopology(t, pool, []string{"NL-1"}, nil)
+	ctx := context.Background()
+
+	expiresAt := time.Now().UTC().Add(30 * 24 * time.Hour)
+	if err := apply.Execute(ctx, command(1, 1<<30, expiresAt)); err != nil {
+		t.Fatalf("первая команда: %v", err)
+	}
+
+	// Транзакция-конкурент держит корневую строку и ещё не закоммитилась. Так
+	// выглядит вторая команда продукта, дошедшая до того же customer.
+	rival, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Begin: %v", err)
+	}
+	defer func() { _ = rival.Rollback(ctx) }()
+
+	if _, err := rival.Exec(ctx,
+		`SELECT customer_id FROM customer_entitlements WHERE customer_id = $1 FOR UPDATE`,
+		testCustomerID); err != nil {
+		t.Fatalf("подготовка конкурента: %v", err)
+	}
+
+	// Пока конкурент держит строку, вторая команда обязана ждать его commit.
+	done := make(chan error, 1)
+	go func() {
+		done <- apply.Execute(ctx, command(2, 2<<30, expiresAt.Add(time.Hour)))
+	}()
+
+	select {
+	case err := <-done:
+		t.Fatalf("вторая команда прошла при заблокированной корневой строке (%v): "+
+			"сериализации на customer нет", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+
+	// Состояние не поехало, пока команда ждёт: запись идёт после блокировки.
+	if got := scalar[int64](t, pool,
+		`SELECT last_command_number FROM customer_entitlements WHERE customer_id = $1`,
+		testCustomerID); got != 1 {
+		t.Errorf("last_command_number %d во время ожидания, ожидался 1", got)
+	}
+
+	if err := rival.Rollback(ctx); err != nil {
+		t.Fatalf("Rollback: %v", err)
+	}
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("вторая команда после снятия блокировки: %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("вторая команда не прошла после снятия блокировки")
+	}
+
+	if got := scalar[int64](t, pool,
+		`SELECT last_command_number FROM customer_entitlements WHERE customer_id = $1`,
+		testCustomerID); got != 2 {
+		t.Errorf("last_command_number %d, ожидался 2", got)
+	}
+}

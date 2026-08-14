@@ -350,3 +350,80 @@ func TestIntegrationLinksEmptyFleet(t *testing.T) {
 		t.Fatalf("ссылок %d, ожидалось 0", got)
 	}
 }
+
+// TestIntegrationLinksFailedAfterPermanentRejection — исчерпавшая себя доставка
+// видна продукту как FAILED, а не как вечный PENDING.
+//
+// Разница поведенческая: PENDING обещает, что ссылка появится, и продукт вправе
+// опрашивать дальше. FAILED говорит, что сама она не появится никогда, и нужен
+// новый desired state. До этого теста путь apply_state='FAILED' наружу не
+// проверялся ни разу: FAILED в ответе получался только из непригодной ноды.
+func TestIntegrationLinksFailedAfterPermanentRejection(t *testing.T) {
+	uc, pool := seedLinksFleet(t)
+
+	// Одна нода отвергла операцию навсегда, вторая приняла. Ровно это пишет
+	// dispatcher по исходу AttemptPermanent.
+	exec(t, pool, `UPDATE vpn_accesses SET apply_state = 'APPLIED' WHERE customer_id = $1`, testCustomerID)
+	exec(t, pool,
+		`UPDATE vpn_accesses SET apply_state = 'FAILED'
+		 WHERE customer_id = $1 AND entry_node_id = 'node-a' AND kind = 'FREEDOM'`, testCustomerID)
+
+	var failed, ready int
+	for _, link := range getLinks(t, uc) {
+		switch link.Status.State {
+		case domain.LinkStateFailed:
+			failed++
+			if link.URI != "" {
+				t.Errorf("FAILED-ссылка несёт URI %q: недоставленный доступ выдан наружу", link.URI)
+			}
+			// Причина существует только у BLOCKED: у FAILED её в контракте нет.
+			if link.Status.Reason != domain.BlockReasonNone {
+				t.Errorf("FAILED-ссылка несёт причину %q", link.Status.Reason)
+			}
+		case domain.LinkStateReady:
+			ready++
+			if link.URI == "" {
+				t.Error("READY-ссылка без URI")
+			}
+		default:
+			t.Errorf("состояние %s, ожидались только FAILED и READY", link.Status.State)
+		}
+	}
+
+	if failed != 1 {
+		t.Errorf("FAILED-ссылок %d, ожидалась 1", failed)
+	}
+	// Отказ одной ноды не гасит работающие: ответ деградирует по одной ссылке.
+	if ready != 2 {
+		t.Errorf("READY-ссылок %d, ожидалось 2", ready)
+	}
+}
+
+// TestIntegrationLinksRetryingStaysPending — доставка, ушедшая на повтор, наружу
+// неотличима от ещё не начатой.
+//
+// Недоступность ноды длится сколько угодно, а число попыток не ограничено, и
+// продукт всё это время обязан видеть PENDING: ссылка действительно появится,
+// как только нода ответит.
+func TestIntegrationLinksRetryingStaysPending(t *testing.T) {
+	uc, pool := seedLinksFleet(t)
+
+	exec(t, pool, `UPDATE vpn_accesses SET apply_state = 'APPLIED' WHERE customer_id = $1`, testCustomerID)
+	exec(t, pool,
+		`UPDATE vpn_accesses SET apply_state = 'RETRYING'
+		 WHERE customer_id = $1 AND entry_node_id = 'node-a' AND kind = 'FREEDOM'`, testCustomerID)
+
+	var pending int
+	for _, link := range getLinks(t, uc) {
+		if link.Status.State == domain.LinkStatePending {
+			pending++
+			if link.URI != "" {
+				t.Errorf("PENDING-ссылка несёт URI %q", link.URI)
+			}
+		}
+	}
+
+	if pending != 1 {
+		t.Errorf("PENDING-ссылок %d, ожидалась 1: повтор доставки показан не как PENDING", pending)
+	}
+}

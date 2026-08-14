@@ -104,3 +104,31 @@ func TestEnumSeriesStartAtZero(t *testing.T) {
 		t.Errorf("серий access %d, ожидалось %d", got, want)
 	}
 }
+
+// Версия схемы, встроенная в бинарь, приезжает не из снимка базы: в базе её нет.
+// Публикует её composition root один раз при старте, и до этого вызова серия
+// показывает ноль. Ноль здесь неотличим от «миграций нет», поэтому проверяется
+// именно переход к заданному значению.
+//
+// Пара с schema_version — то, по чему оператор отличает штатный rollout от
+// застрявшего процесса: обе метрики читаются рядом, и та же разница решает,
+// ответит ли /health/ready.
+func TestBinarySchemaVersionIsPublished(t *testing.T) {
+	registry := New()
+
+	const name = "spiritvpn_binary_schema_version"
+	if got := testutil.ToFloat64(registry.binarySchemaVersion); got != 0 {
+		t.Fatalf("до публикации %s = %v, ожидался ноль", name, got)
+	}
+
+	registry.SetBinarySchemaVersion(7)
+
+	if got := testutil.ToFloat64(registry.binarySchemaVersion); got != 7 {
+		t.Errorf("%s = %v, ожидалось 7", name, got)
+	}
+	// Серия обязана быть в выдаче: gauge без Set в /metrics всё равно попадает,
+	// но проверка через реестр ловит и то, что метрика в нём зарегистрирована.
+	if got := seriesCount(t, registry, name); got != 1 {
+		t.Errorf("серий %s %d, ожидалась 1: метрика не зарегистрирована в реестре", name, got)
+	}
+}

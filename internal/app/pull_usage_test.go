@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -190,6 +191,9 @@ type fakeUsageAgent struct {
 	acknowledged nodeagent.UsageCursor
 	maxBatches   uint32
 	calls        int
+
+	// cancel, если задан, отменяет контекст шага во время RPC.
+	cancel context.CancelFunc
 }
 
 func (a *fakeUsageAgent) GetNodeState(
@@ -202,6 +206,12 @@ func (a *fakeUsageAgent) GetNodeState(
 	a.acknowledged = acknowledged
 	a.maxBatches = maxBatches
 	a.calls++
+
+	// cancel имитирует остановку процесса посреди шага: контекст воркера
+	// отменяется ровно между взятием lease и его снятием.
+	if a.cancel != nil {
+		a.cancel()
+	}
 	return a.outcome
 }
 
@@ -214,6 +224,22 @@ func newPullUsage(repo *fakeUsageRepo, agent *fakeUsageAgent) *app.PullUsage {
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 		"owner-1", time.Minute, 15*time.Second,
 	)
+}
+
+// newPullUsageLogging собирает воркер, чей лог доступен тесту.
+//
+// Отказ снятия lease не меняет ни исхода шага, ни журнала репозитория: вызов
+// ReleaseNode происходит в обоих случаях. Наблюдаема эта ветка только по записи
+// в логе, поэтому здесь он не выбрасывается.
+func newPullUsageLogging(repo *fakeUsageRepo, agent *fakeUsageAgent) (*app.PullUsage, *bytes.Buffer) {
+	agent.journal = &repo.journal
+	logs := &bytes.Buffer{}
+
+	return app.NewPullUsage(
+		repo, agent, &countingIDs{},
+		slog.New(slog.NewTextHandler(logs, nil)),
+		"owner-1", time.Minute, 15*time.Second,
+	), logs
 }
 
 // claimedNode — нода с заранее подтверждённой позицией спула.
@@ -575,5 +601,63 @@ func TestPullUsageCapsBatchesPerPull(t *testing.T) {
 
 	if agent.maxBatches == 0 {
 		t.Error("потолок batch не задан: решение о размере ответа отдано агенту")
+	}
+}
+
+// Остановка процесса посреди шага не должна тратить время на снятие lease:
+// контекст уже отменён, запрос по нему всё равно не пройдёт, а lease протухнет
+// сам и ноду подберёт следующий воркер.
+func TestPullUsageCancelledStepLeavesLeaseToExpire(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	repo := &fakeUsageRepo{claimed: []*app.ClaimedUsageNode{claimedNode(nodeagent.UsageCursor{})}}
+	agent := &fakeUsageAgent{
+		cancel: cancel,
+		// State == nil: нода не ответила, шаг возвращается сразу после RPC.
+		outcome: nodeagent.PullOutcome{Code: nodeagent.CodeUnavailable},
+	}
+
+	uc := newPullUsage(repo, agent)
+	if _, err := uc.ProcessNext(ctx); err != nil {
+		t.Fatalf("ProcessNext: %v", err)
+	}
+
+	// Нода взята и опрошена: без этого отсутствие release ничего не значило бы.
+	if !slices.Contains(repo.journal, "claim") || !slices.Contains(repo.journal, "rpc") {
+		t.Fatalf("журнал %v: шаг не дошёл до RPC", repo.journal)
+	}
+	if slices.Contains(repo.journal, "release") {
+		t.Errorf("журнал %v: lease снимался по отменённому контексту", repo.journal)
+	}
+}
+
+// Отказ снятия lease не заслоняет исход шага: нода простоит до истечения TTL, и
+// это несравнимо дешевле, чем потерять результат уже сделанной работы.
+func TestPullUsageReleaseFailureDoesNotFailStep(t *testing.T) {
+	repo := &fakeUsageRepo{
+		claimed:    []*app.ClaimedUsageNode{claimedNode(nodeagent.UsageCursor{})},
+		releaseErr: errors.New("соединение закрыто"),
+	}
+	agent := &fakeUsageAgent{outcome: nodeagent.PullOutcome{
+		State: &nodeagent.NodeState{NodeID: string(usageNodeID)},
+	}}
+
+	uc, logs := newPullUsageLogging(repo, agent)
+	progressed, err := uc.ProcessNext(context.Background())
+	if err != nil {
+		t.Fatalf("ProcessNext вернул %v: отказ снятия lease стал отказом шага", err)
+	}
+	if !progressed {
+		t.Error("шаг не признан выполненным из-за отказа снятия lease")
+	}
+
+	// Попытка была: без неё тест проходил бы и в случае, когда release вообще
+	// не вызывается.
+	if !slices.Contains(repo.journal, "release") {
+		t.Fatalf("журнал %v: снятия lease не было", repo.journal)
+	}
+	if !strings.Contains(logs.String(), string(usageNodeID)) {
+		t.Errorf("лог %q не называет ноду, чей lease завис", logs.String())
 	}
 }

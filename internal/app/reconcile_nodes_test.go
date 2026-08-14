@@ -1,11 +1,13 @@
 package app_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"log/slog"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,6 +47,8 @@ type fakeReconcileRepo struct {
 	accepted   bool
 	acceptErr  error
 	acceptance *app.ReconcileAcceptance
+
+	releaseErr error
 }
 
 func (r *fakeReconcileRepo) ClaimNodeForReconcile(
@@ -65,7 +69,7 @@ func (r *fakeReconcileRepo) ClaimNodeForReconcile(
 
 func (r *fakeReconcileRepo) ReleaseNodeReconcile(context.Context, domain.NodeID, string) error {
 	r.journal = append(r.journal, "release")
-	return nil
+	return r.releaseErr
 }
 
 func (r *fakeReconcileRepo) AcceptReconcile(
@@ -88,6 +92,9 @@ type fakeReconcileAgent struct {
 	calls        int
 	observeCalls int
 	users        []nodeagent.User
+
+	// cancel, если задан, отменяет контекст шага во время RPC полного набора.
+	cancel context.CancelFunc
 }
 
 func (a *fakeReconcileAgent) ObserveUsers(
@@ -108,6 +115,12 @@ func (a *fakeReconcileAgent) ReconcileUsers(
 	*a.journal = append(*a.journal, "rpc")
 	a.calls++
 	a.users = users
+
+	// cancel имитирует остановку процесса посреди шага: контекст воркера
+	// отменяется ровно между взятием lease и его снятием.
+	if a.cancel != nil {
+		a.cancel()
+	}
 	return a.result
 }
 
@@ -529,5 +542,91 @@ func TestReconcileBootstrapSkipsInventory(t *testing.T) {
 	}
 	if agent.calls != 1 {
 		t.Errorf("полный набор отправлен %d раз, ожидался 1", agent.calls)
+	}
+}
+
+// newReconcileLogging собирает воркер, чей лог доступен тесту.
+//
+// Отказ снятия lease не меняет ни исхода шага, ни журнала репозитория: вызов
+// ReleaseNodeReconcile происходит в обоих случаях. Наблюдаема эта ветка только по
+// записи в логе.
+func newReconcileLogging(
+	t *testing.T,
+	repo *fakeReconcileRepo,
+	agent *fakeReconcileAgent,
+) (*app.ReconcileNodes, *bytes.Buffer) {
+	t.Helper()
+
+	agent.journal = &repo.journal
+	logs := &bytes.Buffer{}
+
+	uc := app.NewReconcileNodes(
+		repo, agent, testSealer(t), crypto.NewGenerator(), fixedClock{},
+		slog.New(slog.NewTextHandler(logs, nil)),
+		"worker-1", reconcileTestTTL, reconcileTestTTL, reconcileTestMaxAge)
+
+	return uc, logs
+}
+
+// Остановка процесса посреди шага не должна тратить время на снятие lease:
+// контекст уже отменён, запрос по нему всё равно не пройдёт, а lease протухнет
+// сам и ноду подберёт следующий воркер.
+func TestReconcileCancelledStepLeavesLeaseToExpire(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	node := reconcileNode(t, reconcileUser(t, "acc-1"))
+	repo := &fakeReconcileRepo{accepted: true, claimed: []*app.ClaimedReconcileNode{node}}
+	agent := &fakeReconcileAgent{
+		cancel: cancel,
+		result: nodeagent.ReconcileResult{Outcome: nodeagent.Outcome{
+			Result: domain.AttemptRetryable, Code: nodeagent.CodeUnavailable,
+		}},
+	}
+
+	uc, _ := newReconcileLogging(t, repo, agent)
+	if _, err := uc.ProcessNext(ctx); err != nil {
+		t.Fatalf("ProcessNext: %v", err)
+	}
+
+	// Нода взята и набор отправлен: без этого отсутствие release ничего не
+	// значило бы.
+	if !slices.Contains(repo.journal, "claim") || !slices.Contains(repo.journal, "rpc") {
+		t.Fatalf("журнал %v: шаг не дошёл до RPC", repo.journal)
+	}
+	if slices.Contains(repo.journal, "release") {
+		t.Errorf("журнал %v: lease снимался по отменённому контексту", repo.journal)
+	}
+}
+
+// Отказ снятия lease не заслоняет исход шага: нода простоит до истечения TTL, и
+// это несравнимо дешевле, чем потерять уже принятый результат сверки.
+func TestReconcileReleaseFailureDoesNotFailStep(t *testing.T) {
+	node := reconcileNode(t, reconcileUser(t, "acc-1"))
+	repo := &fakeReconcileRepo{
+		accepted:   true,
+		claimed:    []*app.ClaimedReconcileNode{node},
+		releaseErr: errors.New("соединение закрыто"),
+	}
+	agent := &fakeReconcileAgent{result: reconcileApplied()}
+
+	uc, logs := newReconcileLogging(t, repo, agent)
+	progressed, err := uc.ProcessNext(context.Background())
+	if err != nil {
+		t.Fatalf("ProcessNext вернул %v: отказ снятия lease стал отказом шага", err)
+	}
+	if !progressed {
+		t.Error("шаг не признан выполненным из-за отказа снятия lease")
+	}
+
+	// Результат сверки записан: отказ снятия lease не откатывает принятое.
+	if !slices.Contains(repo.journal, "accept") {
+		t.Fatalf("журнал %v: результат сверки не принят", repo.journal)
+	}
+	if !slices.Contains(repo.journal, "release") {
+		t.Fatalf("журнал %v: снятия lease не было", repo.journal)
+	}
+	if !strings.Contains(logs.String(), string(node.NodeID)) {
+		t.Errorf("лог %q не называет ноду, чей lease завис", logs.String())
 	}
 }
