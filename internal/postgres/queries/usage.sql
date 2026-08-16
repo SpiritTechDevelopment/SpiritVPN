@@ -1,0 +1,257 @@
+-- Учёт трафика через pull от агента.
+--
+-- Транзакций у шага три, и между первой и остальными идёт сетевой вызов: держать
+-- транзакцию открытой во время обращения к агенту нельзя. Batch обрабатывается не
+-- одной большой транзакцией, а группами (customer_id, node_id) — по короткой
+-- транзакции на группу. Период в ключ группы не входит: внутри транзакции он один,
+-- и выбирает его LockQuotaPeriodAt по времени сбора batch.
+
+-- Заводит строки курсора всем текущим нодам.
+--
+-- Отдельным оператором перед claim, потому что claim обязан брать строку под
+-- FOR UPDATE SKIP LOCKED, а несуществующую строку заблокировать нельзя. Вставка
+-- идемпотентна и почти всегда не делает ничего.
+--
+-- updated_at = 'epoch', а не now(): колонка означает «последняя попытка pull»,
+-- и новая нода обязана опрашиваться сразу, а не через интервал.
+-- spool_id пустой — агент игнорирует подтверждение чужого spool_id, поэтому первый
+-- pull безопасно уходит с ним.
+-- name: EnsureUsageCursors :exec
+INSERT INTO node_usage_cursors (node_id, spool_id, updated_at)
+SELECT node_id, '', 'epoch'
+FROM vpn_nodes
+WHERE current
+ON CONFLICT (node_id) DO NOTHING;
+
+-- Берёт lease ноды, которую пора опросить.
+--
+-- Условие на lease разрешает три случая: ничей, чужой протухший (воркер упал) и
+-- собственный. Последнее нужно, потому что каждый шаг идёт отдельной транзакцией.
+--
+-- updated_at гейтит темп: чаще, чем агент опрашивает Xray, дёргать нечего — он
+-- вернёт пустой ответ. Он же задаёт порядок, поэтому давно не
+-- опрошенная нода идёт первой и ни одна не голодает.
+--
+-- Ноды с current = false не опрашиваются: инфраструктура их уже погасила.
+-- name: ClaimUsageNode :one
+UPDATE node_usage_cursors
+SET lease_owner      = @owner::text,
+    lease_expires_at = now() + make_interval(secs => @lease_seconds::int),
+    updated_at       = now()
+WHERE node_id = (
+    SELECT c.node_id
+    FROM node_usage_cursors c
+    JOIN vpn_nodes n ON n.node_id = c.node_id AND n.current
+    WHERE (c.lease_expires_at IS NULL
+           OR c.lease_expires_at < now()
+           OR c.lease_owner = @owner::text)
+      AND c.updated_at <= now() - make_interval(secs => @min_interval_seconds::int)
+    ORDER BY c.updated_at, c.node_id
+    FOR UPDATE SKIP LOCKED
+    LIMIT 1
+)
+RETURNING node_id, spool_id, acked_sequence,
+          (SELECT agent_config FROM vpn_nodes WHERE node_id = node_usage_cursors.node_id) AS agent_config;
+
+-- Снимает lease по завершении шага.
+--
+-- Без явного снятия нода простаивала бы до истечения TTL: он с запасом перекрывает
+-- весь шаг вместе с RPC и потому заметно длиннее интервала опроса.
+--
+-- Условие на владельца обязательно: чужой lease снимать нельзя, иначе воркер,
+-- задержавшийся на своём шаге, потерял бы ноду в пользу второго.
+-- name: ReleaseUsageLease :exec
+UPDATE node_usage_cursors
+SET lease_owner      = NULL,
+    lease_expires_at = NULL
+WHERE node_id = @node_id::text
+  AND lease_owner = @owner::text;
+
+-- Сопоставляет accounting_id с их владельцами.
+--
+-- Ретайрнутые и погашенные access тоже возвращаются: учитывать их разрешено
+-- items после expiry/retire, а accounting_id уникален и не переиспользуется,
+-- поэтому исторический маппинг — это просто чтение vpn_accesses без фильтров.
+-- Ненайденные accounting_id уходят в карантин.
+-- name: ResolveAccountingIDs :many
+SELECT accounting_id, access_id, customer_id, entry_node_id
+FROM vpn_accesses
+WHERE accounting_id = ANY (@accounting_ids::text[]);
+
+-- Блокирует период, в который попадает момент сбора batch.
+--
+-- Границы полуоткрыты: started_at <= collected_at < closed_at. Открытый период
+-- закрывающей границы не имеет. Ноль строк означает, что подходящего периода нет
+-- совсем, — такой item уходит в карантин, а не в IGNORED_CLOSED_PERIOD, потому что
+-- период не закрыт, его не существует.
+-- name: LockQuotaPeriodAt :one
+SELECT quota_period_id, customer_id, started_at, closed_at, usage_quota_bytes
+FROM quota_periods
+WHERE customer_id = @customer_id::text
+  AND started_at <= @collected_at
+  AND (closed_at IS NULL OR @collected_at < closed_at)
+FOR UPDATE;
+
+-- Заводит строку расхода ноды, если её ещё нет.
+--
+-- Отдельный запрос, а не InsertNodeQuotaUsage: там отсутствие строки является
+-- инвариантом и конфликт обязан провалить команду, а здесь наоборот — строки
+-- может не быть штатно. Истёкшему customer материализация их не создаёт, а
+-- начислять его items всё равно нужно, и без строки байты потерялись бы.
+-- name: EnsureNodeQuotaUsageRow :exec
+INSERT INTO node_quota_usage (quota_period_id, node_id)
+VALUES (@quota_period_id, @node_id::text)
+ON CONFLICT (quota_period_id, node_id) DO NOTHING;
+
+-- Блокирует строку расхода одной ноды в периоде.
+--
+-- Именно этот row lock сериализует несколько access одного customer на одной ноде,
+-- поэтому порог активируется ровно один раз.
+-- name: LockNodeQuotaUsageRow :one
+SELECT node_id, total_bytes, exhausted_at
+FROM node_quota_usage
+WHERE quota_period_id = @quota_period_id
+  AND node_id = @node_id::text
+FOR UPDATE;
+
+-- Регистрирует items в реестре идемпотентности и возвращает только новые.
+--
+-- ON CONFLICT DO NOTHING RETURNING — это и есть дедуп: попадание означает, что item
+-- уже начислен, и повторный pull, перезапуск воркера или повтор batch его не
+-- удвоят. Начисляются counters только по возвращённым строкам.
+-- name: RegisterProcessedUsageItems :many
+INSERT INTO traffic_usage_items_processed (
+    node_id, spool_id, sequence, accounting_id, access_id, quota_period_id, result
+)
+-- Параллельные массивы сшиваются через WITH ORDINALITY: многоаргументный unnest
+-- разбирается только PostgreSQL, но не парсером sqlc.
+SELECT @node_id::text, @spool_id::text, @sequence::numeric,
+       a.accounting_id, i.access_id, @quota_period_id::uuid, @result::text
+FROM unnest(@accounting_ids::text[]) WITH ORDINALITY AS a(accounting_id, ord)
+JOIN unnest(@access_ids::uuid[]) WITH ORDINALITY AS i(access_id, ord) ON i.ord = a.ord
+ON CONFLICT DO NOTHING
+RETURNING accounting_id;
+
+-- Регистрирует карантинные items как обработанные.
+--
+-- access_id и quota_period_id остаются NULL: у неизвестного accounting_id владельца
+-- нет, а у item без подходящего периода — периода. Отметка нужна, чтобы один плохой
+-- item не блокировал batch навсегда.
+-- name: RegisterQuarantinedUsageItems :exec
+INSERT INTO traffic_usage_items_processed (
+    node_id, spool_id, sequence, accounting_id, result
+)
+SELECT @node_id::text, @spool_id::text, @sequence::numeric, accounting_id, 'QUARANTINED'
+FROM unnest(@accounting_ids::text[]) AS accounting_id
+ON CONFLICT DO NOTHING;
+
+-- Кладёт items в карантин.
+--
+-- sanitized_payload собирается здесь, а не приходит из Go: так в него физически не
+-- может попасть ничего, кроме счётчиков байтов. Ни client_uuid, ни IP, ни
+-- назначение в usage не приходят, но карантин — последнее место, где
+-- стоит полагаться на дисциплину вызывающего.
+-- name: QuarantineUsageItems :exec
+INSERT INTO traffic_batch_quarantine (
+    node_id, spool_id, sequence, accounting_id, reason, sanitized_payload
+)
+SELECT @node_id::text, @spool_id::text, @sequence::numeric, a.accounting_id, @reason::text,
+       jsonb_build_object('uplink_bytes', u.uplink, 'downlink_bytes', d.downlink)
+FROM unnest(@accounting_ids::text[]) WITH ORDINALITY AS a(accounting_id, ord)
+JOIN unnest(@uplinks::numeric[]) WITH ORDINALITY AS u(uplink, ord) ON u.ord = a.ord
+JOIN unnest(@downlinks::numeric[]) WITH ORDINALITY AS d(downlink, ord) ON d.ord = a.ord;
+
+-- Добавляет дельты к counters ноды.
+--
+-- Именно прибавление, а не запись: items приходят дельтами за интервал опроса, и
+-- агент — единственный владелец reset'а Xray-счётчиков. total_bytes считается
+-- generated-колонкой и здесь не пишется.
+-- name: AddNodeQuotaUsage :exec
+UPDATE node_quota_usage
+SET uplink_bytes   = uplink_bytes + @uplink_bytes,
+    downlink_bytes = downlink_bytes + @downlink_bytes,
+    updated_at     = now()
+WHERE quota_period_id = @quota_period_id
+  AND node_id = @node_id::text;
+
+-- Все нератайрнутые access customer на одной входной ноде.
+--
+-- Гасятся все, а не только тот, чей accounting_id приехал в batch:
+-- квота применяется к ноде целиком, а трафик всех FREEDOM и BRIDGE этого customer
+-- на ней суммируется в один node quota period.
+--
+-- Без FOR UPDATE: корневая строка customer уже заблокирована, поэтому
+-- конкурирующего writer'а этих строк не существует.
+-- name: ListCustomerNodeAccesses :many
+SELECT access_id, kind, logical_target_key, generation, entry_node_id,
+       egress_key, accounting_id, desired_state, desired_version, retired_at
+FROM vpn_accesses
+WHERE customer_id = @customer_id::text
+  AND entry_node_id = @entry_node_id::text
+  AND retired_at IS NULL
+ORDER BY access_id;
+
+-- Сдвигает подтверждённую позицию спула.
+--
+-- Вызывается только после durable commit всех групп batch: агент удаляет из спула
+-- ровно подтверждённое, и опережающее подтверждение потеряло бы неучтённый трафик.
+--
+-- spool_id пишется вместе с sequence: смена спула означает новую нумерацию с нуля,
+-- и хранить старый id рядом с новым sequence нельзя.
+-- name: AdvanceUsageCursor :exec
+UPDATE node_usage_cursors
+SET spool_id       = @spool_id::text,
+    acked_sequence = @acked_sequence,
+    updated_at     = now()
+WHERE node_id = @node_id::text;
+
+-- Удаляет дедуп-записи, которые больше не могут понадобиться (ретенция).
+--
+-- Строка реестра нужна ровно до тех пор, пока агент способен прислать тот же
+-- batch повторно. Способен он на это, пока не получил наше подтверждение:
+-- acknowledged_usage_through уезжает следующим GetNodeState, и до тех пор batch
+-- лежит у него в спуле. Отсюда два условия, любого из которых достаточно:
+--
+--   * spool_id не тот, что у ноды сейчас, — прежнего спула физически нет, и
+--     прислать из него уже нечего;
+--   * sequence не выше подтверждённого — этот batch агенту уже подтверждён.
+--
+-- Возраст — третье условие, и оно про нас, а не про агента: подтверждение может
+-- быть записано у нас, но ещё не доехать до ноды, если backend в этот момент
+-- лежит. Окно должно перекрывать такой простой. Повтор, приехавший позже окна,
+-- начислится второй раз, и это принятая положительная погрешность.
+--
+-- Пачками, а не одним оператором: таблица растёт на активного пользователя
+-- каждые 15 секунд, и накопленное за сутки одним DELETE означало бы длинную
+-- транзакцию и раздутую таблицу.
+--
+-- Строки ноды, у которой нет строки курсора, не удаляются никогда: без курсора
+-- нечем доказать подтверждение. Появиться такие не могут — курсор заводится при
+-- первом claim ноды, то есть заведомо раньше обработки любого её batch.
+--
+-- Адресация по ctid, а не по первичному ключу, и это не микрооптимизация. С
+-- ключом планировщик сводит внешний DELETE с подзапросом в hash semi join и
+-- читает всю таблицу, чтобы найти в ней найденные же строки: 305 тысяч строк и
+-- 2851 буфер против 55 у самого подзапроса (проверено EXPLAIN ANALYZE). То есть
+-- стоимость уборки осталась бы пропорциональна тому, что она убирает, и индекс
+-- по processed_at не дал бы ничего. С ctid остаётся Tid Scan — обращение к
+-- странице на строку, ровно размер пачки, независимо от размера таблицы.
+--
+-- Физический адрес безопасен здесь по трём причинам: подзапрос и удаление
+-- выполняются одним оператором под одним снимком; строки этой таблицы никогда не
+-- обновляются, поэтому ctid не может съехать под нами; переиспользованный после
+-- VACUUM адрес указывал бы на строку новее снимка, а такая невидима и не
+-- удаляется.
+-- name: PruneProcessedUsageItems :execrows
+DELETE FROM traffic_usage_items_processed
+WHERE ctid IN (
+    SELECT p.ctid
+    FROM traffic_usage_items_processed p
+    JOIN node_usage_cursors c ON c.node_id = p.node_id
+    -- make_interval, а не умножение на interval '1 second': из выражения с
+    -- умножением sqlc выводит имя параметра по всей его записи и тип interface{}.
+    WHERE p.processed_at < now() - make_interval(secs => @retention_seconds::double precision)
+      AND (p.spool_id <> c.spool_id OR p.sequence <= c.acked_sequence)
+    ORDER BY p.processed_at
+    LIMIT @max_rows::bigint
+);

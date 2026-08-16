@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SPIRITVPN_INTEGRATION_TESTS: "1"
+      DATABASE_URL: "postgres://spiritdb:your_secure_password@localhost:5432/spiritdb?sslmode=disable"
 
     services:
       postgres:
@@ -41,7 +42,12 @@ jobs:
         cache-dependency-path: go.sum
 
     - name: Run tests with coverage
-      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+      run: |
+        go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        # Держим ту же область покрытия, что и основной CI-гейт.
+        awk 'NR == 1 || ($0 !~ /\/internal\/gen\// && $0 !~ /\/internal\/postgres\/db\//)' \
+          coverage.out > coverage.filtered.out
+        mv coverage.filtered.out coverage.out
 
     - name: Generate coverage summary
       id: coverage

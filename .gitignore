@@ -81,3 +81,15 @@ grafana_data/
 # Docker volumes data
 postgres_data/
 redis_data/
+
+# Локальные сертификаты mTLS (make dev-certs) — приватные ключи в git не попадают
+dev/certs/
+
+# Окружение и секреты сред. В репозитории живёт только deploy/env.example;
+# заполненный .env и смонтированный каталог с ключами лежат на серверах.
+deploy/.env
+deploy/secrets/
+
+# Собранный сайт документации (mkdocs build). Публикацией занимается docs.yml,
+# из репозитория сайт не отдаётся.
+site/

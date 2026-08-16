@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+// Customer-facing control-plane API: приём команд доступа и выдача VLESS URI.
+//
+// Вызывающая сторона аутентифицируется по mTLS с ролью customer-access-writer
+// (Apply) или customer-access-reader (GetLinks).
+package spiritvpn.customer.v1;
+
+// CustomerAccessService — единственная внешняя командно-запросная поверхность для
+// customer access. Всё состояние, которое он меняет, durable в PostgreSQL до
+// возврата ответа.
+service CustomerAccessService {
+  // Идемпотентное создание/продление/смена квоты доступа customer к одному fleet.
+  // Порядок и защита от повторов — через command_number. Успешный ответ
+  // означает, что desired state зафиксирован, а НЕ что агенты уже применили его.
+  rpc ApplyCustomerAccess(ApplyCustomerAccessRequest) returns (ApplyCustomerAccessResponse);
+
+  // Возвращает все текущие (не retired) access customer с состоянием ссылки и
+  // готовую VLESS URI только для READY. Ответ с URI не кешируется и не
+  // логируется.
+  rpc GetCustomerAccessLinks(GetCustomerAccessLinksRequest) returns (GetCustomerAccessLinksResponse);
+}
+
+message ApplyCustomerAccessRequest {
+  // Непрозрачная product-идентичность, 1..256 байт; не парсится, не попадает в
+  // Xray email.
+  string customer_id = 1;
+
+  // Целевой fleet. Должен быть > 0 и существовать (иначе NOT_FOUND). Customer
+  // привязан максимум к одному fleet; другой fleet возвращает FAILED_PRECONDITION.
+  int64 vpn_fleet_id = 2;
+
+  // Квота в байтах на каждую ноду отдельно (одинаковый лимит на ноду). Должна
+  // быть > 0. Product переводит свои GB/GiB в байты до вызова backend.
+  uint64 usage_quota_bytes = 3;
+
+  // Абсолютный UTC Unix timestamp (секунды) момента окончания доступа, не
+  // длительность. Должен быть в будущем. Значение строго больше сохранённого —
+  // renewal; меньшее — FAILED_PRECONDITION.
+  int64 expires_at_epoch_sec = 4;
+
+  // Монотонно возрастающий по customer счётчик команд product. Должен быть > 0.
+  // Команда с command_number <= last_command_number — поглощаемый реордер/повтор:
+  // без side effects, ответ OK.
+  uint64 command_number = 5;
+}
+
+message ApplyCustomerAccessResponse {}
+
+message GetCustomerAccessLinksRequest {
+  // Непрозрачная product-идентичность. Неизвестный customer_id — NOT_FOUND.
+  string customer_id = 1;
+}
+
+enum AccessKind {
+  ACCESS_KIND_UNSPECIFIED = 0;
+  ACCESS_KIND_FREEDOM = 1;
+  ACCESS_KIND_BRIDGE = 2;
+}
+
+enum AccessLinkState {
+  ACCESS_LINK_STATE_UNSPECIFIED = 0;
+  ACCESS_LINK_STATE_PENDING = 1;
+  ACCESS_LINK_STATE_READY = 2;
+  ACCESS_LINK_STATE_BLOCKED = 3;
+  ACCESS_LINK_STATE_FAILED = 4;
+}
+
+enum AccessBlockReason {
+  ACCESS_BLOCK_REASON_UNSPECIFIED = 0;
+  ACCESS_BLOCK_REASON_TIME_EXPIRED = 1;
+  ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED = 2;
+}
+
+message CustomerAccessLink {
+  AccessKind kind = 1;
+  AccessLinkState state = 2;
+
+  // Присутствует (и обязателен) только для BLOCKED. Если применимы и expiry, и
+  // quota — возвращается TIME_EXPIRED.
+  optional AccessBlockReason block_reason = 3;
+
+  // Присутствует только для READY. Строится на лету из расшифрованного client_uuid
+  // и текущего manifest; человекочитаемое имя — внутри фрагмента URI.
+  optional string uri = 4;
+}
+
+message GetCustomerAccessLinksResponse {
+  // Все текущие ссылки customer, без пагинации, отсортированы по внутреннему
+  // (kind, logical_target_key, access_id). Retired historical access исключены.
+  repeated CustomerAccessLink links = 1;
+}

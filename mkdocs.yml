@@ -1,5 +1,5 @@
 site_name: SpiritVPN Documentation
-site_description: База знаний SpiritVPN на базе VLESS
+site_description: Документация backend-сервиса управления VPN-инфраструктурой SpiritVPN
 site_author: Roman Ryabinkin, Pavel Lensky
 
 theme:
@@ -9,33 +9,31 @@ theme:
       scheme: default
       primary: indigo
       toggle:
-        icon: material/brightness-7 
-        name: Switch to dark mode
+        icon: material/brightness-7
+        name: Включить тёмную тему
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: indigo
       toggle:
         icon: material/brightness-4
-        name: Switch to light mode
+        name: Включить светлую тему
   features:
     - navigation.tabs
-    - navigation.sections 
-    - search.suggest 
+    - navigation.sections
+    - search.suggest
     - search.highlight
 
 nav:
   - Главная: index.md
   - Архитектура:
       - Общая архитектура: ARCHITECTURE.md
+      - Внешний API: API.md
       - База данных: DATABASE.md
-      - VPN и протокол VLESS: VLESS.md
-      - Биллинг и выдача доступа: PAYMENTS.md 
-  - Разработка и API:
-      - Документация API: API.md
+      - Infrastructure manifest: MANIFEST.md
+      - VLESS URI: VLESS.md
+  - Разработка:
       - Руководство по тестированию: TESTING.md
       - Правила Changelog: CHANGELOG_GUIDE.md
   - Инфраструктура:
-      - Развертывание (Деплой): DEPLOYMENT.md
-  - Развитие:
-      - План разработки (Roadmap): ROADMAP.md
-      - Частые вопросы (FAQ): FAQ.md
+      - Развёртывание: DEPLOYMENT.md
+      - Эксплуатация: OPERATIONS.md
