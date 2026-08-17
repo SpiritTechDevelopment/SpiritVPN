@@ -218,33 +218,70 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
 
-    # Только ветки сред и релизные теги. Триггер workflow — push в любую ветку,
-    # и без этого условия каждая feature-ветка складывала бы в registry по паре
-    # образов.
+    # Единственная линия — main: каждый её коммит собирается и едет в среду
+    # develop. Тег продвигает уже собранное в prod.
+    #
+    # Тег не пересобирает. Пересборка того же коммита может дать другие байты:
+    # обновился базовый образ, разрешилась другая версия зависимости, поменялся
+    # тулчейн. В прод обязаны уехать те байты, что проверялись в develop,
+    # поэтому релизный тег перевешивается на существующий digest.
+    #
+    # Промежуточной ветки нет намеренно. С ней тег вставал бы на коммит,
+    # созданный слиянием, — а такой коммит никогда не собирался, и продвижение
+    # не нашло бы образ. Интерфейс GitHub слить с сохранением SHA не умеет:
+    # merge, squash и rebase создают новые SHA все три.
     if: >-
-      github.ref == 'refs/heads/main' ||
-      github.ref == 'refs/heads/develop' ||
-      startsWith(github.ref, 'refs/tags/v')
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' ||
+       startsWith(github.ref, 'refs/tags/v'))
 
     permissions:
       contents: read
       packages: write
 
+    # Шаги сборки и продвижения взаимоисключающие: пропущенный даёт пустую
+    # строку, и `||` выбирает тот, который отработал.
     outputs:
-      tag: ${{ steps.names.outputs.tag }}
-      owner: ${{ steps.names.outputs.owner }}
+      environment: ${{ steps.target.outputs.environment }}
+      backend_repository: ${{ steps.target.outputs.backend_repository }}
+      migrate_repository: ${{ steps.target.outputs.migrate_repository }}
+      backend_digest: ${{ steps.build_backend.outputs.digest || steps.promote.outputs.backend_digest }}
+      migrate_digest: ${{ steps.build_migrate.outputs.digest || steps.promote.outputs.migrate_digest }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
+      with:
+        # merge-base нужен полный граф коммитов; по умолчанию клон поверхностный.
+        fetch-depth: 0
 
-    - name: Compute image names
-      id: names
+    # Тег обязан стоять на коммите, уже прошедшем main. Иначе в прод можно было
+    # бы отправить ветку, которую никто не смотрел.
+    - name: Validate release tag
+      if: startsWith(github.ref, 'refs/tags/v')
       run: |
+        set -euo pipefail
+        printf '%s' "$GITHUB_REF_NAME" \
+          | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'
+        git fetch --no-tags origin main
+        git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+    - name: Resolve target
+      id: target
+      run: |
+        set -euo pipefail
         # Имена образов в ghcr обязаны быть строчными, а владелец репозитория
         # записан как SpiritTechDevelopment.
-        echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
-        echo "tag=sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+        owner=${GITHUB_REPOSITORY_OWNER,,}
+        echo "backend_repository=ghcr.io/${owner}/spiritvpn-spiritvpnd" >> "$GITHUB_OUTPUT"
+        echo "migrate_repository=ghcr.io/${owner}/spiritvpn-migrate" >> "$GITHUB_OUTPUT"
+        # main — это среда develop; тег — prod. До else доходит только тег:
+        # остальное отсечено условием job'а.
+        if [ "$GITHUB_REF" = refs/heads/main ]; then
+          echo "environment=develop" >> "$GITHUB_OUTPUT"
+        else
+          echo "environment=prod" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Set up Buildx
       uses: docker/setup-buildx-action@v3
@@ -260,99 +297,106 @@ jobs:
     # теги дают процесс, застрявший в `not ready: schema`, причём ни одна
     # миграция при этом не падает: он требует схему не ниже встроенной в него.
     - name: Build and push migrate
+      id: build_migrate
+      if: github.ref == 'refs/heads/main'
       uses: docker/build-push-action@v6
       with:
         context: .
         target: migrate
         push: true
-        tags: ghcr.io/${{ steps.names.outputs.owner }}/spiritvpn-migrate:${{ steps.names.outputs.tag }}
+        tags: ${{ steps.target.outputs.migrate_repository }}:sha-${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        provenance: mode=max
+        sbom: true
 
     - name: Build and push spiritvpnd
+      id: build_backend
+      if: github.ref == 'refs/heads/main'
       uses: docker/build-push-action@v6
       with:
         context: .
         target: spiritvpnd
         push: true
-        tags: ghcr.io/${{ steps.names.outputs.owner }}/spiritvpn-spiritvpnd:${{ steps.names.outputs.tag }}
+        tags: ${{ steps.target.outputs.backend_repository }}:sha-${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        provenance: mode=max
+        sbom: true
 
-  # Выкатка обеих сред идёт отсюда, на серверы никто не заходит руками.
-  #
-  # Доступы разведены по GitHub Environments: секреты с одинаковыми именами
-  # разрешаются в разные значения, и ключ от production недоступен job'у,
-  # который выкатывает develop.
-  #
-  # deploy.sh на сервере держит порядок трёх шагов — схему раньше процесса.
+    # Перевешивание тега на существующий манифест: ничего не собирается и не
+    # скачивается. Сверка digest'ов до и после превращает это из предположения
+    # в проверенный факт.
+    - name: Promote tested images
+      id: promote
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        BACKEND: ${{ steps.target.outputs.backend_repository }}
+        MIGRATE: ${{ steps.target.outputs.migrate_repository }}
+      run: |
+        set -euo pipefail
+        promote() {
+          local image=$1 source target source_digest target_digest
+          source="${image}:sha-${GITHUB_SHA}"
+          target="${image}:${GITHUB_REF_NAME}"
+          source_digest=$(docker buildx imagetools inspect "$source" \
+            | sed -n 's/^Digest:[[:space:]]*//p' | head -n 1)
+          if [ -z "$source_digest" ]; then
+            echo "образ ${source} не найден: коммит не собирался на main" >&2
+            exit 1
+          fi
+          docker buildx imagetools create --tag "$target" "$source"
+          target_digest=$(docker buildx imagetools inspect "$target" \
+            | sed -n 's/^Digest:[[:space:]]*//p' | head -n 1)
+          if [ "$source_digest" != "$target_digest" ]; then
+            echo "продвижение изменило digest: ${source_digest} -> ${target_digest}" >&2
+            exit 1
+          fi
+          printf '%s' "$source_digest"
+        }
+        echo "backend_digest=$(promote "$BACKEND")" >> "$GITHUB_OUTPUT"
+        echo "migrate_digest=$(promote "$MIGRATE")" >> "$GITHUB_OUTPUT"
 
-  deploy-develop:
-    name: Deploy develop
+  # Выкаток отсюда больше нет. Этот репозиторий производит образы и сообщает их
+  # digest'ы; какая версия работает в среде — записано в desired state
+  # инфраструктуры и меняется коммитом туда. Здесь нет ни ключа от сервера, ни
+  # знания о том, где он стоит.
+  #
+  # Событие несёт факт «образ опубликован», а не команду на выкатку: что из
+  # этого следует, решает принимающая сторона.
+  notify-infrastructure:
+    name: Notify infrastructure
     runs-on: ubuntu-latest
     needs: [images]
-    if: github.ref == 'refs/heads/develop'
-    environment: develop
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-
-    # Compose-файл и скрипт едут на сервер каждой выкаткой. Иначе их правки в
-    # репозитории нужно было бы разносить по серверам отдельно, и версия скрипта
-    # там расходилась бы с версией образа молча. Заполненный .env и каталог
-    # secrets/ лежат только на сервере, копирование их не трогает.
-    - name: Copy deploy files
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USER }}
-        key: ${{ secrets.DEPLOY_SSH_KEY }}
-        source: deploy/docker-compose.yml,deploy/deploy.sh
-        target: /srv/spiritvpn
-        strip_components: 1
-
-    - name: Run deploy.sh over SSH
-      uses: appleboy/ssh-action@v1
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USER }}
-        key: ${{ secrets.DEPLOY_SSH_KEY }}
-        script: |
-          chmod +x /srv/spiritvpn/deploy.sh
-          /srv/spiritvpn/deploy.sh ${{ needs.images.outputs.tag }}
-
-  # Продакшн выкатывается тегом v*, а не мержем в main: экземпляр один, замена
-  # контейнера означает недоступность gRPC, и момент простоя выбирается тегом.
-  deploy-production:
-    name: Deploy production
-    runs-on: ubuntu-latest
-    needs: [images]
-    if: startsWith(github.ref, 'refs/tags/v')
-    environment: production
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-
-    # Compose-файл и скрипт едут на сервер каждой выкаткой. Иначе их правки в
-    # репозитории нужно было бы разносить по серверам отдельно, и версия скрипта
-    # там расходилась бы с версией образа молча. Заполненный .env и каталог
-    # secrets/ лежат только на сервере, копирование их не трогает.
-    - name: Copy deploy files
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USER }}
-        key: ${{ secrets.DEPLOY_SSH_KEY }}
-        source: deploy/docker-compose.yml,deploy/deploy.sh
-        target: /srv/spiritvpn
-        strip_components: 1
-
-    - name: Run deploy.sh over SSH
-      uses: appleboy/ssh-action@v1
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USER }}
-        key: ${{ secrets.DEPLOY_SSH_KEY }}
-        script: |
-          chmod +x /srv/spiritvpn/deploy.sh
-          /srv/spiritvpn/deploy.sh ${{ needs.images.outputs.tag }}
+    - name: Dispatch the control release
+      env:
+        GH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+        ENVIRONMENT: ${{ needs.images.outputs.environment }}
+        BACKEND_REPOSITORY: ${{ needs.images.outputs.backend_repository }}
+        BACKEND_DIGEST: ${{ needs.images.outputs.backend_digest }}
+        MIGRATE_REPOSITORY: ${{ needs.images.outputs.migrate_repository }}
+        MIGRATE_DIGEST: ${{ needs.images.outputs.migrate_digest }}
+      run: |
+        set -euo pipefail
+        # Пустой digest означает, что ни сборка, ни продвижение не отработали.
+        # Отправлять неполное событие нельзя: принимающая сторона запишет его в
+        # desired state.
+        test -n "$BACKEND_DIGEST"
+        test -n "$MIGRATE_DIGEST"
+        # jq сам экранирует значения; сборка JSON конкатенацией строк ломается
+        # на первом же неожиданном символе.
+        jq -n \
+          --arg environment "$ENVIRONMENT" \
+          --arg source_git_sha "$GITHUB_SHA" \
+          --arg backend_repository "$BACKEND_REPOSITORY" \
+          --arg backend_digest "$BACKEND_DIGEST" \
+          --arg migration_repository "$MIGRATE_REPOSITORY" \
+          --arg migration_digest "$MIGRATE_DIGEST" \
+          '{event_type: "control-release", client_payload: {
+              environment: $environment,
+              source_git_sha: $source_git_sha,
+              backend: {repository: $backend_repository, digest: $backend_digest},
+              migration: {repository: $migration_repository, digest: $migration_digest}}}' \
+          | gh api repos/SpiritTechDevelopment/Infrastructure/dispatches \
+              --method POST --input -
