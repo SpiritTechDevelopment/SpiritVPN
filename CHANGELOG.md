@@ -7,6 +7,7 @@
 ## [Unreleased]
 
 ### Изменено
+- ci: конвейер публикует образы, выкаткой владеет инфраструктуры ([#25](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/25)) by @xvpaul
 - Feat/backend ([#24](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/24)) by @xvpaul
 - fix: [BillingDeveloping] isoloated VPN API  core logic ([#23](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/23)) by @RomanRyabinkin
 - Feature/billing developing ([#21](https://github.com/SpiritTechDevelopment/SpiritVPN/pull/21)) by @RomanRyabinkin
