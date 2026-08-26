@@ -106,6 +106,11 @@ type AccessLinkSource struct {
 
 	// QuotaExhausted — exhausted_at IS NOT NULL у входной ноды в текущем периоде.
 	QuotaExhausted bool
+	// UsageQuotaBytes и ConsumedBytes относятся к той же входной ноде: для
+	// FREEDOM это сама нода, для BRIDGE — entry_node_id связи. Несколько access на
+	// одной входной ноде получают одинаковые значения.
+	UsageQuotaBytes uint64
+	ConsumedBytes   uint64
 
 	// Entry — публичные параметры входной ноды. Для FREEDOM это сама цель, для
 	// BRIDGE — entry_node_id связи: на EXIT credential customer не ставится.

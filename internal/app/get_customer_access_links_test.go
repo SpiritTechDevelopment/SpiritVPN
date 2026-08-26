@@ -25,6 +25,11 @@ var (
 	linksExpires = linksNow.Add(24 * time.Hour)
 )
 
+const (
+	linksQuotaBytes    = uint64(10_000)
+	linksConsumedBytes = uint64(4_000)
+)
+
 // fakeLinksRepo отдаёт заранее подготовленный снимок.
 type fakeLinksRepo struct {
 	calls      int
@@ -63,11 +68,13 @@ func (s *countingSealer) KeyID() string { return "test" }
 // readySource — access, из которого получается READY-ссылка.
 func readySource() app.AccessLinkSource {
 	return app.AccessLinkSource{
-		Kind:         domain.AccessKindFreedom,
-		DesiredState: domain.DesiredStatePresent,
-		ApplyState:   domain.ApplyStateApplied,
-		Entry:        testNode(),
-		Credential:   crypto.SealedCredential{KeyID: "test", Blob: make([]byte, crypto.SealedBlobSize)},
+		Kind:            domain.AccessKindFreedom,
+		DesiredState:    domain.DesiredStatePresent,
+		ApplyState:      domain.ApplyStateApplied,
+		UsageQuotaBytes: linksQuotaBytes,
+		ConsumedBytes:   linksConsumedBytes,
+		Entry:           testNode(),
+		Credential:      crypto.SealedCredential{KeyID: "test", Blob: make([]byte, crypto.SealedBlobSize)},
 	}
 }
 
@@ -110,6 +117,13 @@ func TestExecuteReturnsURIOnlyForReady(t *testing.T) {
 	for _, link := range links[1:] {
 		if link.URI != "" {
 			t.Errorf("состояние %s несёт URI %q", link.Status.State, link.URI)
+		}
+	}
+	for _, link := range links {
+		if link.UsageQuotaBytes != linksQuotaBytes || link.ConsumedBytes != linksConsumedBytes {
+			t.Errorf("состояние %s: quota=%d consumed=%d, ожидались %d и %d",
+				link.Status.State, link.UsageQuotaBytes, link.ConsumedBytes,
+				linksQuotaBytes, linksConsumedBytes)
 		}
 	}
 
@@ -230,6 +244,9 @@ func TestExecuteDegradesUnopenableCredential(t *testing.T) {
 	}
 	if links[0].URI != "" {
 		t.Fatalf("URI %q при нерасшифрованном credential", links[0].URI)
+	}
+	if links[0].UsageQuotaBytes != linksQuotaBytes || links[0].ConsumedBytes != linksConsumedBytes {
+		t.Fatalf("FAILED после ошибки расшифровки потерял quota: %+v", links[0])
 	}
 }
 

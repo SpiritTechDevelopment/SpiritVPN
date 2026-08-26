@@ -357,7 +357,14 @@ type CustomerAccessLink struct {
 	BlockReason *AccessBlockReason `protobuf:"varint,3,opt,name=block_reason,json=blockReason,proto3,enum=spiritvpn.customer.v1.AccessBlockReason,oneof" json:"block_reason,omitempty"`
 	// Присутствует только для READY. Строится на лету из расшифрованного client_uuid
 	// и текущего manifest; человекочитаемое имя — внутри фрагмента URI.
-	Uri           *string `protobuf:"bytes,4,opt,name=uri,proto3,oneof" json:"uri,omitempty"`
+	Uri *string `protobuf:"bytes,4,opt,name=uri,proto3,oneof" json:"uri,omitempty"`
+	// Текущий лимит открытого quota period для входной ноды. Для FREEDOM это сама
+	// нода, для BRIDGE — entry-нода связи. Присутствует при любом состоянии ссылки.
+	UsageQuotaBytes *uint64 `protobuf:"varint,5,opt,name=usage_quota_bytes,json=usageQuotaBytes,proto3,oneof" json:"usage_quota_bytes,omitempty"`
+	// Уже учтённый backend суммарный трафик customer на входной ноде в текущем
+	// quota period. Может отставать от фактического трафика на интервал опроса
+	// node-agent. Присутствует при любом состоянии ссылки.
+	ConsumedBytes *uint64 `protobuf:"varint,6,opt,name=consumed_bytes,json=consumedBytes,proto3,oneof" json:"consumed_bytes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -418,6 +425,20 @@ func (x *CustomerAccessLink) GetUri() string {
 		return *x.Uri
 	}
 	return ""
+}
+
+func (x *CustomerAccessLink) GetUsageQuotaBytes() uint64 {
+	if x != nil && x.UsageQuotaBytes != nil {
+		return *x.UsageQuotaBytes
+	}
+	return 0
+}
+
+func (x *CustomerAccessLink) GetConsumedBytes() uint64 {
+	if x != nil && x.ConsumedBytes != nil {
+		return *x.ConsumedBytes
+	}
+	return 0
 }
 
 type GetCustomerAccessLinksResponse struct {
@@ -482,14 +503,18 @@ const file_spiritvpn_customer_v1_customer_proto_rawDesc = "" +
 	"\x1bApplyCustomerAccessResponse\"@\n" +
 	"\x1dGetCustomerAccessLinksRequest\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
-	"customerId\"\x8b\x02\n" +
+	"customerId\"\x91\x03\n" +
 	"\x12CustomerAccessLink\x125\n" +
 	"\x04kind\x18\x01 \x01(\x0e2!.spiritvpn.customer.v1.AccessKindR\x04kind\x12<\n" +
 	"\x05state\x18\x02 \x01(\x0e2&.spiritvpn.customer.v1.AccessLinkStateR\x05state\x12P\n" +
 	"\fblock_reason\x18\x03 \x01(\x0e2(.spiritvpn.customer.v1.AccessBlockReasonH\x00R\vblockReason\x88\x01\x01\x12\x15\n" +
-	"\x03uri\x18\x04 \x01(\tH\x01R\x03uri\x88\x01\x01B\x0f\n" +
+	"\x03uri\x18\x04 \x01(\tH\x01R\x03uri\x88\x01\x01\x12/\n" +
+	"\x11usage_quota_bytes\x18\x05 \x01(\x04H\x02R\x0fusageQuotaBytes\x88\x01\x01\x12*\n" +
+	"\x0econsumed_bytes\x18\x06 \x01(\x04H\x03R\rconsumedBytes\x88\x01\x01B\x0f\n" +
 	"\r_block_reasonB\x06\n" +
-	"\x04_uri\"a\n" +
+	"\x04_uriB\x14\n" +
+	"\x12_usage_quota_bytesB\x11\n" +
+	"\x0f_consumed_bytes\"a\n" +
 	"\x1eGetCustomerAccessLinksResponse\x12?\n" +
 	"\x05links\x18\x01 \x03(\v2).spiritvpn.customer.v1.CustomerAccessLinkR\x05links*Z\n" +
 	"\n" +

@@ -52,34 +52,53 @@ func (r *Repository) LoadCustomerLinks(ctx context.Context, customerID string) (
 	if err != nil {
 		return app.CustomerLinks{}, fmt.Errorf("чтение ссылок: %w", err)
 	}
+	sources, err := linkSourcesFromRows(rows)
+	if err != nil {
+		return app.CustomerLinks{}, err
+	}
 
 	return app.CustomerLinks{
 		Now:       header.TxNow,
 		ExpiresAt: header.ExpiresAt,
-		Accesses:  linkSourcesFromRows(rows),
+		Accesses:  sources,
 	}, nil
 }
 
 // linkSourcesFromRows сохраняет порядок (kind, logical_target_key, access_id),
 // заданный запросом: он же порядок ответа.
-func linkSourcesFromRows(rows []db.ListCustomerAccessLinksRow) []app.AccessLinkSource {
+func linkSourcesFromRows(rows []db.ListCustomerAccessLinksRow) ([]app.AccessLinkSource, error) {
 	sources := make([]app.AccessLinkSource, 0, len(rows))
 	for _, row := range rows {
-		sources = append(sources, linkSourceFromRow(row))
+		source, err := linkSourceFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, source)
 	}
-	return sources
+	return sources, nil
 }
 
 // linkSourceFromRow переносит строку в форму, из которой домен выводит состояние.
 // Состояние здесь не вычисляется: оно выводится из сырых фактов, а не
 // хранить, и место этого вывода — domain.LinkStatusOf.
-func linkSourceFromRow(row db.ListCustomerAccessLinksRow) app.AccessLinkSource {
+func linkSourceFromRow(row db.ListCustomerAccessLinksRow) (app.AccessLinkSource, error) {
+	quota, err := uint64FromNumeric(row.UsageQuotaBytes)
+	if err != nil {
+		return app.AccessLinkSource{}, fmt.Errorf("postgres: лимит квоты ссылки: %w", err)
+	}
+	consumed, err := uint64FromNumeric(row.ConsumedBytes)
+	if err != nil {
+		return app.AccessLinkSource{}, fmt.Errorf("postgres: расход ссылки: %w", err)
+	}
+
 	source := app.AccessLinkSource{
-		Kind:           domain.AccessKind(row.Kind),
-		DesiredState:   domain.DesiredState(row.DesiredState),
-		ApplyState:     domain.ApplyState(row.ApplyState),
-		QuotaExhausted: row.QuotaExhausted,
-		Entry:          nodePublicFrom(row.EntryPublicConfig),
+		Kind:            domain.AccessKind(row.Kind),
+		DesiredState:    domain.DesiredState(row.DesiredState),
+		ApplyState:      domain.ApplyState(row.ApplyState),
+		QuotaExhausted:  row.QuotaExhausted,
+		UsageQuotaBytes: quota,
+		ConsumedBytes:   consumed,
+		Entry:           nodePublicFrom(row.EntryPublicConfig),
 		Credential: crypto.SealedCredential{
 			KeyID: row.EncryptionKeyID,
 			Blob:  row.EncryptedClientUuid,
@@ -92,5 +111,5 @@ func linkSourceFromRow(row db.ListCustomerAccessLinksRow) app.AccessLinkSource {
 		source.BridgeDisplayName = *row.BridgeDisplayName
 	}
 
-	return source
+	return source, nil
 }

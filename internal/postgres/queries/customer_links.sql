@@ -46,7 +46,9 @@ SELECT a.kind,
        a.encryption_key_id,
        entry.public_config                     AS entry_public_config,
        br.display_name                         AS bridge_display_name,
-       (usage.exhausted_at IS NOT NULL)::bool  AS quota_exhausted
+       (usage.exhausted_at IS NOT NULL)::bool  AS quota_exhausted,
+       coalesce(period.usage_quota_bytes, 0::numeric) AS usage_quota_bytes,
+       coalesce(usage.total_bytes, 0::numeric)        AS consumed_bytes
 FROM vpn_accesses a
 JOIN customer_entitlements e
   ON e.customer_id = a.customer_id
@@ -65,8 +67,10 @@ LEFT JOIN vpn_bridge_routes br
  AND br.vpn_fleet_id = e.vpn_fleet_id
  AND br.routing_key = a.logical_target_key
  AND br.current
--- Открытый период у customer максимум один (partial unique index); его
--- отсутствие или отсутствие строки расхода означает «квота не исчерпана».
+-- Открытый период у customer максимум один (partial unique index). Строка
+-- расхода относится к entry_node_id access: для FREEDOM это сама нода, для
+-- BRIDGE — входная нода связи. Её отсутствие означает нулевой расход; отсутствие
+-- периода возможно только при нарушении инварианта и также проецируется в нули.
 LEFT JOIN quota_periods period
   ON period.customer_id = a.customer_id
  AND period.closed_at IS NULL

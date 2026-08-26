@@ -146,9 +146,9 @@ var (
 
 // linkTo переводит одну ссылку в protobuf.
 //
-// block_reason и uri — optional-поля, и их отсутствие является частью контракта:
-// причина присутствует только у BLOCKED, URI — только у READY. Поэтому оба
-// заполняются по состоянию, а не по непустоте значения.
+// block_reason и uri — условные optional-поля: причина присутствует только у
+// BLOCKED, URI — только у READY. Quota-поля, напротив, присутствуют при любом
+// состоянии ссылки и относятся к её входной ноде.
 func linkTo(link app.CustomerAccessLink) (*customerv1.CustomerAccessLink, error) {
 	kind, ok := accessKinds[link.Kind]
 	if !ok {
@@ -160,7 +160,14 @@ func linkTo(link app.CustomerAccessLink) (*customerv1.CustomerAccessLink, error)
 		return nil, fmt.Errorf("grpcsvc: неизвестное состояние ссылки %q", link.Status.State)
 	}
 
-	converted := &customerv1.CustomerAccessLink{Kind: kind, State: state}
+	quota := link.UsageQuotaBytes
+	consumed := link.ConsumedBytes
+	converted := &customerv1.CustomerAccessLink{
+		Kind:            kind,
+		State:           state,
+		UsageQuotaBytes: &quota,
+		ConsumedBytes:   &consumed,
+	}
 
 	if link.Status.State == domain.LinkStateBlocked {
 		reason, known := blockReasons[link.Status.Reason]

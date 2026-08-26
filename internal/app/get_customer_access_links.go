@@ -29,6 +29,11 @@ type CustomerAccessLink struct {
 	// URI непуста только при READY. Внутри неё открытый client_uuid —
 	// см. предупреждение у BuildVLESSURI.
 	URI string
+
+	// Квота и учтённый расход входной ноды присутствуют у ссылки независимо от
+	// её состояния. Для BRIDGE это entry-нода связи, для FREEDOM — сама нода.
+	UsageQuotaBytes uint64
+	ConsumedBytes   uint64
 }
 
 // Execute возвращает все текущие ссылки customer одним ответом без пагинации.
@@ -68,7 +73,12 @@ func (uc *GetCustomerAccessLinks) link(snapshot CustomerLinks, access AccessLink
 		EntryUsable:    access.Entry.Usable(),
 	})
 
-	link := CustomerAccessLink{Kind: access.Kind, Status: status}
+	link := CustomerAccessLink{
+		Kind:            access.Kind,
+		Status:          status,
+		UsageQuotaBytes: access.UsageQuotaBytes,
+		ConsumedBytes:   access.ConsumedBytes,
+	}
 	if status.State != domain.LinkStateReady {
 		return link
 	}
@@ -78,7 +88,8 @@ func (uc *GetCustomerAccessLinks) link(snapshot CustomerLinks, access AccessLink
 		// Тот же выбор, что и у непригодной входной ноды: нерабочий
 		// credential ломает свою ссылку, а не весь ответ. Причина отказа наружу
 		// не уходит: она инфраструктурная и видна в credential_open_errors_total.
-		return CustomerAccessLink{Kind: access.Kind, Status: domain.LinkStatus{State: domain.LinkStateFailed}}
+		link.Status = domain.LinkStatus{State: domain.LinkStateFailed}
+		return link
 	}
 
 	link.URI = BuildVLESSURI(clientUUID, access.Entry, displayNameFor(access))

@@ -407,6 +407,12 @@ func TestGetCustomerAccessLinksMapsStates(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			const (
+				quotaBytes    = uint64(10_000)
+				consumedBytes = uint64(4_000)
+			)
+			tc.link.UsageQuotaBytes = quotaBytes
+			tc.link.ConsumedBytes = consumedBytes
 			srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{links: []app.CustomerAccessLink{tc.link}})
 
 			ctx, _ := linksContext()
@@ -440,6 +446,15 @@ func TestGetCustomerAccessLinksMapsStates(t *testing.T) {
 				t.Errorf("URI %q при состоянии %v, ожидалось отсутствие", got.GetUri(), tc.wantState)
 			case tc.wantURI != nil && got.GetUri() != *tc.wantURI:
 				t.Errorf("URI %q, ожидался %q", got.GetUri(), *tc.wantURI)
+			}
+
+			if got.UsageQuotaBytes == nil || got.GetUsageQuotaBytes() != quotaBytes {
+				t.Errorf("usage_quota_bytes = %v/%d, ожидалось присутствующее %d",
+					got.UsageQuotaBytes, got.GetUsageQuotaBytes(), quotaBytes)
+			}
+			if got.ConsumedBytes == nil || got.GetConsumedBytes() != consumedBytes {
+				t.Errorf("consumed_bytes = %v/%d, ожидалось присутствующее %d",
+					got.ConsumedBytes, got.GetConsumedBytes(), consumedBytes)
 			}
 		})
 	}
