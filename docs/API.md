@@ -1,9 +1,9 @@
 # Внешний API
 
 Внешних поверхностей две, обе gRPC и обе под mTLS. `CustomerAccessService`
-принимает команды product-сервиса и отдаёт ему ссылки. `ManifestService`
-принимает манифест топологии от infrastructure CI/CD. Все три метода unary,
-стриминга нет.
+принимает команды product-сервиса, отдаёт ссылки и публичный каталог нод.
+`ManifestService` принимает манифест топологии от infrastructure CI/CD. Все
+четыре метода unary, стриминга нет.
 
 Контракт задают `.proto`; сгенерированный код лежит в `internal/gen` и
 в репозиторий закоммичен. Этот документ отвечает на вопрос, что видно снаружи;
@@ -15,6 +15,7 @@
 |---|---|---|---|
 | `CustomerAccessService` | `ApplyCustomerAccess` | `customer-access-writer` | product-сервис |
 | `CustomerAccessService` | `GetCustomerAccessLinks` | `customer-access-reader` | product-сервис |
+| `CustomerAccessService` | `ListAvailableNodes` | `customer-access-reader` | product-сервис |
 | `ManifestService` | `ApplyFleetManifest` | `manifest-writer` | infrastructure CI/CD |
 
 Файлы контракта: `proto/spiritvpn/customer/v1/customer.proto` и
@@ -63,10 +64,10 @@ mTLS-идентичность это строка из SAN клиентског�
 
 Роли независимы, иерархии между ними нет. Идентичность, перечисленная только в
 `SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER`, на `GetCustomerAccessLinks` получит
-`PERMISSION_DENIED`. Product-сервису, который вызывает оба метода, свою
-идентичность нужно вписать в обе переменные, одной и той же строкой.
+`PERMISSION_DENIED`. Product-сервису, который вызывает команду и оба read-метода,
+свою идентичность нужно вписать в обе переменные, одной и той же строкой.
 
-Таблица `methodRoles` (`internal/grpcsvc/auth.go:38`) содержит ровно три строки, по
+Таблица `methodRoles` (`internal/grpcsvc/auth.go:38`) содержит ровно четыре строки, по
 одной на метод. Метод, которого в ней нет, запрещён всем: `authorize` отвечает
 `PERMISSION_DENIED`, не доходя до хендлера. В тексте отказа не сказано, какой
 роли не хватило, так что искать причину придётся по `peer_identity` в логе.
@@ -225,6 +226,28 @@ HTTP-заголовок: никакой промежуточный слой её
 Backend такой ответ не логирует; на стороне вызывающего он не должен попадать в
 логи, трассировки и кеши.
 
+## ListAvailableNodes
+
+Запрос пуст и не зависит от `customer_id`: метод предназначен для каталога до
+покупки. Ответ группирует актуальные ноды infrastructure manifest по fleet:
+
+| поле | значение |
+|---|---|
+| `fleets[].vpn_fleet_id` | идентификатор fleet |
+| `fleets[].nodes[].node_id` | стабильная идентичность ноды из manifest |
+| `fleets[].nodes[].display_name` | `ManifestNode.display_name` |
+
+В выборку входят только строки, для которых одновременно актуальны fleet,
+membership и сама нода (`current = true`). Пустые fleets не возвращаются. Одна
+нода, состоящая в нескольких fleets, присутствует в каждом из них. Порядок
+детерминирован: fleet по `vpn_fleet_id`, ноды внутри него по `node_id`.
+
+«Доступная» здесь означает «присутствует в актуальном manifest». Метод не читает
+customer access и квоты, не учитывает BRIDGE-связи и не обращается к node-agent,
+поэтому временная недоступность агента список не меняет. В ответе нет
+credentials; правило `cache-control: no-store` метода ссылок на него не
+распространяется.
+
 ## ApplyFleetManifest
 
 Запрос это манифест целиком: `schema_version`, `revision`, `allow_destructive`,
@@ -260,7 +283,7 @@ Backend такой ответ не логирует; на стороне выз�
 
 | стабильный код | gRPC-код | метод | текст наружу |
 |---|---|---|---|
-| `INVALID_CUSTOMER_ID` | `INVALID_ARGUMENT` | оба метода | `customer_id должен быть непустым и не длиннее 256 байт` |
+| `INVALID_CUSTOMER_ID` | `INVALID_ARGUMENT` | `ApplyCustomerAccess`, `GetCustomerAccessLinks` | `customer_id должен быть непустым и не длиннее 256 байт` |
 | `INVALID_FLEET_ID` | `INVALID_ARGUMENT` | `ApplyCustomerAccess` | `vpn_fleet_id должен быть > 0` |
 | `INVALID_QUOTA` | `INVALID_ARGUMENT` | `ApplyCustomerAccess` | `usage_quota_bytes должен быть > 0` |
 | `INVALID_COMMAND_NUMBER` | `INVALID_ARGUMENT` | `ApplyCustomerAccess` | `command_number должен быть > 0` |

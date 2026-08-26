@@ -110,8 +110,8 @@ ORM нет. Схема задаётся versioned SQL-миграциями, за
 
 Пишут: `ApplyFleetManifest` (проекцию), `reconcile` (состояние сверки),
 `ApplyCustomerAccess`, `materialize`, `expiry`, `usage` (`desired_revision`).
-Читают: `dispatch`, `usage`, `GetCustomerAccessLinks`, `ApplyFleetManifest`,
-`materialize`, `stats`.
+Читают: `dispatch`, `usage`, `GetCustomerAccessLinks`, `ListAvailableNodes`,
+`ApplyFleetManifest`, `materialize`, `stats`.
 
 Отставание `reconciled_revision` от `desired_revision` показывает, насколько
 состав пользователей на ноде разошёлся с тем, каким его хочет видеть backend.
@@ -130,7 +130,13 @@ ORM нет. Схема задаётся versioned SQL-миграциями, за
 | `manifest_revision`, `current` | `bigint`, `boolean` | `current = false` означает, что нода покинула флот |
 
 Пишут: `ApplyFleetManifest`.
-Читают: `ApplyCustomerAccess`, `ApplyFleetManifest`, `GetCustomerAccessLinks`.
+Читают: `ApplyCustomerAccess`, `ApplyFleetManifest`, `GetCustomerAccessLinks`,
+`ListAvailableNodes`.
+
+`ListAvailableNodes` соединяет только актуальные membership с актуальными
+`vpn_fleets` и `vpn_nodes`, сортирует по `(vpn_fleet_id, node_id)` и группирует
+результат уже в PostgreSQL-адаптере. Поэтому пустые fleets в каталог не попадают,
+а одна нода может присутствовать в нескольких группах.
 
 ### vpn_bridge_routes
 

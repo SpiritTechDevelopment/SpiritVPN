@@ -32,13 +32,13 @@ Node-agent разрабатывается в отдельном репозито
 
 ## Внешний API
 
-Backend принимает три gRPC-метода и сам вызывает пять у агентов. Всё под mTLS.
+Backend принимает четыре gRPC-метода и сам вызывает пять у агентов. Всё под mTLS.
 
 Входящие — два сервиса:
 
 | сервис | методы | вызывает |
 |---|---|---|
-| `CustomerAccessService` | `ApplyCustomerAccess`, `GetCustomerAccessLinks` | Customer Service |
+| `CustomerAccessService` | `ApplyCustomerAccess`, `GetCustomerAccessLinks`, `ListAvailableNodes` | Customer Service |
 | `ManifestService` | `ApplyFleetManifest` | infrastructure pipeline |
 
 Исходящие — `NodeAgentService` на каждой ноде:
@@ -120,6 +120,33 @@ entry-нодой показывают одинаковый суммарный р
 ссылки вызывающий считает с насыщением:
 `max(usage_quota_bytes - consumed_bytes, 0)` — после запоздавшего сбора трафика
 расход может уже превышать лимит.
+
+### ListAvailableNodes
+
+Публичный каталог нод для показа до покупки. Метод не принимает `customer_id` и
+не проверяет подписку: он читает только актуальную проекцию infrastructure
+manifest.
+
+```protobuf
+message ListAvailableNodesResponse {
+  repeated AvailableFleet fleets = 1;
+}
+
+message AvailableFleet {
+  int64 vpn_fleet_id = 1;
+  repeated AvailableNode nodes = 2;
+}
+
+message AvailableNode {
+  string node_id = 1;
+  string display_name = 2;
+}
+```
+
+В ответ входят только непустые fleets и только строки с актуальными fleet,
+нодой и membership. Fleet сортируются по `vpn_fleet_id`, ноды внутри — по
+`node_id`. Доступность node-agent, customer access, квоты и BRIDGE-связи на
+каталог не влияют.
 
 ### ApplyFleetManifest
 
@@ -349,7 +376,7 @@ cmd/
 internal/
   domain/              чистые правила: план access, поколения, квоты, истечение, планы манифеста,
                        VLESS-ссылки. Детерминирован: без часов, без генерации ID, без БД
-  app/                 use case'ы (apply, links, manifest, materialize, dispatch, expiry, usage,
+  app/                 use case'ы (apply, links, available nodes, manifest, materialize, dispatch, expiry, usage,
                        reconcile, inventory, prune, stats) и порты к инфраструктуре
   config/              разбор переменных SPIRIT_* из окружения; у секретов нет умолчаний,
                        в логи конфигурация попадает без DSN и без ключа шифрования
@@ -363,7 +390,7 @@ internal/
   metrics/             реестр Prometheus: декораторы портов app и снимок состояния БД
   gen/                 protobuf- и gRPC-код, сгенерированный buf; править руками нельзя
 proto/spiritvpn/
-  customer/v1/         Customer API: ApplyCustomerAccess, GetCustomerAccessLinks
+  customer/v1/         Customer API: ApplyCustomerAccess, GetCustomerAccessLinks, ListAvailableNodes
   manifest/v1/         Manifest API: ApplyFleetManifest
   nodeagent/v1/        вендоренная копия контракта backend ↔ node-agent, владелец — infra
 docs/                  исходники сайта документации (mkdocs-material)

@@ -17,6 +17,7 @@
 
 ### Добавлено
 
+* Добавлен `ListAvailableNodes` — каталог актуальных нод по fleets без привязки к customer
 * В `CustomerAccessLink` добавлены лимит квоты и учтённый расход входной ноды
 * Добавлен API health check эндпоинт (`/health`, `/health/advanced`) (#19) by @RomanRyabinkin
 * Добавлен worker сбора статистики трафика (#18) by @RomanRyabinkin

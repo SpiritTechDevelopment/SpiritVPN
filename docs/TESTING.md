@@ -12,15 +12,15 @@
 
 ## Состав
 
-474 теста в 64 файлах, одиннадцать пакетов.
+487 тестов в 68 файлах, одиннадцать пакетов.
 
 | пакет | файлов | тестов | нужна база |
 |---|---|---|---|
-| `internal/postgres` | 12 | 102 | да, кроме шести |
-| `internal/app` | 12 | 97 | нет |
+| `internal/postgres` | 15 | 109 | да, кроме десяти |
+| `internal/app` | 13 | 99 | нет |
 | `internal/domain` | 13 | 83 | нет |
-| `internal/grpcsvc` | 3 | 44 | нет |
-| `cmd/spiritvpnd` | 7 | 38 | да, у шести |
+| `internal/grpcsvc` | 3 | 47 | нет |
+| `cmd/spiritvpnd` | 7 | 39 | да, у шести |
 | `internal/crypto` | 5 | 32 | нет |
 | `internal/nodeagent` | 3 | 32 | нет |
 | `internal/metrics` | 6 | 27 | нет |
@@ -28,9 +28,10 @@
 | `internal/config` | 1 | 8 | нет |
 | `internal/migrations` | 1 | 2 | нет |
 
-Шесть тестов `internal/postgres`, обходящихся без базы, лежат в
-`internal/postgres/node_public_test.go` и `internal/postgres/numeric_test.go`:
-разбор `public_config` из jsonb и преобразование `numeric(20,0)` в `uint64`.
+Десять тестов `internal/postgres`, обходящихся без базы, лежат в
+`internal/postgres/node_public_test.go`, `numeric_test.go`, `links_test.go` и
+`available_nodes_test.go`: разбор `public_config`, преобразование
+`numeric(20,0)` в `uint64` и маппинг строк read-моделей.
 
 Библиотек тестирования в `go.mod` нет: ни testify, ни генератора моков, ни
 sqlmock. Сравнения написаны на `if` с `t.Fatalf` и `t.Errorf`, двойники портов

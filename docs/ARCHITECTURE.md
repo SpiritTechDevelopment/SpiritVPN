@@ -210,6 +210,20 @@ entry-нода связи. Поэтому ссылки с общей entry-но�
 `FAILED`, остальные в ответе остаются. Quota-поля переносятся в ответ до выбора
 ветки состояния и поэтому присутствуют также у `PENDING`, `BLOCKED` и `FAILED`.
 
+## Каталог нод до покупки
+
+`ListAvailableNodes`, роль `customer-access-reader`, не принимает `customer_id`.
+`app.ListAvailableNodes` вызывает один read-порт, а
+`postgres.ListAvailableNodes` выполняет один SQL statement без транзакции из
+нескольких шагов и без row locks.
+
+Запрос соединяет актуальные `vpn_fleets`, `vpn_fleet_nodes` и `vpn_nodes`, берёт
+`display_name` из `public_config` и сортирует результат по
+`(vpn_fleet_id, node_id)`. PostgreSQL-адаптер одним проходом группирует строки в
+fleets; пустые fleets из-за INNER JOIN не возникают. Customer-таблицы,
+BRIDGE-связи и node-agent в этом пути не участвуют: доступность означает только
+присутствие в текущей проекции manifest.
+
 ## Приём манифеста
 
 `ApplyFleetManifest`, роль `manifest-writer`. Формат снапшота и правила валидации
