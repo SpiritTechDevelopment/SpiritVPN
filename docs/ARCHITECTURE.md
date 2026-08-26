@@ -189,6 +189,13 @@ access `NewAccessID`, `NewAccountingID`, `NewClientUUID` и `Seal`. Операц
 `(kind, logical_target_key, access_id)`; ретайрнутые access и цели, которых нет в
 текущем манифесте, в выборку не попадают.
 
+Тот же запрос читает лимит открытого `quota_periods` и `total_bytes` из
+`node_quota_usage`. Строка расхода присоединяется по
+`usage.node_id = vpn_accesses.entry_node_id`: у FREEDOM это сама нода, у BRIDGE —
+entry-нода связи. Поэтому ссылки с общей entry-нодой получают одинаковые
+`usage_quota_bytes` и `consumed_bytes`; трафик exit-ноды BRIDGE в эти поля не
+подмешивается.
+
 Состояние каждой ссылки выводит `domain.LinkStatusOf`, `domain/link.go`, из
 `desired_state`, `apply_state`, `expires_at`, признака исчерпанной квоты и
 пригодности `public_config` входной ноды. Состояние нигде не хранится и считается
@@ -200,7 +207,8 @@ access `NewAccessID`, `NewAccountingID`, `NewClientUUID` и `Seal`. Операц
 
 `Sealer.Open` вызывается только на ветке `READY`, URI собирает
 `app.BuildVLESSURI`, `app/vless.go`. Отказ расшифрования гасит эту одну ссылку до
-`FAILED`, остальные в ответе остаются.
+`FAILED`, остальные в ответе остаются. Quota-поля переносятся в ответ до выбора
+ветки состояния и поэтому присутствуют также у `PENDING`, `BLOCKED` и `FAILED`.
 
 ## Приём манифеста
 

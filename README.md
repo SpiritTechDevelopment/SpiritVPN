@@ -98,6 +98,11 @@ message CustomerAccessLink {
 
   // Только для READY.
   optional string uri = 4;
+
+  // Для любого состояния: лимит и учтённый расход входной ноды.
+  // У FREEDOM это сама нода, у BRIDGE — entry-нода связи.
+  optional uint64 usage_quota_bytes = 5;
+  optional uint64 consumed_bytes = 6;
 }
 
 message GetCustomerAccessLinksResponse {
@@ -108,7 +113,13 @@ message GetCustomerAccessLinksResponse {
 Порядок ссылок в ответе стабилен: сортировка по `(kind, logical_target_key,
 access_id)`. Сама ссылка нигде не хранится — собирается на лету из
 расшифрованного `client_uuid` и текущего манифеста, поэтому ответ не кешируется и
-не логируется.
+не логируется. `usage_quota_bytes` и `consumed_bytes` присутствуют при любом
+состоянии ссылки и относятся к её входной ноде. Поэтому FREEDOM и BRIDGE с общей
+entry-нодой показывают одинаковый суммарный расход. Учтённый расход может
+отставать от фактического на интервал опроса node-agent. Остаток конкретной
+ссылки вызывающий считает с насыщением:
+`max(usage_quota_bytes - consumed_bytes, 0)` — после запоздавшего сбора трафика
+расход может уже превышать лимит.
 
 ### ApplyFleetManifest
 

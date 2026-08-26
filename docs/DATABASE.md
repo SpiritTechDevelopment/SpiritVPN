@@ -212,6 +212,13 @@ renewal `closed_at` старого совпадает со `started_at` ново
 Трафик всех FREEDOM и BRIDGE access customer на одной ноде идёт в одну строку.
 Исчерпание на одной ноде не влияет на доступ на других.
 
+`GetCustomerAccessLinks` проецирует эту строку в quota-поля каждой ссылки. Ключом
+служит `(открытый quota_period_id, vpn_accesses.entry_node_id)`, а не логическая
+цель access: для FREEDOM entry совпадает с самой нодой, для BRIDGE берётся
+entry-нода маршрута и никогда не exit-нода. Поэтому несколько ссылок на одной
+entry-ноде намеренно показывают один и тот же `total_bytes` как
+`consumed_bytes`. Лимит берётся из связанного открытого `quota_periods`.
+
 ### vpn_accesses
 
 | колонка | тип | что означает |
