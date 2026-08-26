@@ -8,6 +8,8 @@ package db
 import (
 	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getCustomerLinksHeader = `-- name: GetCustomerLinksHeader :one
@@ -51,7 +53,9 @@ SELECT a.kind,
        a.encryption_key_id,
        entry.public_config                     AS entry_public_config,
        br.display_name                         AS bridge_display_name,
-       (usage.exhausted_at IS NOT NULL)::bool  AS quota_exhausted
+       (usage.exhausted_at IS NOT NULL)::bool  AS quota_exhausted,
+       coalesce(period.usage_quota_bytes, 0::numeric) AS usage_quota_bytes,
+       coalesce(usage.total_bytes, 0::numeric)        AS consumed_bytes
 FROM vpn_accesses a
 JOIN customer_entitlements e
   ON e.customer_id = a.customer_id
@@ -89,6 +93,8 @@ type ListCustomerAccessLinksRow struct {
 	EntryPublicConfig   []byte
 	BridgeDisplayName   *string
 	QuotaExhausted      bool
+	UsageQuotaBytes     pgtype.Numeric
+	ConsumedBytes       pgtype.Numeric
 }
 
 // Все текущие ссылки customer в фиксированном порядке ответа.
@@ -113,8 +119,10 @@ type ListCustomerAccessLinksRow struct {
 // порядок одинаков в любой collation.
 // Входная нода: для FREEDOM это сама цель, для BRIDGE — entry_node_id связи.
 // Все параметры URI, кроме uuid, берутся именно отсюда.
-// Открытый период у customer максимум один (partial unique index); его
-// отсутствие или отсутствие строки расхода означает «квота не исчерпана».
+// Открытый период у customer максимум один (partial unique index). Строка
+// расхода относится к entry_node_id access: для FREEDOM это сама нода, для
+// BRIDGE — входная нода связи. Её отсутствие означает нулевой расход; отсутствие
+// периода возможно только при нарушении инварианта и также проецируется в нули.
 func (q *Queries) ListCustomerAccessLinks(ctx context.Context, customerID string) ([]ListCustomerAccessLinksRow, error) {
 	rows, err := q.db.Query(ctx, listCustomerAccessLinks, customerID)
 	if err != nil {
@@ -133,6 +141,8 @@ func (q *Queries) ListCustomerAccessLinks(ctx context.Context, customerID string
 			&i.EntryPublicConfig,
 			&i.BridgeDisplayName,
 			&i.QuotaExhausted,
+			&i.UsageQuotaBytes,
+			&i.ConsumedBytes,
 		); err != nil {
 			return nil, err
 		}

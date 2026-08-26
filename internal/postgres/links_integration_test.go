@@ -233,6 +233,33 @@ func TestIntegrationLinksBlockedByQuotaPerNode(t *testing.T) {
 	}
 }
 
+// TestIntegrationLinksExposeQuotaByEntryNode — quota-поля принадлежат входной
+// ноде access. Поэтому BRIDGE a-to-b и FREEDOM node-a показывают один расход
+// node-a, а FREEDOM node-b — отдельный расход node-b.
+func TestIntegrationLinksExposeQuotaByEntryNode(t *testing.T) {
+	uc, pool := seedLinksFleet(t)
+
+	exec(t, pool, `UPDATE node_quota_usage
+	               SET uplink_bytes = CASE node_id WHEN 'node-a' THEN 100 ELSE 7 END,
+	                   downlink_bytes = CASE node_id WHEN 'node-a' THEN 200 ELSE 11 END`)
+
+	links := getLinks(t, uc)
+	if len(links) != 3 {
+		t.Fatalf("ссылок %d, ожидалось 3", len(links))
+	}
+
+	// Порядок: BRIDGE a-to-b, FREEDOM node-a, FREEDOM node-b.
+	wantConsumed := []uint64{300, 300, 18}
+	for i, link := range links {
+		if link.UsageQuotaBytes != 1<<30 {
+			t.Errorf("ссылка %d: quota=%d, ожидалось %d", i, link.UsageQuotaBytes, uint64(1<<30))
+		}
+		if link.ConsumedBytes != wantConsumed[i] {
+			t.Errorf("ссылка %d: consumed=%d, ожидалось %d", i, link.ConsumedBytes, wantConsumed[i])
+		}
+	}
+}
+
 // TestIntegrationLinksExpiryBeatsQuota — при одновременно применимых
 // причинах наружу уходит TIME_EXPIRED.
 func TestIntegrationLinksExpiryBeatsQuota(t *testing.T) {
