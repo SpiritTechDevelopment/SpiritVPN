@@ -79,6 +79,28 @@ type stubLinksUseCase struct {
 	result error
 }
 
+// stubAvailableNodesUseCase подменяет ListAvailableNodes.
+type stubAvailableNodesUseCase struct {
+	mu     sync.Mutex
+	calls  int
+	fleets []app.AvailableFleet
+	result error
+}
+
+func (s *stubAvailableNodesUseCase) Execute(context.Context) ([]app.AvailableFleet, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.calls++
+	return s.fleets, s.result
+}
+
+func (s *stubAvailableNodesUseCase) callCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.calls
+}
+
 func (s *stubLinksUseCase) Execute(_ context.Context, _ string) ([]app.CustomerAccessLink, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -255,6 +277,7 @@ type testServer struct {
 	ca       *certAuthority
 	stub     *stubUseCase
 	links    *stubLinksUseCase
+	nodes    *stubAvailableNodesUseCase
 	manifest *stubManifestUseCase
 	logs     *bytes.Buffer
 	logMu    *sync.Mutex
@@ -292,6 +315,7 @@ func startServerWithManifest(t *testing.T, writers, readers, manifestWriters []s
 
 	stub := &stubUseCase{}
 	links := &stubLinksUseCase{}
+	nodes := &stubAvailableNodesUseCase{}
 	manifest := &stubManifestUseCase{}
 	server, err := newGRPCServer(config.GRPC{
 		CertFile:              certPath,
@@ -300,7 +324,7 @@ func startServerWithManifest(t *testing.T, writers, readers, manifestWriters []s
 		CustomerAccessWriters: writers,
 		CustomerAccessReaders: readers,
 		ManifestWriters:       manifestWriters,
-	}, logger, stub, links, manifest)
+	}, logger, stub, links, nodes, manifest)
 	if err != nil {
 		t.Fatalf("сборка сервера: %v", err)
 	}
@@ -318,6 +342,7 @@ func startServerWithManifest(t *testing.T, writers, readers, manifestWriters []s
 		ca:       ca,
 		stub:     stub,
 		links:    links,
+		nodes:    nodes,
 		manifest: manifest,
 		logs:     logs,
 		logMu:    logMu,
@@ -500,6 +525,36 @@ func TestMTLSReaderGetsLinksWithNoStore(t *testing.T) {
 	}
 	if got := header.Get("cache-control"); len(got) != 1 || got[0] != "no-store" {
 		t.Fatalf("cache-control %v, ожидалось [no-store]", got)
+	}
+}
+
+// TestMTLSReaderListsAvailableNodes — новый read-метод защищён той же ролью,
+// но не несёт credentials и потому не получает no-store заголовок ссылок.
+func TestMTLSReaderListsAvailableNodes(t *testing.T) {
+	server := startServer(t, nil, []string{"product-svc"})
+	server.nodes.fleets = []app.AvailableFleet{{
+		FleetID: 10,
+		Nodes:   []app.AvailableNode{{NodeID: "NL-1", DisplayName: "Нидерланды"}},
+	}}
+
+	var header metadata.MD
+	resp, err := server.client(t, "product-svc").ListAvailableNodes(
+		callContext(t),
+		&customerv1.ListAvailableNodesRequest{},
+		grpc.Header(&header),
+	)
+	if err != nil {
+		t.Fatalf("неожиданная ошибка: %v", err)
+	}
+	if server.nodes.callCount() != 1 {
+		t.Fatalf("use case вызван %d раз, ожидался 1", server.nodes.callCount())
+	}
+	if len(resp.GetFleets()) != 1 || len(resp.GetFleets()[0].GetNodes()) != 1 ||
+		resp.GetFleets()[0].GetNodes()[0].GetNodeId() != "NL-1" {
+		t.Fatalf("ответ отображён неверно: %+v", resp)
+	}
+	if got := header.Get("cache-control"); len(got) != 0 {
+		t.Fatalf("cache-control=%v, для публичного каталога ожидалось отсутствие", got)
 	}
 }
 

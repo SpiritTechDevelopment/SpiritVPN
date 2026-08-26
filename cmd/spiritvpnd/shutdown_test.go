@@ -59,6 +59,12 @@ func (idleLinks) Execute(context.Context, string) ([]app.CustomerAccessLink, err
 	return nil, nil
 }
 
+type idleAvailableNodes struct{}
+
+func (idleAvailableNodes) Execute(context.Context) ([]app.AvailableFleet, error) {
+	return nil, nil
+}
+
 // shutdownFixture — обе поверхности на живых слушателях, как в serve.
 type shutdownFixture struct {
 	grpcServer *grpc.Server
@@ -80,7 +86,7 @@ func newShutdownFixture(t *testing.T) *shutdownFixture {
 
 	grpcServer := grpc.NewServer()
 	customerv1.RegisterCustomerAccessServiceServer(
-		grpcServer, grpcsvc.NewCustomerAccessServer(apply, idleLinks{}))
+		grpcServer, grpcsvc.NewCustomerAccessServer(apply, idleLinks{}, idleAvailableNodes{}))
 
 	grpcListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

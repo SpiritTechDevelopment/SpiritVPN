@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	applyMethod = customerv1.CustomerAccessService_ApplyCustomerAccess_FullMethodName
-	linksMethod = customerv1.CustomerAccessService_GetCustomerAccessLinks_FullMethodName
+	applyMethod          = customerv1.CustomerAccessService_ApplyCustomerAccess_FullMethodName
+	linksMethod          = customerv1.CustomerAccessService_GetCustomerAccessLinks_FullMethodName
+	availableNodesMethod = customerv1.CustomerAccessService_ListAvailableNodes_FullMethodName
 )
 
 // okHandler — обработчик, который просто фиксирует, что до него дошли.
@@ -266,7 +267,7 @@ func TestAuthorizeGrantsBothRolesWhenListedTwice(t *testing.T) {
 		RoleCustomerAccessReader: {"product-svc"},
 	})
 
-	for _, method := range []string{applyMethod, linksMethod} {
+	for _, method := range []string{applyMethod, linksMethod, availableNodesMethod} {
 		if _, err := authorizer.UnaryInterceptor()(tlsContext(certDNS("product-svc")), nil,
 			&grpc.UnaryServerInfo{FullMethod: method}, okHandler(nil)); err != nil {
 			t.Errorf("метод %s: неожиданный отказ %v", method, err)

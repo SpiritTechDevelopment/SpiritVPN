@@ -3,7 +3,7 @@ syntax = "proto3";
 // Customer-facing control-plane API: приём команд доступа и выдача VLESS URI.
 //
 // Вызывающая сторона аутентифицируется по mTLS с ролью customer-access-writer
-// (Apply) или customer-access-reader (GetLinks).
+// (Apply) или customer-access-reader (GetLinks и ListAvailableNodes).
 package spiritvpn.customer.v1;
 
 // CustomerAccessService — единственная внешняя командно-запросная поверхность для
@@ -19,6 +19,10 @@ service CustomerAccessService {
   // готовую VLESS URI только для READY. Ответ с URI не кешируется и не
   // логируется.
   rpc GetCustomerAccessLinks(GetCustomerAccessLinksRequest) returns (GetCustomerAccessLinksResponse);
+
+  // Возвращает ноды актуального manifest, доступные для продажи, сгруппированные
+  // по fleet. Не зависит от customer и не обращается к node-agent.
+  rpc ListAvailableNodes(ListAvailableNodesRequest) returns (ListAvailableNodesResponse);
 }
 
 message ApplyCustomerAccessRequest {
@@ -98,4 +102,25 @@ message GetCustomerAccessLinksResponse {
   // Все текущие ссылки customer, без пагинации, отсортированы по внутреннему
   // (kind, logical_target_key, access_id). Retired historical access исключены.
   repeated CustomerAccessLink links = 1;
+}
+
+message ListAvailableNodesRequest {}
+
+message ListAvailableNodesResponse {
+  // Только fleets, в которых есть хотя бы одна актуальная нода. Порядок — по
+  // vpn_fleet_id, ноды внутри fleet — по node_id.
+  repeated AvailableFleet fleets = 1;
+}
+
+message AvailableFleet {
+  int64 vpn_fleet_id = 1;
+  repeated AvailableNode nodes = 2;
+}
+
+message AvailableNode {
+  // Стабильная идентичность ноды из infrastructure manifest.
+  string node_id = 1;
+
+  // Человекочитаемое ManifestNode.display_name.
+  string display_name = 2;
 }

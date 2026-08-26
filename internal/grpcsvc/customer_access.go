@@ -46,6 +46,11 @@ type getCustomerAccessLinks interface {
 	Execute(ctx context.Context, customerID string) ([]app.CustomerAccessLink, error)
 }
 
+// listAvailableNodes — use case публичного каталога нод.
+type listAvailableNodes interface {
+	Execute(ctx context.Context) ([]app.AvailableFleet, error)
+}
+
 // CustomerAccessServer реализует CustomerAccessService.
 type CustomerAccessServer struct {
 	// Встраивание по значению обязательно: сгенерированный
@@ -54,11 +59,16 @@ type CustomerAccessServer struct {
 
 	apply applyCustomerAccess
 	links getCustomerAccessLinks
+	nodes listAvailableNodes
 }
 
 // NewCustomerAccessServer собирает транспорт поверх use case'ов.
-func NewCustomerAccessServer(apply applyCustomerAccess, links getCustomerAccessLinks) *CustomerAccessServer {
-	return &CustomerAccessServer{apply: apply, links: links}
+func NewCustomerAccessServer(
+	apply applyCustomerAccess,
+	links getCustomerAccessLinks,
+	nodes listAvailableNodes,
+) *CustomerAccessServer {
+	return &CustomerAccessServer{apply: apply, links: links, nodes: nodes}
 }
 
 // ApplyCustomerAccess принимает одну команду product-сервиса.
@@ -115,6 +125,39 @@ func (s *CustomerAccessServer) GetCustomerAccessLinks(
 			return nil, statusFromError(ctx, convErr)
 		}
 		response.Links = append(response.Links, converted)
+	}
+
+	return response, nil
+}
+
+// ListAvailableNodes возвращает актуальные ноды manifest по fleets.
+//
+// В ответе нет credentials, поэтому cache-control: no-store, обязательный для
+// GetCustomerAccessLinks, здесь не выставляется.
+func (s *CustomerAccessServer) ListAvailableNodes(
+	ctx context.Context,
+	_ *customerv1.ListAvailableNodesRequest,
+) (*customerv1.ListAvailableNodesResponse, error) {
+	fleets, err := s.nodes.Execute(ctx)
+	if err != nil {
+		return nil, statusFromError(ctx, err)
+	}
+
+	response := &customerv1.ListAvailableNodesResponse{
+		Fleets: make([]*customerv1.AvailableFleet, 0, len(fleets)),
+	}
+	for _, fleet := range fleets {
+		converted := &customerv1.AvailableFleet{
+			VpnFleetId: fleet.FleetID,
+			Nodes:      make([]*customerv1.AvailableNode, 0, len(fleet.Nodes)),
+		}
+		for _, node := range fleet.Nodes {
+			converted.Nodes = append(converted.Nodes, &customerv1.AvailableNode{
+				NodeId:      node.NodeID,
+				DisplayName: node.DisplayName,
+			})
+		}
+		response.Fleets = append(response.Fleets, converted)
 	}
 
 	return response, nil

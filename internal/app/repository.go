@@ -79,6 +79,13 @@ type LinksRepository interface {
 	LoadCustomerLinks(ctx context.Context, customerID string) (CustomerLinks, error)
 }
 
+// AvailableNodesRepository читает публичный каталог актуальных нод по fleets.
+// Результат отсортирован по fleet_id, а ноды внутри fleet — по node_id; пустые
+// fleets не возвращаются.
+type AvailableNodesRepository interface {
+	ListAvailableNodes(ctx context.Context) ([]AvailableFleet, error)
+}
+
 // CustomerLinks — снимок, из которого выводятся состояния всех ссылок customer.
 //
 // Now и ExpiresAt лежат здесь, а не в каждой строке: срок действия применяется

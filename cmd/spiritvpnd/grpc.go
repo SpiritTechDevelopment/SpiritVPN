@@ -33,6 +33,11 @@ type linksUseCase interface {
 	Execute(ctx context.Context, customerID string) ([]app.CustomerAccessLink, error)
 }
 
+// availableNodesUseCase — публичный read-путь актуального manifest.
+type availableNodesUseCase interface {
+	Execute(ctx context.Context) ([]app.AvailableFleet, error)
+}
+
 // manifestUseCase — приём infrastructure manifest.
 type manifestUseCase interface {
 	Execute(ctx context.Context, cmd app.ApplyManifestCommand) (app.ApplyManifestResult, error)
@@ -44,6 +49,7 @@ func newGRPCServer(
 	logger *slog.Logger,
 	apply applyUseCase,
 	links linksUseCase,
+	nodes availableNodesUseCase,
 	manifest manifestUseCase,
 ) (*grpc.Server, error) {
 	creds, err := transportCredentials(cfg)
@@ -75,7 +81,7 @@ func newGRPCServer(
 		),
 	)
 
-	customerv1.RegisterCustomerAccessServiceServer(server, grpcsvc.NewCustomerAccessServer(apply, links))
+	customerv1.RegisterCustomerAccessServiceServer(server, grpcsvc.NewCustomerAccessServer(apply, links, nodes))
 	manifestv1.RegisterManifestServiceServer(server, grpcsvc.NewManifestServer(manifest))
 
 	return server, nil

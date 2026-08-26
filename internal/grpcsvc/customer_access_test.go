@@ -107,7 +107,7 @@ func TestApplyCustomerAccessMapsDomainErrors(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			stub := &stubApply{err: tc.err}
-			srv := NewCustomerAccessServer(stub, &stubLinks{})
+			srv := newTestCustomerAccessServer(stub, &stubLinks{})
 
 			resp, err := srv.ApplyCustomerAccess(context.Background(), validRequest())
 			if resp != nil {
@@ -124,7 +124,7 @@ func TestApplyCustomerAccessHidesInfrastructureDetails(t *testing.T) {
 	const driverDetail = `pq: relation "vpn_accesses" does not exist (host=db.internal user=spirit)`
 
 	stub := &stubApply{err: fmt.Errorf("чтение access: %w", errors.New(driverDetail))}
-	srv := NewCustomerAccessServer(stub, &stubLinks{})
+	srv := newTestCustomerAccessServer(stub, &stubLinks{})
 
 	_, err := srv.ApplyCustomerAccess(context.Background(), validRequest())
 	st := requireCode(t, err, codes.Internal)
@@ -147,7 +147,7 @@ func TestApplyCustomerAccessHidesInfrastructureDetails(t *testing.T) {
 // как renewal со сбросом счётчиков трафика.
 func TestApplyCustomerAccessPinsExpiresAtPrecision(t *testing.T) {
 	stub := &stubApply{}
-	srv := NewCustomerAccessServer(stub, &stubLinks{})
+	srv := newTestCustomerAccessServer(stub, &stubLinks{})
 
 	if _, err := srv.ApplyCustomerAccess(context.Background(), validRequest()); err != nil {
 		t.Fatalf("неожиданная ошибка: %v", err)
@@ -169,7 +169,7 @@ func TestApplyCustomerAccessPinsExpiresAtPrecision(t *testing.T) {
 // команды без искажений.
 func TestApplyCustomerAccessMapsRequestFields(t *testing.T) {
 	stub := &stubApply{}
-	srv := NewCustomerAccessServer(stub, &stubLinks{})
+	srv := newTestCustomerAccessServer(stub, &stubLinks{})
 
 	req := validRequest()
 	if _, err := srv.ApplyCustomerAccess(context.Background(), req); err != nil {
@@ -195,7 +195,7 @@ func TestApplyCustomerAccessMapsRequestFields(t *testing.T) {
 // TestApplyCustomerAccessSuccessReturnsEmptyResponse — успех отвечает пустым
 // сообщением, а не nil-указателем.
 func TestApplyCustomerAccessSuccessReturnsEmptyResponse(t *testing.T) {
-	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{})
+	srv := newTestCustomerAccessServer(&stubApply{}, &stubLinks{})
 
 	resp, err := srv.ApplyCustomerAccess(context.Background(), validRequest())
 	if err != nil {
@@ -241,7 +241,7 @@ func TestApplyCustomerAccessMapsCallerContext(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			stub := &stubApply{err: fmt.Errorf("блокировка entitlement: %w", tc.cause)}
-			srv := NewCustomerAccessServer(stub, &stubLinks{})
+			srv := newTestCustomerAccessServer(stub, &stubLinks{})
 
 			_, err := srv.ApplyCustomerAccess(tc.ctx(t), validRequest())
 			requireCode(t, err, tc.want)
@@ -260,7 +260,7 @@ func TestApplyCustomerAccessInternalCancellationStaysInternal(t *testing.T) {
 	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
 		t.Run(cause.Error(), func(t *testing.T) {
 			stub := &stubApply{err: fmt.Errorf("блокировка entitlement: %w", cause)}
-			srv := NewCustomerAccessServer(stub, &stubLinks{})
+			srv := newTestCustomerAccessServer(stub, &stubLinks{})
 
 			_, err := srv.ApplyCustomerAccess(context.Background(), validRequest())
 			requireCode(t, err, codes.Internal)
@@ -277,7 +277,7 @@ func TestApplyCustomerAccessDomainErrorBeatsClosedContext(t *testing.T) {
 	cancel()
 
 	stub := &stubApply{err: fmt.Errorf("классификация: %w", domain.ErrExpiryRegression)}
-	srv := NewCustomerAccessServer(stub, &stubLinks{})
+	srv := newTestCustomerAccessServer(stub, &stubLinks{})
 
 	_, err := srv.ApplyCustomerAccess(ctx, validRequest())
 	requireCode(t, err, codes.FailedPrecondition)
@@ -291,6 +291,25 @@ type stubLinks struct {
 	customerID string
 	links      []app.CustomerAccessLink
 	err        error
+}
+
+// stubAvailableNodes — фейковый use case каталога актуальных нод.
+type stubAvailableNodes struct {
+	calls  int
+	fleets []app.AvailableFleet
+	err    error
+}
+
+func (s *stubAvailableNodes) Execute(context.Context) ([]app.AvailableFleet, error) {
+	s.calls++
+	return s.fleets, s.err
+}
+
+func newTestCustomerAccessServer(
+	apply applyCustomerAccess,
+	links getCustomerAccessLinks,
+) *CustomerAccessServer {
+	return NewCustomerAccessServer(apply, links, &stubAvailableNodes{})
 }
 
 func (s *stubLinks) Execute(_ context.Context, customerID string) ([]app.CustomerAccessLink, error) {
@@ -413,7 +432,7 @@ func TestGetCustomerAccessLinksMapsStates(t *testing.T) {
 			)
 			tc.link.UsageQuotaBytes = quotaBytes
 			tc.link.ConsumedBytes = consumedBytes
-			srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{links: []app.CustomerAccessLink{tc.link}})
+			srv := newTestCustomerAccessServer(&stubApply{}, &stubLinks{links: []app.CustomerAccessLink{tc.link}})
 
 			ctx, _ := linksContext()
 			resp, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"})
@@ -462,7 +481,7 @@ func TestGetCustomerAccessLinksMapsStates(t *testing.T) {
 
 // TestGetCustomerAccessLinksSetsNoStore — ответ с URI не кешируется.
 func TestGetCustomerAccessLinksSetsNoStore(t *testing.T) {
-	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{})
+	srv := newTestCustomerAccessServer(&stubApply{}, &stubLinks{})
 
 	ctx, stream := linksContext()
 	if _, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"}); err != nil {
@@ -480,7 +499,7 @@ func TestGetCustomerAccessLinksSetsNoStore(t *testing.T) {
 // обязателен на любом ответе с credentials. До use case дело при этом не доходит.
 func TestGetCustomerAccessLinksFailsWithoutNoStore(t *testing.T) {
 	stub := &stubLinks{}
-	srv := NewCustomerAccessServer(&stubApply{}, stub)
+	srv := newTestCustomerAccessServer(&stubApply{}, stub)
 
 	stream := &serverStream{headerErr: errors.New("поток закрыт")}
 	ctx := grpc.NewContextWithServerTransportStream(context.Background(), stream)
@@ -497,7 +516,7 @@ func TestGetCustomerAccessLinksFailsWithoutNoStore(t *testing.T) {
 // без искажений; своей валидации транспорт не делает (она в домене).
 func TestGetCustomerAccessLinksPassesCustomerID(t *testing.T) {
 	stub := &stubLinks{}
-	srv := NewCustomerAccessServer(&stubApply{}, stub)
+	srv := newTestCustomerAccessServer(&stubApply{}, stub)
 
 	ctx, _ := linksContext()
 	if _, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-42"}); err != nil {
@@ -528,7 +547,7 @@ func TestGetCustomerAccessLinksMapsErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{err: tc.err})
+			srv := newTestCustomerAccessServer(&stubApply{}, &stubLinks{err: tc.err})
 
 			ctx, _ := linksContext()
 			resp, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{})
@@ -547,7 +566,7 @@ func TestGetCustomerAccessLinksMapsErrors(t *testing.T) {
 // TestGetCustomerAccessLinksEmptyList — customer без ссылок отвечает пустым
 // списком, а не NOT_FOUND: NOT_FOUND означает отсутствие самого customer.
 func TestGetCustomerAccessLinksEmptyList(t *testing.T) {
-	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{})
+	srv := newTestCustomerAccessServer(&stubApply{}, &stubLinks{})
 
 	ctx, _ := linksContext()
 	resp, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"})
@@ -572,10 +591,71 @@ func TestGetCustomerAccessLinksRejectsUnknownEnum(t *testing.T) {
 	}
 
 	for _, link := range links {
-		srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{links: []app.CustomerAccessLink{link}})
+		srv := newTestCustomerAccessServer(&stubApply{}, &stubLinks{links: []app.CustomerAccessLink{link}})
 
 		ctx, _ := linksContext()
 		_, err := srv.GetCustomerAccessLinks(ctx, &customerv1.GetCustomerAccessLinksRequest{CustomerId: "cust-1"})
 		requireCode(t, err, codes.Internal)
+	}
+}
+
+// TestListAvailableNodesMapsFleets — транспорт сохраняет группировку и порядок,
+// уже заданные read-use case, и не требует customer_id.
+func TestListAvailableNodesMapsFleets(t *testing.T) {
+	stub := &stubAvailableNodes{fleets: []app.AvailableFleet{
+		{
+			FleetID: 10,
+			Nodes: []app.AvailableNode{
+				{NodeID: "DE-1", DisplayName: "Германия"},
+				{NodeID: "NL-1", DisplayName: "Нидерланды"},
+			},
+		},
+		{FleetID: 20, Nodes: []app.AvailableNode{{NodeID: "NL-1", DisplayName: "Нидерланды"}}},
+	}}
+	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{}, stub)
+
+	resp, err := srv.ListAvailableNodes(context.Background(), &customerv1.ListAvailableNodesRequest{})
+	if err != nil {
+		t.Fatalf("неожиданная ошибка: %v", err)
+	}
+	if stub.calls != 1 {
+		t.Fatalf("use case вызван %d раз, ожидался 1", stub.calls)
+	}
+	if len(resp.GetFleets()) != 2 {
+		t.Fatalf("fleets=%d, ожидалось 2", len(resp.GetFleets()))
+	}
+	if got := resp.GetFleets()[0]; got.GetVpnFleetId() != 10 || len(got.GetNodes()) != 2 ||
+		got.GetNodes()[0].GetNodeId() != "DE-1" || got.GetNodes()[1].GetDisplayName() != "Нидерланды" {
+		t.Fatalf("первый fleet отображён неверно: %+v", got)
+	}
+	if got := resp.GetFleets()[1]; got.GetVpnFleetId() != 20 || got.GetNodes()[0].GetNodeId() != "NL-1" {
+		t.Fatalf("второй fleet отображён неверно: %+v", got)
+	}
+}
+
+func TestListAvailableNodesReturnsEmptyList(t *testing.T) {
+	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{}, &stubAvailableNodes{})
+
+	resp, err := srv.ListAvailableNodes(context.Background(), &customerv1.ListAvailableNodesRequest{})
+	if err != nil {
+		t.Fatalf("неожиданная ошибка: %v", err)
+	}
+	if resp == nil || len(resp.GetFleets()) != 0 {
+		t.Fatalf("ответ %+v, ожидался непустой response с пустым списком", resp)
+	}
+}
+
+func TestListAvailableNodesHidesRepositoryError(t *testing.T) {
+	srv := NewCustomerAccessServer(&stubApply{}, &stubLinks{}, &stubAvailableNodes{
+		err: errors.New(`pq: connection refused (host=db.internal)`),
+	})
+
+	resp, err := srv.ListAvailableNodes(context.Background(), &customerv1.ListAvailableNodesRequest{})
+	if resp != nil {
+		t.Fatalf("при ошибке ответ обязан быть nil, получен %v", resp)
+	}
+	st := requireCode(t, err, codes.Internal)
+	if st.Message() != msgInternal {
+		t.Fatalf("сообщение %q, ожидалось обезличенное %q", st.Message(), msgInternal)
 	}
 }

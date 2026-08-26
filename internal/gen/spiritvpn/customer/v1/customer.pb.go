@@ -7,7 +7,7 @@
 // Customer-facing control-plane API: приём команд доступа и выдача VLESS URI.
 //
 // Вызывающая сторона аутентифицируется по mTLS с ролью customer-access-writer
-// (Apply) или customer-access-reader (GetLinks).
+// (Apply) или customer-access-reader (GetLinks и ListAvailableNodes).
 
 package customerv1
 
@@ -487,6 +487,194 @@ func (x *GetCustomerAccessLinksResponse) GetLinks() []*CustomerAccessLink {
 	return nil
 }
 
+type ListAvailableNodesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAvailableNodesRequest) Reset() {
+	*x = ListAvailableNodesRequest{}
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAvailableNodesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAvailableNodesRequest) ProtoMessage() {}
+
+func (x *ListAvailableNodesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAvailableNodesRequest.ProtoReflect.Descriptor instead.
+func (*ListAvailableNodesRequest) Descriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{5}
+}
+
+type ListAvailableNodesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Только fleets, в которых есть хотя бы одна актуальная нода. Порядок — по
+	// vpn_fleet_id, ноды внутри fleet — по node_id.
+	Fleets        []*AvailableFleet `protobuf:"bytes,1,rep,name=fleets,proto3" json:"fleets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAvailableNodesResponse) Reset() {
+	*x = ListAvailableNodesResponse{}
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAvailableNodesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAvailableNodesResponse) ProtoMessage() {}
+
+func (x *ListAvailableNodesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAvailableNodesResponse.ProtoReflect.Descriptor instead.
+func (*ListAvailableNodesResponse) Descriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ListAvailableNodesResponse) GetFleets() []*AvailableFleet {
+	if x != nil {
+		return x.Fleets
+	}
+	return nil
+}
+
+type AvailableFleet struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	VpnFleetId    int64                  `protobuf:"varint,1,opt,name=vpn_fleet_id,json=vpnFleetId,proto3" json:"vpn_fleet_id,omitempty"`
+	Nodes         []*AvailableNode       `protobuf:"bytes,2,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AvailableFleet) Reset() {
+	*x = AvailableFleet{}
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AvailableFleet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AvailableFleet) ProtoMessage() {}
+
+func (x *AvailableFleet) ProtoReflect() protoreflect.Message {
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AvailableFleet.ProtoReflect.Descriptor instead.
+func (*AvailableFleet) Descriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AvailableFleet) GetVpnFleetId() int64 {
+	if x != nil {
+		return x.VpnFleetId
+	}
+	return 0
+}
+
+func (x *AvailableFleet) GetNodes() []*AvailableNode {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
+type AvailableNode struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Стабильная идентичность ноды из infrastructure manifest.
+	NodeId string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	// Человекочитаемое ManifestNode.display_name.
+	DisplayName   string `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AvailableNode) Reset() {
+	*x = AvailableNode{}
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AvailableNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AvailableNode) ProtoMessage() {}
+
+func (x *AvailableNode) ProtoReflect() protoreflect.Message {
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AvailableNode.ProtoReflect.Descriptor instead.
+func (*AvailableNode) Descriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AvailableNode) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *AvailableNode) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
 var File_spiritvpn_customer_v1_customer_proto protoreflect.FileDescriptor
 
 const file_spiritvpn_customer_v1_customer_proto_rawDesc = "" +
@@ -516,7 +704,17 @@ const file_spiritvpn_customer_v1_customer_proto_rawDesc = "" +
 	"\x12_usage_quota_bytesB\x11\n" +
 	"\x0f_consumed_bytes\"a\n" +
 	"\x1eGetCustomerAccessLinksResponse\x12?\n" +
-	"\x05links\x18\x01 \x03(\v2).spiritvpn.customer.v1.CustomerAccessLinkR\x05links*Z\n" +
+	"\x05links\x18\x01 \x03(\v2).spiritvpn.customer.v1.CustomerAccessLinkR\x05links\"\x1b\n" +
+	"\x19ListAvailableNodesRequest\"[\n" +
+	"\x1aListAvailableNodesResponse\x12=\n" +
+	"\x06fleets\x18\x01 \x03(\v2%.spiritvpn.customer.v1.AvailableFleetR\x06fleets\"n\n" +
+	"\x0eAvailableFleet\x12 \n" +
+	"\fvpn_fleet_id\x18\x01 \x01(\x03R\n" +
+	"vpnFleetId\x12:\n" +
+	"\x05nodes\x18\x02 \x03(\v2$.spiritvpn.customer.v1.AvailableNodeR\x05nodes\"K\n" +
+	"\rAvailableNode\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12!\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName*Z\n" +
 	"\n" +
 	"AccessKind\x12\x1b\n" +
 	"\x17ACCESS_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
@@ -531,10 +729,11 @@ const file_spiritvpn_customer_v1_customer_proto_rawDesc = "" +
 	"\x11AccessBlockReason\x12#\n" +
 	"\x1fACCESS_BLOCK_REASON_UNSPECIFIED\x10\x00\x12$\n" +
 	" ACCESS_BLOCK_REASON_TIME_EXPIRED\x10\x01\x12/\n" +
-	"+ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED\x10\x022\x9d\x02\n" +
+	"+ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED\x10\x022\x98\x03\n" +
 	"\x15CustomerAccessService\x12|\n" +
 	"\x13ApplyCustomerAccess\x121.spiritvpn.customer.v1.ApplyCustomerAccessRequest\x1a2.spiritvpn.customer.v1.ApplyCustomerAccessResponse\x12\x85\x01\n" +
-	"\x16GetCustomerAccessLinks\x124.spiritvpn.customer.v1.GetCustomerAccessLinksRequest\x1a5.spiritvpn.customer.v1.GetCustomerAccessLinksResponseB\xf3\x01\n" +
+	"\x16GetCustomerAccessLinks\x124.spiritvpn.customer.v1.GetCustomerAccessLinksRequest\x1a5.spiritvpn.customer.v1.GetCustomerAccessLinksResponse\x12y\n" +
+	"\x12ListAvailableNodes\x120.spiritvpn.customer.v1.ListAvailableNodesRequest\x1a1.spiritvpn.customer.v1.ListAvailableNodesResponseB\xf3\x01\n" +
 	"\x19com.spiritvpn.customer.v1B\rCustomerProtoP\x01ZQgithub.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1;customerv1\xa2\x02\x03SCX\xaa\x02\x15Spiritvpn.Customer.V1\xca\x02\x15Spiritvpn\\Customer\\V1\xe2\x02!Spiritvpn\\Customer\\V1\\GPBMetadata\xea\x02\x17Spiritvpn::Customer::V1b\x06proto3"
 
 var (
@@ -550,7 +749,7 @@ func file_spiritvpn_customer_v1_customer_proto_rawDescGZIP() []byte {
 }
 
 var file_spiritvpn_customer_v1_customer_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_spiritvpn_customer_v1_customer_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_spiritvpn_customer_v1_customer_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_spiritvpn_customer_v1_customer_proto_goTypes = []any{
 	(AccessKind)(0),                        // 0: spiritvpn.customer.v1.AccessKind
 	(AccessLinkState)(0),                   // 1: spiritvpn.customer.v1.AccessLinkState
@@ -560,21 +759,29 @@ var file_spiritvpn_customer_v1_customer_proto_goTypes = []any{
 	(*GetCustomerAccessLinksRequest)(nil),  // 5: spiritvpn.customer.v1.GetCustomerAccessLinksRequest
 	(*CustomerAccessLink)(nil),             // 6: spiritvpn.customer.v1.CustomerAccessLink
 	(*GetCustomerAccessLinksResponse)(nil), // 7: spiritvpn.customer.v1.GetCustomerAccessLinksResponse
+	(*ListAvailableNodesRequest)(nil),      // 8: spiritvpn.customer.v1.ListAvailableNodesRequest
+	(*ListAvailableNodesResponse)(nil),     // 9: spiritvpn.customer.v1.ListAvailableNodesResponse
+	(*AvailableFleet)(nil),                 // 10: spiritvpn.customer.v1.AvailableFleet
+	(*AvailableNode)(nil),                  // 11: spiritvpn.customer.v1.AvailableNode
 }
 var file_spiritvpn_customer_v1_customer_proto_depIdxs = []int32{
-	0, // 0: spiritvpn.customer.v1.CustomerAccessLink.kind:type_name -> spiritvpn.customer.v1.AccessKind
-	1, // 1: spiritvpn.customer.v1.CustomerAccessLink.state:type_name -> spiritvpn.customer.v1.AccessLinkState
-	2, // 2: spiritvpn.customer.v1.CustomerAccessLink.block_reason:type_name -> spiritvpn.customer.v1.AccessBlockReason
-	6, // 3: spiritvpn.customer.v1.GetCustomerAccessLinksResponse.links:type_name -> spiritvpn.customer.v1.CustomerAccessLink
-	3, // 4: spiritvpn.customer.v1.CustomerAccessService.ApplyCustomerAccess:input_type -> spiritvpn.customer.v1.ApplyCustomerAccessRequest
-	5, // 5: spiritvpn.customer.v1.CustomerAccessService.GetCustomerAccessLinks:input_type -> spiritvpn.customer.v1.GetCustomerAccessLinksRequest
-	4, // 6: spiritvpn.customer.v1.CustomerAccessService.ApplyCustomerAccess:output_type -> spiritvpn.customer.v1.ApplyCustomerAccessResponse
-	7, // 7: spiritvpn.customer.v1.CustomerAccessService.GetCustomerAccessLinks:output_type -> spiritvpn.customer.v1.GetCustomerAccessLinksResponse
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: spiritvpn.customer.v1.CustomerAccessLink.kind:type_name -> spiritvpn.customer.v1.AccessKind
+	1,  // 1: spiritvpn.customer.v1.CustomerAccessLink.state:type_name -> spiritvpn.customer.v1.AccessLinkState
+	2,  // 2: spiritvpn.customer.v1.CustomerAccessLink.block_reason:type_name -> spiritvpn.customer.v1.AccessBlockReason
+	6,  // 3: spiritvpn.customer.v1.GetCustomerAccessLinksResponse.links:type_name -> spiritvpn.customer.v1.CustomerAccessLink
+	10, // 4: spiritvpn.customer.v1.ListAvailableNodesResponse.fleets:type_name -> spiritvpn.customer.v1.AvailableFleet
+	11, // 5: spiritvpn.customer.v1.AvailableFleet.nodes:type_name -> spiritvpn.customer.v1.AvailableNode
+	3,  // 6: spiritvpn.customer.v1.CustomerAccessService.ApplyCustomerAccess:input_type -> spiritvpn.customer.v1.ApplyCustomerAccessRequest
+	5,  // 7: spiritvpn.customer.v1.CustomerAccessService.GetCustomerAccessLinks:input_type -> spiritvpn.customer.v1.GetCustomerAccessLinksRequest
+	8,  // 8: spiritvpn.customer.v1.CustomerAccessService.ListAvailableNodes:input_type -> spiritvpn.customer.v1.ListAvailableNodesRequest
+	4,  // 9: spiritvpn.customer.v1.CustomerAccessService.ApplyCustomerAccess:output_type -> spiritvpn.customer.v1.ApplyCustomerAccessResponse
+	7,  // 10: spiritvpn.customer.v1.CustomerAccessService.GetCustomerAccessLinks:output_type -> spiritvpn.customer.v1.GetCustomerAccessLinksResponse
+	9,  // 11: spiritvpn.customer.v1.CustomerAccessService.ListAvailableNodes:output_type -> spiritvpn.customer.v1.ListAvailableNodesResponse
+	9,  // [9:12] is the sub-list for method output_type
+	6,  // [6:9] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_spiritvpn_customer_v1_customer_proto_init() }
@@ -589,7 +796,7 @@ func file_spiritvpn_customer_v1_customer_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_spiritvpn_customer_v1_customer_proto_rawDesc), len(file_spiritvpn_customer_v1_customer_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   5,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -38,6 +38,7 @@ const (
 var methodRoles = map[string]Role{
 	customerv1.CustomerAccessService_ApplyCustomerAccess_FullMethodName:    RoleCustomerAccessWriter,
 	customerv1.CustomerAccessService_GetCustomerAccessLinks_FullMethodName: RoleCustomerAccessReader,
+	customerv1.CustomerAccessService_ListAvailableNodes_FullMethodName:     RoleCustomerAccessReader,
 
 	manifestv1.ManifestService_ApplyFleetManifest_FullMethodName: RoleManifestWriter,
 }

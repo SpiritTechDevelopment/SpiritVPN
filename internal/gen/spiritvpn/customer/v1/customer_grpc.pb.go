@@ -7,7 +7,7 @@
 // Customer-facing control-plane API: приём команд доступа и выдача VLESS URI.
 //
 // Вызывающая сторона аутентифицируется по mTLS с ролью customer-access-writer
-// (Apply) или customer-access-reader (GetLinks).
+// (Apply) или customer-access-reader (GetLinks и ListAvailableNodes).
 
 package customerv1
 
@@ -26,6 +26,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	CustomerAccessService_ApplyCustomerAccess_FullMethodName    = "/spiritvpn.customer.v1.CustomerAccessService/ApplyCustomerAccess"
 	CustomerAccessService_GetCustomerAccessLinks_FullMethodName = "/spiritvpn.customer.v1.CustomerAccessService/GetCustomerAccessLinks"
+	CustomerAccessService_ListAvailableNodes_FullMethodName     = "/spiritvpn.customer.v1.CustomerAccessService/ListAvailableNodes"
 )
 
 // CustomerAccessServiceClient is the client API for CustomerAccessService service.
@@ -44,6 +45,9 @@ type CustomerAccessServiceClient interface {
 	// готовую VLESS URI только для READY. Ответ с URI не кешируется и не
 	// логируется.
 	GetCustomerAccessLinks(ctx context.Context, in *GetCustomerAccessLinksRequest, opts ...grpc.CallOption) (*GetCustomerAccessLinksResponse, error)
+	// Возвращает ноды актуального manifest, доступные для продажи, сгруппированные
+	// по fleet. Не зависит от customer и не обращается к node-agent.
+	ListAvailableNodes(ctx context.Context, in *ListAvailableNodesRequest, opts ...grpc.CallOption) (*ListAvailableNodesResponse, error)
 }
 
 type customerAccessServiceClient struct {
@@ -74,6 +78,16 @@ func (c *customerAccessServiceClient) GetCustomerAccessLinks(ctx context.Context
 	return out, nil
 }
 
+func (c *customerAccessServiceClient) ListAvailableNodes(ctx context.Context, in *ListAvailableNodesRequest, opts ...grpc.CallOption) (*ListAvailableNodesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAvailableNodesResponse)
+	err := c.cc.Invoke(ctx, CustomerAccessService_ListAvailableNodes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CustomerAccessServiceServer is the server API for CustomerAccessService service.
 // All implementations must embed UnimplementedCustomerAccessServiceServer
 // for forward compatibility.
@@ -90,6 +104,9 @@ type CustomerAccessServiceServer interface {
 	// готовую VLESS URI только для READY. Ответ с URI не кешируется и не
 	// логируется.
 	GetCustomerAccessLinks(context.Context, *GetCustomerAccessLinksRequest) (*GetCustomerAccessLinksResponse, error)
+	// Возвращает ноды актуального manifest, доступные для продажи, сгруппированные
+	// по fleet. Не зависит от customer и не обращается к node-agent.
+	ListAvailableNodes(context.Context, *ListAvailableNodesRequest) (*ListAvailableNodesResponse, error)
 	mustEmbedUnimplementedCustomerAccessServiceServer()
 }
 
@@ -105,6 +122,9 @@ func (UnimplementedCustomerAccessServiceServer) ApplyCustomerAccess(context.Cont
 }
 func (UnimplementedCustomerAccessServiceServer) GetCustomerAccessLinks(context.Context, *GetCustomerAccessLinksRequest) (*GetCustomerAccessLinksResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCustomerAccessLinks not implemented")
+}
+func (UnimplementedCustomerAccessServiceServer) ListAvailableNodes(context.Context, *ListAvailableNodesRequest) (*ListAvailableNodesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAvailableNodes not implemented")
 }
 func (UnimplementedCustomerAccessServiceServer) mustEmbedUnimplementedCustomerAccessServiceServer() {}
 func (UnimplementedCustomerAccessServiceServer) testEmbeddedByValue()                               {}
@@ -163,6 +183,24 @@ func _CustomerAccessService_GetCustomerAccessLinks_Handler(srv interface{}, ctx 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CustomerAccessService_ListAvailableNodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAvailableNodesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CustomerAccessServiceServer).ListAvailableNodes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CustomerAccessService_ListAvailableNodes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CustomerAccessServiceServer).ListAvailableNodes(ctx, req.(*ListAvailableNodesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CustomerAccessService_ServiceDesc is the grpc.ServiceDesc for CustomerAccessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -177,6 +215,10 @@ var CustomerAccessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCustomerAccessLinks",
 			Handler:    _CustomerAccessService_GetCustomerAccessLinks_Handler,
+		},
+		{
+			MethodName: "ListAvailableNodes",
+			Handler:    _CustomerAccessService_ListAvailableNodes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

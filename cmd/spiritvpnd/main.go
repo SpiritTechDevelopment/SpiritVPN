@@ -113,6 +113,7 @@ func run() error {
 
 	applyUC := app.NewApplyCustomerAccess(repository, crypto.NewGenerator(), sealer)
 	linksUC := app.NewGetCustomerAccessLinks(repository, sealer)
+	availableNodesUC := app.NewListAvailableNodes(repository)
 	manifestUC := app.NewApplyFleetManifest(repository)
 
 	owner := workerOwner()
@@ -149,7 +150,7 @@ func run() error {
 		registry.WrapUsageRetention(repository), usageDedupRetention, usageDedupBatchSize)
 	statsUC := registry.StatsWorker(repository)
 
-	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, manifestUC)
+	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, availableNodesUC, manifestUC)
 	if err != nil {
 		return err
 	}
