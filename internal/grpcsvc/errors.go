@@ -23,16 +23,19 @@ const msgInternal = "внутренняя ошибка"
 const (
 	codeOK = "OK"
 
-	codeInvalidCustomerID    = "INVALID_CUSTOMER_ID"
-	codeInvalidFleetID       = "INVALID_FLEET_ID"
-	codeInvalidQuota         = "INVALID_QUOTA"
-	codeInvalidCommandNumber = "INVALID_COMMAND_NUMBER"
-	codeExpiryNotInFuture    = "EXPIRY_NOT_IN_FUTURE"
-	codeCustomerNotFound     = "CUSTOMER_NOT_FOUND"
-	codeFleetNotFound        = "FLEET_NOT_FOUND"
-	codeFleetMismatch        = "FLEET_MISMATCH"
-	codeExpiryRegression     = "EXPIRY_REGRESSION"
-	codeOpenPeriodMissing    = "OPEN_PERIOD_MISSING"
+	codeInvalidCustomerID          = "INVALID_CUSTOMER_ID"
+	codeInvalidFleetID             = "INVALID_FLEET_ID"
+	codeInvalidQuota               = "INVALID_QUOTA"
+	codeInvalidCommandNumber       = "INVALID_COMMAND_NUMBER"
+	codeExpiryNotInFuture          = "EXPIRY_NOT_IN_FUTURE"
+	codeCustomerNotFound           = "CUSTOMER_NOT_FOUND"
+	codeFleetNotFound              = "FLEET_NOT_FOUND"
+	codeFleetMismatch              = "FLEET_MISMATCH"
+	codeExpiryRegression           = "EXPIRY_REGRESSION"
+	codeOpenPeriodMissing          = "OPEN_PERIOD_MISSING"
+	codeInvalidAdministrativeState = "INVALID_ADMINISTRATIVE_STATE"
+	codeCommandNumberConflict      = "COMMAND_NUMBER_CONFLICT"
+	codeCustomerDeleting           = "CUSTOMER_DELETING"
 
 	codeManifestSchemaVersion      = "MANIFEST_SCHEMA_VERSION"
 	codeManifestRevisionInvalid    = "MANIFEST_REVISION_INVALID"
@@ -114,6 +117,9 @@ var errorMapping = []struct {
 	{domain.ErrFleetNotFound, codes.NotFound, codeFleetNotFound, "fleet не найден"},
 	{domain.ErrFleetMismatch, codes.FailedPrecondition, codeFleetMismatch, "customer уже привязан к другому fleet"},
 	{domain.ErrExpiryRegression, codes.FailedPrecondition, codeExpiryRegression, "сокращение expires_at не поддерживается"},
+	{domain.ErrAdministrativeStateInvalid, codes.InvalidArgument, codeInvalidAdministrativeState, "некорректное административное состояние"},
+	{domain.ErrCommandNumberConflict, codes.AlreadyExists, codeCommandNumberConflict, "command_number уже использован другой командой"},
+	{domain.ErrCustomerDeleting, codes.FailedPrecondition, codeCustomerDeleting, "удаление customer ещё не завершено"},
 
 	// Нарушение инварианта «ровно один период с closed_at IS NULL», а не
 	// ошибка вызывающего: наружу уходит обезличенное сообщение, но в логе исход

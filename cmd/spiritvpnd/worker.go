@@ -28,6 +28,12 @@ const (
 	materializeLeaseTTL = 60 * time.Second
 )
 
+const (
+	deletionUsageGrace   = 30 * time.Second
+	deletionIdleInterval = 5 * time.Second
+	deletionErrorBackoff = 15 * time.Second
+)
+
 // Темп и параллелизм диспетчера операций.
 const (
 	// dispatchConcurrency — число горутин доставки. На одну ноду при любом их

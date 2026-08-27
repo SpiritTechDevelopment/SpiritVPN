@@ -171,14 +171,24 @@ ORM нет. Схема задаётся versioned SQL-миграциями, за
 | колонка | тип | что означает |
 |---|---|---|
 | `customer_id` | `text` PK | непрозрачная строка Customer Service, 1–256 байт |
-| `vpn_fleet_id` | `bigint` | флот customer; сменить его в v1 нельзя |
-| `expires_at` | `timestamptz` | момент окончания доступа, общий на всего customer |
+| `vpn_fleet_id` | `bigint`, nullable | флот customer; `NULL` только у `DELETED` tombstone |
+| `expires_at` | `timestamptz`, nullable | момент окончания; `NULL` только у `DELETED` tombstone |
 | `desired_version` | `bigint` | внутренний счётчик изменений состояния; наружу не выдаётся |
-| `last_command_number` | `numeric(20,0)` | номер последней применённой команды; команда с номером не больше него игнорируется |
+| `last_command_number` | `numeric(20,0)` | общий номер Apply/Block/Delete |
+| `last_command_fingerprint` | `bytea`, nullable | SHA-256 метода и payload; отличает replay от конфликта равных номеров |
+| `lifecycle_state` | `text` | `ACTIVE`, `BLOCKED`, `DELETING`, `DELETED` |
+| `delete_not_before`, `deleted_at` | `timestamptz`, nullable | нижняя граница cleanup и момент завершённого удаления |
 | `created_at`, `updated_at` | `timestamptz` | когда customer заведён и когда состояние менялось |
 
-Пишут: `ApplyCustomerAccess`, `materialize` и `expiry` (`desired_version`).
+Пишут: customer-команды, `materialize`, `expiry` и `finalize-deletion`.
 Читают: `GetCustomerAccessLinks`, `expiry`, `materialize`, `reconcile`, `stats`.
+
+Shape constraint требует непустые fleet/expiry для всех состояний кроме
+`DELETED`; у tombstone они `NULL`, а `deleted_at` обязателен. Сам tombstone не
+удаляется: это точка сериализации повторного Apply и защита от устаревшей команды.
+Partial-индексы `customer_entitlements_expiry` и
+`customer_entitlements_deletion` ограничивают фоновые выборки соответственно
+состояниями `ACTIVE` и `DELETING`.
 
 ### quota_periods
 
@@ -250,7 +260,8 @@ entry-ноде намеренно показывают один и тот же `
 
 | кто | что меняет |
 |---|---|
-| `ApplyCustomerAccess` | заводит доступы новому customer, поднимает `desired_state` при renewal |
+| `ApplyCustomerAccess` | заводит доступы новому/повторно созданному customer, поднимает `desired_state` при renewal |
+| `SetCustomerAccessState`, `DeleteCustomerAccess` | переводят access в новую административную desired-version |
 | `materialize` | заводит доступы на появившиеся цели, проставляет `retired_at` исчезнувшим |
 | `expiry` | опускает `desired_state` в `ABSENT` по истечении срока |
 | `usage` | опускает `desired_state` в `ABSENT` при исчерпании квоты на ноде |
@@ -282,9 +293,15 @@ entry-ноде намеренно показывают один и тот же `
 | `last_error_code`, `last_error_message` | `text` | чем закончилась последняя попытка |
 | `created_at`, `completed_at` | `timestamptz` | когда операция поставлена и когда пришла в терминальный статус |
 
-Пишут: `ApplyCustomerAccess`, `materialize`, `expiry`, `usage` (ставят),
+Пишут: customer-команды, `materialize`, `expiry`, `usage` (ставят),
 `dispatch` (ведёт), `reconcile` (закрывает ставшие ненужными).
 Читают: `stats`.
+
+При завершении удаления worker явно удаляет связанные строки в порядке
+quarantine/processed usage → agent operations → node usage → quota periods →
+accesses, затем обновляет entitlement до `DELETED`. `ON DELETE CASCADE` не
+используется: новая зависимость должна быть осознанно добавлена в cleanup и его
+интеграционный тест.
 
 Уникальность — `(access_id, desired_version)`: повторное планирование того же
 изменения второй операции не создаёт.
@@ -437,14 +454,15 @@ Append-only журнал значимых действий.
 |---|---|---|
 | `audit_id` | `uuid` PK | идентификатор записи; генерируется базой |
 | `occurred_at` | `timestamptz` | когда действие произошло |
-| `actor_type`, `actor_id` | `text` | `SYSTEM`, `MANIFEST_WRITER` или `CUSTOMER_ACCESS_WRITER` |
-| `action` | `text` | `MANIFEST_APPLIED`, `CUSTOMER_CREATED`, `CUSTOMER_RENEWED`, `CUSTOMER_QUOTA_CHANGED`, `CUSTOMER_EXPIRED` |
+| `actor_type`, `actor_id` | `text` | `SYSTEM`, `MANIFEST_WRITER`, `CUSTOMER_ACCESS_WRITER` или `CUSTOMER_ACCESS_ADMIN` |
+| `action` | `text` | `MANIFEST_APPLIED`, `CUSTOMER_CREATED`, `CUSTOMER_RENEWED`, `CUSTOMER_QUOTA_CHANGED`, `CUSTOMER_EXPIRED`, `CUSTOMER_ACCESS_STATE_SET`, `CUSTOMER_DELETION_REQUESTED` |
 | `target_type`, `target_id` | `text` | `MANIFEST_REVISION` или `CUSTOMER` |
 | `request_id` | `text` | сквозной идентификатор запроса; связывает запись с логами вызова |
 | `outcome` | `text` | исход действия |
 | `sanitized_metadata` | `jsonb` | без секретов |
 
-Пишут: `ApplyCustomerAccess`, `ApplyFleetManifest`, `expiry`.
+Пишут: `ApplyCustomerAccess`, административные customer RPC,
+`ApplyFleetManifest`, `expiry`.
 Читают: никто.
 
 Запись идёт в той же транзакции, что и само действие. Backend эту таблицу не

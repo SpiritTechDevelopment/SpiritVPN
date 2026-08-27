@@ -45,4 +45,8 @@ var (
 	// квоты. Нарушение инварианта «ровно один период с closed_at IS NULL»,
 	// а не ошибка вызывающего.
 	ErrOpenPeriodMissing = errors.New("domain: у customer нет открытого периода квоты")
+
+	ErrAdministrativeStateInvalid = errors.New("domain: некорректное административное состояние")
+	ErrCommandNumberConflict      = errors.New("domain: command_number уже использован другой командой")
+	ErrCustomerDeleting           = errors.New("domain: удаление customer ещё не завершено")
 )

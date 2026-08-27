@@ -17,6 +17,8 @@
 
 ### Добавлено
 
+* Добавлены административные RPC `SetCustomerAccessState` и `DeleteCustomerAccess`, lifecycle `ACTIVE/BLOCKED/DELETING/DELETED`, асинхронная очистка и восстановление удалённого customer через `ApplyCustomerAccess`
+* Добавлена защита общего `command_number` fingerprint'ом и взаимное исключение mutating dispatch с authoritative reconcile на одной ноде
 * Добавлен `ListAvailableNodes` — каталог актуальных нод по fleets без привязки к customer
 * В `CustomerAccessLink` добавлены лимит квоты и учтённый расход входной ноды
 * Добавлен API health check эндпоинт (`/health`, `/health/advanced`) (#19) by @RomanRyabinkin

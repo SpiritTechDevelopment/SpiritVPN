@@ -114,6 +114,10 @@ type Entitlement struct {
 	// DesiredVersion — внутренний счётчик фактических изменений desired state
 	// customer; спекой не используется.
 	DesiredVersion int64
+	Lifecycle      CustomerLifecycle
+	// LastCommandFingerprint различает идемпотентный повтор и конфликт двух
+	// разных команд с одним номером. Пустое значение допустимо для legacy-строк.
+	LastCommandFingerprint []byte
 }
 
 // QuotaPeriod — период учёта квоты. Текущий период — единственный с

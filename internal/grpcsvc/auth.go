@@ -18,6 +18,7 @@ type Role string
 const (
 	RoleCustomerAccessWriter Role = "customer-access-writer"
 	RoleCustomerAccessReader Role = "customer-access-reader"
+	RoleCustomerAccessAdmin  Role = "customer-access-admin"
 
 	// RoleManifestWriter — infrastructure CI/CD. Отдельная identity: она
 	// переписывает топологию целиком и продуктовому сервису не выдаётся.
@@ -39,6 +40,8 @@ var methodRoles = map[string]Role{
 	customerv1.CustomerAccessService_ApplyCustomerAccess_FullMethodName:    RoleCustomerAccessWriter,
 	customerv1.CustomerAccessService_GetCustomerAccessLinks_FullMethodName: RoleCustomerAccessReader,
 	customerv1.CustomerAccessService_ListAvailableNodes_FullMethodName:     RoleCustomerAccessReader,
+	customerv1.CustomerAccessService_SetCustomerAccessState_FullMethodName: RoleCustomerAccessAdmin,
+	customerv1.CustomerAccessService_DeleteCustomerAccess_FullMethodName:   RoleCustomerAccessAdmin,
 
 	manifestv1.ManifestService_ApplyFleetManifest_FullMethodName: RoleManifestWriter,
 }

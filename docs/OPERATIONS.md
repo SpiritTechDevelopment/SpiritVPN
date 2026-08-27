@@ -383,6 +383,37 @@ alert, и операция с ним уходит в бесконечный `RET
 
 Все три метрики раздела приезжают снимком БД, то есть с задержкой до 15 секунд.
 
+## Административная блокировка и удаление
+
+`BLOCKED` — обратимое состояние: подписка, quota periods и credentials остаются
+в БД, но ссылки не выдаются и dispatcher доставляет `ENSURE_ABSENT`. Renewal во
+время блока не включает доступ. Разблокировка возвращает только access с
+действующим сроком и неисчерпанной квотой.
+
+`DELETING` — незавершённое физическое удаление. Проверка состояния:
+
+```sql
+SELECT customer_id, lifecycle_state, delete_not_before, updated_at
+FROM customer_entitlements
+WHERE lifecycle_state IN ('BLOCKED', 'DELETING')
+ORDER BY updated_at;
+```
+
+Если `DELETING` не переходит в `DELETED`, сначала ищите актуальные операции
+customer в `PENDING`, `RETRY_WAIT`, `IN_FLIGHT` или `FAILED_PERMANENT` через join
+`agent_operations → vpn_accesses`. При retryable отказе backend продолжит сам;
+`FAILED_PERMANENT` требует исправить причину и отправить Delete с новым большим
+`command_number`, чтобы появилась новая проверочная операция.
+
+`DELETED` означает, что operational-строки очищены. В
+`customer_entitlements` остаётся только tombstone для порядка команд; это не
+утечка незавершённого cleanup. Вернуть customer можно новым
+`ApplyCustomerAccess`: он выдаст новые credentials.
+
+Dispatcher и reconcile взаимно исключены на одной ноде через row lock
+`vpn_nodes`. Поэтому старый полный набор не может остаться последней мутацией
+после успешного административного удаления.
+
 ## Чтение логов
 
 JSON в stderr, `newLogger`, `cmd/spiritvpnd/logging.go:17`. Уровень задаёт

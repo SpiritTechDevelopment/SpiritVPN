@@ -12,18 +12,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const ensureCustomerEntitlementRoot = `-- name: EnsureCustomerEntitlementRoot :exec
+INSERT INTO customer_entitlements (
+    customer_id, vpn_fleet_id, expires_at, desired_version,
+    last_command_number, lifecycle_state, deleted_at
+) VALUES ($1, NULL, NULL, 0, 0, 'DELETED', now())
+ON CONFLICT (customer_id) DO NOTHING
+`
+
+// Заводит стабильную точку сериализации до первого command. ON CONFLICT нужен
+// для гонки двух первых транзакций: проигравшая дождётся победителя, затем обе
+// заблокируют одну строку через LockCustomerEntitlement. При последующей ошибке
+// INSERT откатывается вместе со всей командой.
+func (q *Queries) EnsureCustomerEntitlementRoot(ctx context.Context, customerID string) error {
+	_, err := q.db.Exec(ctx, ensureCustomerEntitlementRoot, customerID)
+	return err
+}
+
 const insertCustomerEntitlement = `-- name: InsertCustomerEntitlement :exec
 INSERT INTO customer_entitlements (
-    customer_id, vpn_fleet_id, expires_at, desired_version, last_command_number
-) VALUES ($1, $2, $3, $4, $5)
+    customer_id, vpn_fleet_id, expires_at, desired_version, last_command_number,
+    lifecycle_state, last_command_fingerprint
+) VALUES ($1, $2, $3, $4, $5, 'ACTIVE', $6)
 `
 
 type InsertCustomerEntitlementParams struct {
-	CustomerID        string
-	VpnFleetID        int64
-	ExpiresAt         time.Time
-	DesiredVersion    int64
-	LastCommandNumber pgtype.Numeric
+	CustomerID             string
+	VpnFleetID             *int64
+	ExpiresAt              *time.Time
+	DesiredVersion         int64
+	LastCommandNumber      pgtype.Numeric
+	LastCommandFingerprint []byte
 }
 
 // Создаёт корневую строку первым успешным Apply. Вставка, а не upsert:
@@ -37,13 +56,14 @@ func (q *Queries) InsertCustomerEntitlement(ctx context.Context, arg InsertCusto
 		arg.ExpiresAt,
 		arg.DesiredVersion,
 		arg.LastCommandNumber,
+		arg.LastCommandFingerprint,
 	)
 	return err
 }
 
 const lockCustomerEntitlement = `-- name: LockCustomerEntitlement :one
 
-SELECT customer_id, vpn_fleet_id, expires_at, desired_version, last_command_number, created_at, updated_at
+SELECT customer_id, vpn_fleet_id, expires_at, desired_version, last_command_number, created_at, updated_at, lifecycle_state, last_command_fingerprint, delete_not_before, deleted_at
 FROM customer_entitlements
 WHERE customer_id = $1
 FOR UPDATE
@@ -64,8 +84,49 @@ func (q *Queries) LockCustomerEntitlement(ctx context.Context, customerID string
 		&i.LastCommandNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.LifecycleState,
+		&i.LastCommandFingerprint,
+		&i.DeleteNotBefore,
+		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const reactivateCustomerEntitlement = `-- name: ReactivateCustomerEntitlement :exec
+UPDATE customer_entitlements
+SET vpn_fleet_id = $1,
+    expires_at = $2,
+    desired_version = $3,
+    last_command_number = $4,
+    last_command_fingerprint = $5,
+    lifecycle_state = 'ACTIVE',
+    delete_not_before = NULL,
+    deleted_at = NULL,
+    updated_at = now()
+WHERE customer_id = $6
+`
+
+type ReactivateCustomerEntitlementParams struct {
+	VpnFleetID             *int64
+	ExpiresAt              *time.Time
+	DesiredVersion         int64
+	LastCommandNumber      pgtype.Numeric
+	LastCommandFingerprint []byte
+	CustomerID             string
+}
+
+// Возвращает DELETED tombstone в новую активную подписку. Старые operational
+// строки к этому моменту уже удалены cleanup worker'ом.
+func (q *Queries) ReactivateCustomerEntitlement(ctx context.Context, arg ReactivateCustomerEntitlementParams) error {
+	_, err := q.db.Exec(ctx, reactivateCustomerEntitlement,
+		arg.VpnFleetID,
+		arg.ExpiresAt,
+		arg.DesiredVersion,
+		arg.LastCommandNumber,
+		arg.LastCommandFingerprint,
+		arg.CustomerID,
+	)
+	return err
 }
 
 const updateCustomerEntitlement = `-- name: UpdateCustomerEntitlement :exec
@@ -73,15 +134,17 @@ UPDATE customer_entitlements
 SET expires_at = $2,
     desired_version = $3,
     last_command_number = $4,
+    last_command_fingerprint = $5,
     updated_at = now()
 WHERE customer_id = $1
 `
 
 type UpdateCustomerEntitlementParams struct {
-	CustomerID        string
-	ExpiresAt         time.Time
-	DesiredVersion    int64
-	LastCommandNumber pgtype.Numeric
+	CustomerID             string
+	ExpiresAt              *time.Time
+	DesiredVersion         int64
+	LastCommandNumber      pgtype.Numeric
+	LastCommandFingerprint []byte
 }
 
 // Фиксирует принятую команду существующего customer. last_command_number
@@ -94,6 +157,40 @@ func (q *Queries) UpdateCustomerEntitlement(ctx context.Context, arg UpdateCusto
 		arg.ExpiresAt,
 		arg.DesiredVersion,
 		arg.LastCommandNumber,
+		arg.LastCommandFingerprint,
+	)
+	return err
+}
+
+const updateCustomerLifecycle = `-- name: UpdateCustomerLifecycle :exec
+UPDATE customer_entitlements
+SET lifecycle_state = $1,
+    desired_version = $2,
+    last_command_number = $3,
+    last_command_fingerprint = $4,
+    delete_not_before = $5,
+    updated_at = now()
+WHERE customer_id = $6
+`
+
+type UpdateCustomerLifecycleParams struct {
+	LifecycleState         string
+	DesiredVersion         int64
+	LastCommandNumber      pgtype.Numeric
+	LastCommandFingerprint []byte
+	DeleteNotBefore        *time.Time
+	CustomerID             string
+}
+
+// Фиксирует lifecycle-команду и её ordering token.
+func (q *Queries) UpdateCustomerLifecycle(ctx context.Context, arg UpdateCustomerLifecycleParams) error {
+	_, err := q.db.Exec(ctx, updateCustomerLifecycle,
+		arg.LifecycleState,
+		arg.DesiredVersion,
+		arg.LastCommandNumber,
+		arg.LastCommandFingerprint,
+		arg.DeleteNotBefore,
+		arg.CustomerID,
 	)
 	return err
 }

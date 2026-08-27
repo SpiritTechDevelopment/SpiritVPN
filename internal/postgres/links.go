@@ -47,6 +47,9 @@ func (r *Repository) LoadCustomerLinks(ctx context.Context, customerID string) (
 	if err != nil {
 		return app.CustomerLinks{}, fmt.Errorf("чтение entitlement: %w", err)
 	}
+	if domain.CustomerLifecycle(header.LifecycleState) == domain.CustomerLifecycleDeleted || header.ExpiresAt == nil {
+		return app.CustomerLinks{}, domain.ErrCustomerNotFound
+	}
 
 	rows, err := queries.ListCustomerAccessLinks(ctx, customerID)
 	if err != nil {
@@ -59,7 +62,8 @@ func (r *Repository) LoadCustomerLinks(ctx context.Context, customerID string) (
 
 	return app.CustomerLinks{
 		Now:       header.TxNow,
-		ExpiresAt: header.ExpiresAt,
+		ExpiresAt: *header.ExpiresAt,
+		Lifecycle: domain.CustomerLifecycle(header.LifecycleState),
 		Accesses:  sources,
 	}, nil
 }

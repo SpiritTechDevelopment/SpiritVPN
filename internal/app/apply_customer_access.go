@@ -58,6 +58,7 @@ func NewApplyCustomerAccess(repo ApplyRepository, ids IDs, sealer CredentialSeal
 //  7. запись аудита — в той же транзакции, поэтому откат уносит и её.
 func (uc *ApplyCustomerAccess) Execute(ctx context.Context, request ApplyCustomerCommand) error {
 	cmd := request.Command
+	fingerprint := applyFingerprint(cmd)
 
 	// Шаг 1.
 	if err := domain.ValidateApplyCommand(cmd); err != nil {
@@ -79,8 +80,15 @@ func (uc *ApplyCustomerAccess) Execute(ctx context.Context, request ApplyCustome
 
 		// Шаг 4. Возврат nil коммитит пустую транзакцию: команда уже применена или
 		// переупорядочена, и повторять её side effects нельзя.
-		if domain.IsStaleCommand(cmd, entitlement) {
+		order, err := domain.ClassifyCommand(cmd.CommandNumber, fingerprint, entitlement)
+		if err != nil {
+			return err
+		}
+		if order != domain.CommandNew {
 			return nil
+		}
+		if entitlement != nil && domain.EffectiveLifecycle(entitlement) == domain.CustomerLifecycleDeleting {
+			return domain.ErrCustomerDeleting
 		}
 
 		// Шаг 5.
@@ -101,7 +109,7 @@ func (uc *ApplyCustomerAccess) Execute(ctx context.Context, request ApplyCustome
 			Entitlement: entitlement,
 		}
 
-		if entitlement != nil {
+		if entitlement != nil && domain.EffectiveLifecycle(entitlement) != domain.CustomerLifecycleDeleted {
 			period, periodErr := tx.LockOpenQuotaPeriod(ctx, cmd.CustomerID)
 			if periodErr != nil {
 				return fmt.Errorf("блокировка периода квоты: %w", periodErr)
@@ -134,7 +142,7 @@ func (uc *ApplyCustomerAccess) Execute(ctx context.Context, request ApplyCustome
 			return err
 		}
 
-		materialized, err := uc.materialize(cmd, plan, input.OpenPeriod)
+		materialized, err := uc.materialize(cmd, fingerprint, plan, input.OpenPeriod)
 		if err != nil {
 			return err
 		}
@@ -209,14 +217,16 @@ func customerAudit(request ApplyCustomerCommand, plan domain.ApplyPlan) (AuditEv
 // вызовов и тяжёлой работы под lock — при этом не нарушен.
 func (uc *ApplyCustomerAccess) materialize(
 	cmd domain.ApplyCommand,
+	fingerprint []byte,
 	plan domain.ApplyPlan,
 	openPeriod *domain.QuotaPeriod,
 ) (MaterializedPlan, error) {
 	materialized := MaterializedPlan{
-		CustomerID:    cmd.CustomerID,
-		FleetID:       cmd.FleetID,
-		CommandNumber: cmd.CommandNumber,
-		Plan:          plan,
+		CustomerID:         cmd.CustomerID,
+		FleetID:            cmd.FleetID,
+		CommandNumber:      cmd.CommandNumber,
+		CommandFingerprint: fingerprint,
+		Plan:               plan,
 	}
 
 	periodID, err := uc.periodID(plan, openPeriod)
@@ -255,6 +265,13 @@ func (uc *ApplyCustomerAccess) materialize(
 	}
 
 	return materialized, nil
+}
+
+// applyFingerprint — каноническая идентичность команды для защиты от
+// переиспользования command_number с другим payload или другим RPC.
+func applyFingerprint(cmd domain.ApplyCommand) []byte {
+	return commandFingerprint("ApplyCustomerAccess", cmd.CustomerID, cmd.CommandNumber,
+		uint64(cmd.FleetID), cmd.UsageQuotaBytes, uint64(cmd.ExpiresAt.Unix()))
 }
 
 // periodID выбирает период, в который пишутся изменения квоты: новый при renewal и

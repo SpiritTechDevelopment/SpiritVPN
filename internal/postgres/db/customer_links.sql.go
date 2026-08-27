@@ -15,14 +15,16 @@ import (
 const getCustomerLinksHeader = `-- name: GetCustomerLinksHeader :one
 
 SELECT now()::timestamptz AS tx_now,
-       expires_at
+       expires_at,
+       lifecycle_state
 FROM customer_entitlements
 WHERE customer_id = $1
 `
 
 type GetCustomerLinksHeaderRow struct {
-	TxNow     time.Time
-	ExpiresAt time.Time
+	TxNow          time.Time
+	ExpiresAt      *time.Time
+	LifecycleState string
 }
 
 // Чтение ссылок customer: GetCustomerAccessLinks и сборка VLESS URI.
@@ -41,7 +43,7 @@ type GetCustomerLinksHeaderRow struct {
 func (q *Queries) GetCustomerLinksHeader(ctx context.Context, customerID string) (GetCustomerLinksHeaderRow, error) {
 	row := q.db.QueryRow(ctx, getCustomerLinksHeader, customerID)
 	var i GetCustomerLinksHeaderRow
-	err := row.Scan(&i.TxNow, &i.ExpiresAt)
+	err := row.Scan(&i.TxNow, &i.ExpiresAt, &i.LifecycleState)
 	return i, err
 }
 

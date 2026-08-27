@@ -18,6 +18,7 @@ const (
 	auditActorTypeSystem         = "SYSTEM"
 	auditActorTypeManifestWriter = "MANIFEST_WRITER"
 	auditActorTypeAccessWriter   = "CUSTOMER_ACCESS_WRITER"
+	auditActorTypeAccessAdmin    = "CUSTOMER_ACCESS_ADMIN"
 )
 
 // Действия.
@@ -31,6 +32,8 @@ const (
 	auditActionCustomerCreated      = "CUSTOMER_CREATED"
 	auditActionCustomerRenewed      = "CUSTOMER_RENEWED"
 	auditActionCustomerQuotaChanged = "CUSTOMER_QUOTA_CHANGED"
+	auditActionCustomerStateSet     = "CUSTOMER_ACCESS_STATE_SET"
+	auditActionCustomerDelete       = "CUSTOMER_DELETION_REQUESTED"
 )
 
 // Типы цели.

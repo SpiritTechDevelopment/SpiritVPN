@@ -24,6 +24,19 @@ func DesiredStateFor(now, expiresAt time.Time, nodeExhausted bool) DesiredState 
 	return DesiredStateAbsent
 }
 
+// DesiredStateForLifecycle добавляет административный гейт к общему правилу.
+// Только ACTIVE customer может быть PRESENT; BLOCKED и DELETING всегда ABSENT.
+func DesiredStateForLifecycle(
+	lifecycle CustomerLifecycle,
+	now, expiresAt time.Time,
+	nodeExhausted bool,
+) DesiredState {
+	if lifecycle != CustomerLifecycleActive {
+		return DesiredStateAbsent
+	}
+	return DesiredStateFor(now, expiresAt, nodeExhausted)
+}
+
 // DesiredChange — смена desired-кортежа существующего access, требующая новой
 // операции агенту.
 //
@@ -75,6 +88,32 @@ func PlanDesiredChanges(
 		})
 	}
 
+	slices.SortFunc(changes, func(a, b DesiredChange) int {
+		return bytes.Compare(a.AccessID[:], b.AccessID[:])
+	})
+	return changes
+}
+
+func PlanDesiredChangesForLifecycle(
+	accesses []Access,
+	lifecycle CustomerLifecycle,
+	now, expiresAt time.Time,
+	nodeExhausted map[NodeID]bool,
+) []DesiredChange {
+	var changes []DesiredChange
+	for _, access := range accesses {
+		if access.Retired {
+			continue
+		}
+		want := DesiredStateForLifecycle(lifecycle, now, expiresAt, nodeExhausted[access.EntryNodeID])
+		if want == access.DesiredState {
+			continue
+		}
+		changes = append(changes, DesiredChange{
+			AccessID: access.ID, EntryNodeID: access.EntryNodeID,
+			DesiredState: want, DesiredVersion: access.DesiredVersion + 1,
+		})
+	}
 	slices.SortFunc(changes, func(a, b DesiredChange) int {
 		return bytes.Compare(a.AccessID[:], b.AccessID[:])
 	})

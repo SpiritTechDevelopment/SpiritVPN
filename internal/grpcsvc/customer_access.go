@@ -51,6 +51,19 @@ type listAvailableNodes interface {
 	Execute(ctx context.Context) ([]app.AvailableFleet, error)
 }
 
+type setCustomerAccessState interface {
+	Execute(context.Context, app.SetCustomerAccessStateCommand) error
+}
+
+type deleteCustomerAccess interface {
+	Execute(context.Context, app.DeleteCustomerAccessCommand) (domain.CustomerDeletionState, error)
+}
+
+type CustomerAccessAdministration struct {
+	State  setCustomerAccessState
+	Delete deleteCustomerAccess
+}
+
 // CustomerAccessServer реализует CustomerAccessService.
 type CustomerAccessServer struct {
 	// Встраивание по значению обязательно: сгенерированный
@@ -60,6 +73,7 @@ type CustomerAccessServer struct {
 	apply applyCustomerAccess
 	links getCustomerAccessLinks
 	nodes listAvailableNodes
+	admin CustomerAccessAdministration
 }
 
 // NewCustomerAccessServer собирает транспорт поверх use case'ов.
@@ -67,8 +81,13 @@ func NewCustomerAccessServer(
 	apply applyCustomerAccess,
 	links getCustomerAccessLinks,
 	nodes listAvailableNodes,
+	administration ...CustomerAccessAdministration,
 ) *CustomerAccessServer {
-	return &CustomerAccessServer{apply: apply, links: links, nodes: nodes}
+	server := &CustomerAccessServer{apply: apply, links: links, nodes: nodes}
+	if len(administration) > 0 {
+		server.admin = administration[0]
+	}
+	return server
 }
 
 // ApplyCustomerAccess принимает одну команду product-сервиса.
@@ -163,6 +182,49 @@ func (s *CustomerAccessServer) ListAvailableNodes(
 	return response, nil
 }
 
+func (s *CustomerAccessServer) SetCustomerAccessState(
+	ctx context.Context,
+	req *customerv1.SetCustomerAccessStateRequest,
+) (*customerv1.SetCustomerAccessStateResponse, error) {
+	target, ok := administrativeStates[req.GetState()]
+	if !ok {
+		return nil, statusFromError(ctx, domain.ErrAdministrativeStateInvalid)
+	}
+	if s.admin.State == nil {
+		return nil, statusFromError(ctx, fmt.Errorf("admin use case не настроен"))
+	}
+	if err := s.admin.State.Execute(ctx, app.SetCustomerAccessStateCommand{
+		Command: domain.AdministrativeCommand{
+			CustomerID: req.GetCustomerId(), Target: target, CommandNumber: req.GetCommandNumber(),
+		},
+		Actor: peerIdentity(ctx), RequestID: RequestIDFromContext(ctx),
+	}); err != nil {
+		return nil, statusFromError(ctx, err)
+	}
+	return &customerv1.SetCustomerAccessStateResponse{}, nil
+}
+
+func (s *CustomerAccessServer) DeleteCustomerAccess(
+	ctx context.Context,
+	req *customerv1.DeleteCustomerAccessRequest,
+) (*customerv1.DeleteCustomerAccessResponse, error) {
+	if s.admin.Delete == nil {
+		return nil, statusFromError(ctx, fmt.Errorf("delete use case не настроен"))
+	}
+	state, err := s.admin.Delete.Execute(ctx, app.DeleteCustomerAccessCommand{
+		Command: domain.DeleteCommand{CustomerID: req.GetCustomerId(), CommandNumber: req.GetCommandNumber()},
+		Actor:   peerIdentity(ctx), RequestID: RequestIDFromContext(ctx),
+	})
+	if err != nil {
+		return nil, statusFromError(ctx, err)
+	}
+	converted, ok := deletionStates[state]
+	if !ok {
+		return nil, statusFromError(ctx, fmt.Errorf("неизвестное состояние удаления %q", state))
+	}
+	return &customerv1.DeleteCustomerAccessResponse{State: converted}, nil
+}
+
 // Словари доменных значений в протокольные энумы.
 //
 // Именно словари, а не switch с default: промах по ключу обязан стать ошибкой.
@@ -184,6 +246,18 @@ var (
 	blockReasons = map[domain.BlockReason]customerv1.AccessBlockReason{
 		domain.BlockReasonTimeExpired:           customerv1.AccessBlockReason_ACCESS_BLOCK_REASON_TIME_EXPIRED,
 		domain.BlockReasonTrafficQuotaExhausted: customerv1.AccessBlockReason_ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED,
+		domain.BlockReasonAdministrative:        customerv1.AccessBlockReason_ACCESS_BLOCK_REASON_ADMINISTRATIVE_BLOCK,
+		domain.BlockReasonDeleting:              customerv1.AccessBlockReason_ACCESS_BLOCK_REASON_DELETION_IN_PROGRESS,
+	}
+
+	administrativeStates = map[customerv1.AdministrativeAccessState]domain.CustomerLifecycle{
+		customerv1.AdministrativeAccessState_ADMINISTRATIVE_ACCESS_STATE_ACTIVE:  domain.CustomerLifecycleActive,
+		customerv1.AdministrativeAccessState_ADMINISTRATIVE_ACCESS_STATE_BLOCKED: domain.CustomerLifecycleBlocked,
+	}
+
+	deletionStates = map[domain.CustomerDeletionState]customerv1.CustomerDeletionState{
+		domain.CustomerDeletionPending:   customerv1.CustomerDeletionState_CUSTOMER_DELETION_STATE_PENDING,
+		domain.CustomerDeletionCompleted: customerv1.CustomerDeletionState_CUSTOMER_DELETION_STATE_COMPLETED,
 	}
 )
 

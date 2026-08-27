@@ -12,7 +12,7 @@
 
 ## Состав
 
-487 тестов в 68 файлах, одиннадцать пакетов.
+502 теста в 72 файлах, одиннадцать пакетов.
 
 | пакет | файлов | тестов | нужна база |
 |---|---|---|---|
@@ -247,6 +247,13 @@ use case стоят заглушки, `internal/nodeagent/client_test.go` до �
 |---|---|---|
 | `TestIntegrationApplySerializesConcurrentCommands` (`internal/postgres/apply_integration_test.go:634`) | `SELECT ... FOR UPDATE` на корневой строке customer | вторая команда ждёт, `last_command_number` во время ожидания не двигается |
 | `TestIntegrationDispatchRefusesSecondInFlightOnNode` (`internal/postgres/dispatch_integration_test.go:277`) | перевод операции в `IN_FLIGHT` без commit | `LeaseNext` не берёт вторую операцию той же ноды и возвращается без ошибки |
+
+Lifecycle покрыт на трёх уровнях: `internal/domain/lifecycle_test.go` проверяет
+автомат и command fingerprint, `internal/app/customer_lifecycle_test.go` —
+планы Block/Delete без БД, а `internal/postgres/lifecycle_integration_test.go` —
+полный путь `ACTIVE → BLOCKED → DELETING → DELETED → Apply/ACTIVE` с физическим
+удалением старых строк и новыми credentials. Отдельный интеграционный тест
+фиксирует конфликт одинакового `command_number` у разных RPC.
 
 Вторая схема обратная. `TestIntegrationExpirySkipsLockedCustomer`
 (`internal/postgres/expiry_integration_test.go:241`) держит строку единственного

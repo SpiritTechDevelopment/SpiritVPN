@@ -54,6 +54,21 @@ func (r *Repository) WithinTx(ctx context.Context, fn func(app.ApplyTx) error) e
 	return nil
 }
 
+func (r *Repository) WithinLifecycleTx(ctx context.Context, fn func(app.LifecycleTx) error) error {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return fmt.Errorf("postgres: начать lifecycle-транзакцию: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(&applyTx{queries: db.New(tx)}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("postgres: commit lifecycle: %w", err)
+	}
+	return nil
+}
+
 // applyTx реализует шаги одной транзакции ApplyCustomerAccess.
 type applyTx struct {
 	queries *db.Queries
@@ -63,8 +78,13 @@ func (t *applyTx) Now(ctx context.Context) (time.Time, error) {
 	return t.queries.SelectTransactionNow(ctx)
 }
 
-// LockEntitlement возвращает nil, если строки нет: это новый customer.
+// LockEntitlement сначала заводит DELETED tombstone как стабильную точку
+// сериализации. Поэтому PostgreSQL-адаптер возвращает строку и для первой
+// команды; nil остаётся допустимым контрактом порта для других адаптеров.
 func (t *applyTx) LockEntitlement(ctx context.Context, customerID string) (*domain.Entitlement, error) {
+	if err := t.queries.EnsureCustomerEntitlementRoot(ctx, customerID); err != nil {
+		return nil, err
+	}
 	row, err := t.queries.LockCustomerEntitlement(ctx, customerID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -123,6 +143,14 @@ func (t *applyTx) LoadTopology(ctx context.Context, fleetID int64) (domain.Fleet
 	return topologyFromRows(fleetID, nodes, routes), nil
 }
 
+func (t *applyTx) LoadLiveNodes(ctx context.Context) ([]domain.NodeID, error) {
+	nodes, err := t.queries.ListCurrentNodeIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return nodeIDsFromStrings(nodes), nil
+}
+
 func (t *applyTx) LoadAccesses(ctx context.Context, customerID string) ([]domain.Access, error) {
 	rows, err := t.queries.ListCustomerAccesses(ctx, customerID)
 	if err != nil {
@@ -177,25 +205,75 @@ func (t *applyTx) writeEntitlement(ctx context.Context, plan app.MaterializedPla
 	commandNumber := numericFromUint64(plan.CommandNumber)
 
 	if plan.Plan.CreateEntitlement {
-		// Отсутствие строки установлено под FOR UPDATE, но пустой SELECT lock не
-		// берёт, поэтому от гонки двух первых Apply одного customer защищает
-		// первичный ключ: проигравшая транзакция падает и откатывается целиком, а не
-		// перезаписывает чужое состояние.
+		// В PostgreSQL этот путь не используется: LockEntitlement заранее создаёт
+		// tombstone и PlanApply выбирает ReactivateEntitlement. Ветка сохраняет
+		// общий контракт порта для адаптеров, способных вернуть nil.
 		return t.queries.InsertCustomerEntitlement(ctx, db.InsertCustomerEntitlementParams{
-			CustomerID:        plan.CustomerID,
-			VpnFleetID:        plan.FleetID,
-			ExpiresAt:         plan.Plan.ExpiresAt,
-			DesiredVersion:    plan.Plan.EntitlementDesiredVersion,
-			LastCommandNumber: commandNumber,
+			CustomerID:             plan.CustomerID,
+			VpnFleetID:             &plan.FleetID,
+			ExpiresAt:              &plan.Plan.ExpiresAt,
+			DesiredVersion:         plan.Plan.EntitlementDesiredVersion,
+			LastCommandNumber:      commandNumber,
+			LastCommandFingerprint: plan.CommandFingerprint,
+		})
+	}
+	if plan.Plan.ReactivateEntitlement {
+		return t.queries.ReactivateCustomerEntitlement(ctx, db.ReactivateCustomerEntitlementParams{
+			CustomerID: plan.CustomerID, VpnFleetID: &plan.FleetID,
+			ExpiresAt:              &plan.Plan.ExpiresAt,
+			DesiredVersion:         plan.Plan.EntitlementDesiredVersion,
+			LastCommandNumber:      commandNumber,
+			LastCommandFingerprint: plan.CommandFingerprint,
 		})
 	}
 
 	return t.queries.UpdateCustomerEntitlement(ctx, db.UpdateCustomerEntitlementParams{
-		CustomerID:        plan.CustomerID,
-		ExpiresAt:         plan.Plan.ExpiresAt,
-		DesiredVersion:    plan.Plan.EntitlementDesiredVersion,
-		LastCommandNumber: commandNumber,
+		CustomerID:             plan.CustomerID,
+		ExpiresAt:              &plan.Plan.ExpiresAt,
+		DesiredVersion:         plan.Plan.EntitlementDesiredVersion,
+		LastCommandNumber:      commandNumber,
+		LastCommandFingerprint: plan.CommandFingerprint,
 	})
+}
+
+func (t *applyTx) InsertDeletedTombstone(ctx context.Context, customerID string, commandNumber uint64, fingerprint []byte) error {
+	return t.queries.InsertDeletedCustomerTombstone(ctx, db.InsertDeletedCustomerTombstoneParams{
+		CustomerID: customerID, LastCommandNumber: numericFromUint64(commandNumber),
+		LastCommandFingerprint: fingerprint,
+	})
+}
+
+func (t *applyTx) WriteLifecycle(ctx context.Context, plan app.MaterializedLifecyclePlan) error {
+	if plan.Target == domain.CustomerLifecycleDeleted {
+		// Уже завершённый tombstone: shape constraint запрещает delete_not_before.
+		plan.DeleteNotBefore = nil
+	}
+	if err := t.queries.UpdateCustomerLifecycle(ctx, db.UpdateCustomerLifecycleParams{
+		LifecycleState: string(plan.Target), DesiredVersion: plan.DesiredVersion,
+		LastCommandNumber:      numericFromUint64(plan.CommandNumber),
+		LastCommandFingerprint: plan.CommandFingerprint,
+		DeleteNotBefore:        plan.DeleteNotBefore, CustomerID: plan.CustomerID,
+	}); err != nil {
+		return err
+	}
+
+	common := app.MaterializedPlan{
+		CustomerID: plan.CustomerID,
+		Plan:       domain.ApplyPlan{DesiredChanges: plan.DesiredChanges, TouchedNodes: plan.TouchedNodes},
+		Operations: plan.Operations,
+	}
+	if err := t.writeTouchedNodes(ctx, common); err != nil {
+		return err
+	}
+	if err := t.writeAccesses(ctx, common); err != nil {
+		return err
+	}
+	for _, accessID := range plan.AppliedWithoutOperation {
+		if err := t.queries.MarkAccessDesiredApplied(ctx, accessID); err != nil {
+			return err
+		}
+	}
+	return t.writeOperations(ctx, common)
 }
 
 // writeQuotaPeriod закрывает и открывает период при renewal либо меняет лимит

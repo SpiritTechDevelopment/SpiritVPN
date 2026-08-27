@@ -3,7 +3,7 @@
 Внешних поверхностей две, обе gRPC и обе под mTLS. `CustomerAccessService`
 принимает команды product-сервиса, отдаёт ссылки и публичный каталог нод.
 `ManifestService` принимает манифест топологии от infrastructure CI/CD. Все
-четыре метода unary, стриминга нет.
+шесть методов unary, стриминга нет.
 
 Контракт задают `.proto`; сгенерированный код лежит в `internal/gen` и
 в репозиторий закоммичен. Этот документ отвечает на вопрос, что видно снаружи;
@@ -16,6 +16,8 @@
 | `CustomerAccessService` | `ApplyCustomerAccess` | `customer-access-writer` | product-сервис |
 | `CustomerAccessService` | `GetCustomerAccessLinks` | `customer-access-reader` | product-сервис |
 | `CustomerAccessService` | `ListAvailableNodes` | `customer-access-reader` | product-сервис |
+| `CustomerAccessService` | `SetCustomerAccessState` | `customer-access-admin` | административный сервис |
+| `CustomerAccessService` | `DeleteCustomerAccess` | `customer-access-admin` | административный сервис |
 | `ManifestService` | `ApplyFleetManifest` | `manifest-writer` | infrastructure CI/CD |
 
 Файлы контракта: `proto/spiritvpn/customer/v1/customer.proto` и
@@ -57,17 +59,18 @@ mTLS-идентичность это строка из SAN клиентског�
 |---|---|
 | `customer-access-writer` | `SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER` |
 | `customer-access-reader` | `SPIRIT_ROLE_CUSTOMER_ACCESS_READER` |
+| `customer-access-admin` | `SPIRIT_ROLE_CUSTOMER_ACCESS_ADMIN` |
 | `manifest-writer` | `SPIRIT_ROLE_MANIFEST_WRITER` |
 
 Значение это список через запятую; пустые элементы отбрасываются, лишняя запятая
-безвредна. Если пусты все три переменные, процесс падает на старте.
+безвредна. Если пусты все четыре переменные, процесс падает на старте.
 
 Роли независимы, иерархии между ними нет. Идентичность, перечисленная только в
 `SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER`, на `GetCustomerAccessLinks` получит
 `PERMISSION_DENIED`. Product-сервису, который вызывает команду и оба read-метода,
 свою идентичность нужно вписать в обе переменные, одной и той же строкой.
 
-Таблица `methodRoles` (`internal/grpcsvc/auth.go:38`) содержит ровно четыре строки, по
+Таблица `methodRoles` (`internal/grpcsvc/auth.go`) содержит ровно шесть строк, по
 одной на метод. Метод, которого в ней нет, запрещён всем: `authorize` отвечает
 `PERMISSION_DENIED`, не доходя до хендлера. В тексте отказа не сказано, какой
 роли не хватило, так что искать причину придётся по `peer_identity` в логе.
@@ -133,10 +136,11 @@ mTLS-идентичность это строка из SAN клиентског�
 
 ### Идемпотентность
 
-Идемпотентный повтор это команда, чей `command_number` не больше сохранённого
-`last_command_number`. Такую команду отсекает `domain.IsStaleCommand`
-(`internal/domain/command.go:79`), и транзакция коммитится пустой: ни одной
-записи, включая сам `last_command_number`. Ответ `OK`.
+Apply, административное состояние и удаление образуют общий поток команд по
+customer. Меньший `command_number` поглощается как reorder. Равный номер с тем же
+SHA-256 fingerprint является идемпотентным повтором; равный номер с другим RPC
+или payload возвращает `COMMAND_NUMBER_CONFLICT`. Проверка выполняется под
+`SELECT ... FOR UPDATE`, и повтор коммитит пустую транзакцию.
 
 Проверка идёт раньше, чем backend смотрит, есть ли флот в манифесте. Повтор
 старой команды для флота, успевшего из манифеста исчезнуть, получает `OK`,
@@ -154,6 +158,11 @@ mTLS-идентичность это строка из SAN клиентског�
 
 Тот же пустой ответ приходит на поглощённый повтор. Снаружи принятие команды и
 идемпотентный no-op неразличимы.
+
+Для `BLOCKED` customer Apply меняет срок и квоту, но не снимает
+административный блок. Для `DELETING` новый Apply возвращает
+`FAILED_PRECONDITION`. Для `DELETED` Apply с большим номером создаёт новый
+период, access и credentials; старые URI не восстанавливаются.
 
 ## GetCustomerAccessLinks
 
@@ -248,6 +257,45 @@ customer access и квоты, не учитывает BRIDGE-связи и не
 credentials; правило `cache-control: no-store` метода ссылок на него не
 распространяется.
 
+## SetCustomerAccessState
+
+Административная команда принимает `customer_id`, общий `command_number` и
+состояние `ACTIVE` либо `BLOCKED`. Переход в `BLOCKED` сохраняет подписку, квоту
+и credentials и переводит в `ABSENT` все поколения access. `ENSURE_ABSENT`
+выпускается для каждой входной ноды, которая есть в актуальном manifest;
+исторические access исчезнувших нод считаются применёнными логически. Переход в
+`ACTIVE` возвращает `PRESENT` только текущим access, где ещё действуют срок и
+node quota.
+
+Ответ подтверждает commit desired state, а не завершение RPC к нодам. В
+`GetCustomerAccessLinks` административно заблокированные ссылки имеют
+`BLOCKED/ADMINISTRATIVE_BLOCK`; во время удаления —
+`BLOCKED/DELETION_IN_PROGRESS`. `DELETED` customer читается как `NOT_FOUND`.
+Из `DELETING` и `DELETED` обычная разблокировка запрещена: полностью удалённого
+customer возвращает только `ApplyCustomerAccess`.
+
+## DeleteCustomerAccess
+
+Первый вызов переводит существующего customer в `DELETING`, повышает версии всех
+access и ставит durable `ENSURE_ABSENT` на входные ноды актуального manifest.
+Для исчезнувших нод физический RPC невозможен, поэтому их historical access
+закрываются логически и тоже участвуют в cleanup. Ответ `PENDING` означает, что
+cleanup ещё не завершён. Повтор с тем же номером безопасен и возвращает текущее
+состояние. Для неизвестного customer сразу создаётся `DELETED` tombstone и
+возвращается `COMPLETED`, чтобы запоздавший старый Apply не создал его.
+
+Worker `finalize-deletion` ждёт подтверждённого `ABSENT`, отсутствия актуальных
+операций и окончания окна позднего usage, затем атомарно удаляет access,
+операции, quota periods и traffic usage. В `customer_entitlements` остаётся
+tombstone с `customer_id`, последним command token и `deleted_at`.
+Append-only `audit_events` также сохраняются согласно политике аудита; под
+«полным удалением» API понимает operational access/quota/usage данные, а не
+стирание ordering token и журнала действий.
+
+`FAILED_PERMANENT` или недоступная актуальная нода оставляют customer в
+`DELETING`: backend не сообщает `COMPLETED`, пока отсутствие не подтверждено.
+Новый Delete с большим номером выпускает новую проверочную `ENSURE_ABSENT`.
+
 ## ApplyFleetManifest
 
 Запрос это манифест целиком: `schema_version`, `revision`, `allow_destructive`,
@@ -283,19 +331,22 @@ credentials; правило `cache-control: no-store` метода ссылок 
 
 | стабильный код | gRPC-код | метод | текст наружу |
 |---|---|---|---|
-| `INVALID_CUSTOMER_ID` | `INVALID_ARGUMENT` | `ApplyCustomerAccess`, `GetCustomerAccessLinks` | `customer_id должен быть непустым и не длиннее 256 байт` |
+| `INVALID_CUSTOMER_ID` | `INVALID_ARGUMENT` | customer-команды и `GetCustomerAccessLinks` | `customer_id должен быть непустым и не длиннее 256 байт` |
 | `INVALID_FLEET_ID` | `INVALID_ARGUMENT` | `ApplyCustomerAccess` | `vpn_fleet_id должен быть > 0` |
 | `INVALID_QUOTA` | `INVALID_ARGUMENT` | `ApplyCustomerAccess` | `usage_quota_bytes должен быть > 0` |
-| `INVALID_COMMAND_NUMBER` | `INVALID_ARGUMENT` | `ApplyCustomerAccess` | `command_number должен быть > 0` |
+| `INVALID_COMMAND_NUMBER` | `INVALID_ARGUMENT` | customer-команды | `command_number должен быть > 0` |
 | `EXPIRY_NOT_IN_FUTURE` | `INVALID_ARGUMENT` | `ApplyCustomerAccess` | `expires_at должен быть в будущем` |
-| `CUSTOMER_NOT_FOUND` | `NOT_FOUND` | `GetCustomerAccessLinks` | `customer не найден` |
+| `CUSTOMER_NOT_FOUND` | `NOT_FOUND` | `GetCustomerAccessLinks`, `SetCustomerAccessState` | `customer не найден` |
 | `FLEET_NOT_FOUND` | `NOT_FOUND` | `ApplyCustomerAccess` | `fleet не найден` |
 | `FLEET_MISMATCH` | `FAILED_PRECONDITION` | `ApplyCustomerAccess` | `customer уже привязан к другому fleet` |
 | `EXPIRY_REGRESSION` | `FAILED_PRECONDITION` | `ApplyCustomerAccess` | `сокращение expires_at не поддерживается` |
 | `OPEN_PERIOD_MISSING` | `INTERNAL` | `ApplyCustomerAccess` | `внутренняя ошибка` |
+| `INVALID_ADMINISTRATIVE_STATE` | `INVALID_ARGUMENT` | `SetCustomerAccessState` | `некорректное административное состояние` |
+| `COMMAND_NUMBER_CONFLICT` | `ALREADY_EXISTS` | customer-команды | `command_number уже использован другой командой` |
+| `CUSTOMER_DELETING` | `FAILED_PRECONDITION` | `ApplyCustomerAccess`, `SetCustomerAccessState` | `удаление customer ещё не завершено` |
 
-`CUSTOMER_NOT_FOUND` принадлежит только read-пути: командный путь неизвестного
-customer создаёт.
+`DeleteCustomerAccess` неизвестного customer идемпотентно создаёт tombstone;
+`SetCustomerAccessState` неизвестного customer возвращает `CUSTOMER_NOT_FOUND`.
 
 `OPEN_PERIOD_MISSING` это нарушение инварианта «ровно один период квоты с
 `closed_at IS NULL`» на стороне backend, а не ошибка вызывающего. Наружу оно

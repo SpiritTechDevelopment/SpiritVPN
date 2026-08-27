@@ -46,6 +46,8 @@ type ApplyPlan struct {
 
 	// CreateEntitlement — вставить корневую строку вместо обновления.
 	CreateEntitlement bool
+	// ReactivateEntitlement превращает DELETED tombstone в новую подписку.
+	ReactivateEntitlement bool
 	// ExpiresAt — целевой момент окончания. При QUOTA_CHANGE совпадает с уже
 	// сохранённым.
 	ExpiresAt time.Time
@@ -89,6 +91,7 @@ type ApplyPlan struct {
 // нового периода, ни повторного сброса трафика.
 func (p ApplyPlan) IsNoOp() bool {
 	return !p.CreateEntitlement &&
+		!p.ReactivateEntitlement &&
 		!p.OpenNewPeriod &&
 		!p.UpdatePeriodQuota &&
 		len(p.NodeQuotaInits) == 0 &&
@@ -120,6 +123,14 @@ func PlanApply(in ApplyInput) (ApplyPlan, error) {
 		OpenNewPeriod:     decision == ApplyDecisionCreate || decision == ApplyDecisionRenewal,
 		QuotaBytes:        in.Command.UsageQuotaBytes,
 	}
+	if in.Entitlement != nil && EffectiveLifecycle(in.Entitlement) == CustomerLifecycleDeleted {
+		plan.CreateEntitlement = false
+		plan.ReactivateEntitlement = true
+	}
+	lifecycle := EffectiveLifecycle(in.Entitlement)
+	if plan.ReactivateEntitlement {
+		lifecycle = CustomerLifecycleActive
+	}
 
 	// Шаг 1. Состояние квоты, каким оно станет после этой транзакции. Именно оно,
 	// а не сохранённое, определяет desired state: понижение и повышение лимита
@@ -149,13 +160,13 @@ func PlanApply(in ApplyInput) (ApplyPlan, error) {
 	setPlan := PlanAccessSet(in.Topology, in.Accesses)
 
 	for _, spec := range setPlan.Create {
-		spec.DesiredState = DesiredStateFor(in.Now, plan.ExpiresAt, exhausted[spec.EntryNodeID])
+		spec.DesiredState = DesiredStateForLifecycle(lifecycle, in.Now, plan.ExpiresAt, exhausted[spec.EntryNodeID])
 		spec.DesiredVersion = 1
 		plan.CreateAccesses = append(plan.CreateAccesses, spec)
 	}
 
 	// Шаг 3. Пересчёт desired state уже существующих согласованных access.
-	plan.DesiredChanges = PlanDesiredChanges(setPlan.InSync, in.Now, plan.ExpiresAt, exhausted)
+	plan.DesiredChanges = PlanDesiredChangesForLifecycle(setPlan.InSync, lifecycle, in.Now, plan.ExpiresAt, exhausted)
 
 	// Шаг 4. Ноды, состав юзеров которых меняется.
 	plan.TouchedNodes = touchedNodes(plan.CreateAccesses, plan.DesiredChanges)

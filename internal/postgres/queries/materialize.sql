@@ -40,6 +40,7 @@ RETURNING revision, coalesce(cursor->>'customer_id', '')::text AS cursor_custome
 SELECT customer_id
 FROM customer_entitlements
 WHERE customer_id > @after_customer_id::text
+  AND lifecycle_state IN ('ACTIVE', 'BLOCKED')
 ORDER BY customer_id
 LIMIT 1;
 

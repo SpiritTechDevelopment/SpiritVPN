@@ -53,9 +53,14 @@ func (t *expiryTx) LockNextDueCustomer(ctx context.Context) (*app.ExpiredCustome
 		return nil, err
 	}
 
-	entitlement, err := entitlementFromRow(row)
+	lastCommand, err := uint64FromNumeric(row.LastCommandNumber)
 	if err != nil {
 		return nil, err
+	}
+	entitlement := domain.Entitlement{
+		FleetID: valueOrZero(row.VpnFleetID), ExpiresAt: valueOrZero(row.ExpiresAt),
+		DesiredVersion: row.DesiredVersion, LastCommandNumber: lastCommand,
+		Lifecycle: domain.CustomerLifecycleActive,
 	}
 	return &app.ExpiredCustomer{CustomerID: row.CustomerID, Entitlement: entitlement}, nil
 }

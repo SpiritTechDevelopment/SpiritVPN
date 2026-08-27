@@ -121,6 +121,7 @@ const nextCustomerAfter = `-- name: NextCustomerAfter :one
 SELECT customer_id
 FROM customer_entitlements
 WHERE customer_id > $1::text
+  AND lifecycle_state IN ('ACTIVE', 'BLOCKED')
 ORDER BY customer_id
 LIMIT 1
 `

@@ -32,13 +32,13 @@ Node-agent разрабатывается в отдельном репозито
 
 ## Внешний API
 
-Backend принимает четыре gRPC-метода и сам вызывает пять у агентов. Всё под mTLS.
+Backend принимает шесть gRPC-методов и сам вызывает пять у агентов. Всё под mTLS.
 
 Входящие — два сервиса:
 
 | сервис | методы | вызывает |
 |---|---|---|
-| `CustomerAccessService` | `ApplyCustomerAccess`, `GetCustomerAccessLinks`, `ListAvailableNodes` | Customer Service |
+| `CustomerAccessService` | `ApplyCustomerAccess`, `GetCustomerAccessLinks`, `ListAvailableNodes`, `SetCustomerAccessState`, `DeleteCustomerAccess` | Customer Service / admin |
 | `ManifestService` | `ApplyFleetManifest` | infrastructure pipeline |
 
 Исходящие — `NodeAgentService` на каждой ноде:
@@ -72,8 +72,9 @@ message ApplyCustomerAccessRequest {
 message ApplyCustomerAccessResponse {}
 ```
 
-* `command_number` даёт идемпотентность и порядок: команда с номером не больше
-  сохранённого поглощается без последствий, ответ OK;
+* `command_number` общий для Apply, административного состояния и удаления:
+  меньший номер поглощается, равный с тем же payload является повтором, а равный
+  с другим payload возвращает конфликт;
 * `expires_at_epoch_sec` обязан расти; меньшее значение — отказ;
 * квота применяется к каждой ноде отдельно; Customer Service переводит гигабайты в байты
   до вызова;
@@ -92,7 +93,7 @@ message CustomerAccessLink {
   AccessKind      kind  = 1;  // ACCESS_KIND_FREEDOM | ACCESS_KIND_BRIDGE
   AccessLinkState state = 2;  // PENDING | READY | BLOCKED | FAILED
 
-  // Только для BLOCKED: TIME_EXPIRED или TRAFFIC_QUOTA_EXHAUSTED.
+  // Только для BLOCKED: expiry, quota, административный блок или удаление.
   // Если сработало и то и другое — возвращается TIME_EXPIRED.
   optional AccessBlockReason block_reason = 3;
 
@@ -148,6 +149,23 @@ message AvailableNode {
 `node_id`. Доступность node-agent, customer access, квоты и BRIDGE-связи на
 каталог не влияют.
 
+### Административная блокировка и удаление
+
+`SetCustomerAccessState` переводит customer между `ACTIVE` и `BLOCKED`.
+Блокировка сохраняет fleet, срок, квоту и credentials, но атомарно переводит
+все поколения access в `ABSENT`. На ноды актуального manifest ставятся
+`ENSURE_ABSENT`; для исчезнувших нод доставлять команду некуда, поэтому их
+исторические access закрываются логически. Продление через `ApplyCustomerAccess`
+во время блокировки обновляет подписку, но не снимает блокировку.
+
+`DeleteCustomerAccess` переводит customer в `DELETING` и возвращает `PENDING`,
+пока ноды не подтвердили отсутствие. Worker `finalize-deletion` после короткого
+окна позднего traffic удаляет access, agent operations, quota periods и usage,
+оставляя только `DELETED` tombstone с ordering token. Повторный
+`ApplyCustomerAccess` с большим `command_number` создаёт доступ заново с новыми
+`client_uuid` и `accounting_id`; старые ссылки не оживают. Append-only audit и
+ordering tombstone не относятся к удаляемым operational-данным.
+
 ### ApplyFleetManifest
 
 Полный снимок топологии, применяется атомарно. Частичных манифестов не бывает.
@@ -202,13 +220,14 @@ message ApplyFleetManifestResponse {
 
 ## Воркеры
 
-Семь видов, все в одном процессе с gRPC-сервером:
+Восемь видов, все в одном процессе с gRPC-сервером:
 
 | воркер | что делает |
 |---|---|
 | `materialize` | раскладывает принятый манифест по customer: заводит новые access, ретайрит исчезнувшие цели |
 | `dispatch` | доставляет агентам добавление и удаление пользователей, пишет исход, повторяет с backoff |
 | `expiry` | прекращает доступ, когда вышел срок |
+| `finalize-deletion` | физически очищает сошедшийся `DELETING` customer и оставляет tombstone |
 | `usage` | забирает у агентов накопленный трафик и начисляет в текущий период квоты |
 | `reconcile` | сверяет фактический инвентарь Xray с желаемым и чинит расхождения |
 | `prune-usage-dedup` | чистит реестр дедупликации usage-батчей |
@@ -240,10 +259,11 @@ message ApplyFleetManifestResponse {
 разбирает и не помещает ни в Xray, ни в логи, ни в метрики. Один customer
 привязан к одному флоту, сменить флот в v1 нельзя.
 
-Состояние customer — одна строка `customer_entitlements`: его флот, `expires_at` и
-номер последней применённой команды. Все изменения сериализуются блокировкой этой
-строки: конкурентные команды по одному customer выстраиваются в очередь, по разным
-— идут параллельно.
+Состояние customer — одна строка `customer_entitlements`: lifecycle, флот,
+`expires_at`, номер и fingerprint последней команды. Все изменения сериализуются
+блокировкой этой строки: конкурентные команды по одному customer выстраиваются в
+очередь, по разным — идут параллельно. После полного удаления эта же строка
+остаётся минимальным tombstone, необходимым для отсечения запоздавших команд.
 
 ### Флот, ноды и связи
 
@@ -444,6 +464,7 @@ export SPIRIT_AGENT_TLS_KEY_FILE=dev/certs/product-svc.key
 export SPIRIT_AGENT_TLS_CA_FILE=dev/certs/ca.crt
 export SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER=product-svc
 export SPIRIT_ROLE_CUSTOMER_ACCESS_READER=product-svc
+export SPIRIT_ROLE_CUSTOMER_ACCESS_ADMIN=admin-svc
 export SPIRIT_ROLE_MANIFEST_WRITER=product-svc
 
 go run ./cmd/spiritvpnd
@@ -479,6 +500,7 @@ go run ./cmd/spiritvpnd
 | `SPIRIT_AGENT_TLS_CA_FILE` | — | CA инфраструктуры, которым подписаны сертификаты агентов |
 | `SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER` | — | идентичности, которым разрешён `ApplyCustomerAccess` |
 | `SPIRIT_ROLE_CUSTOMER_ACCESS_READER` | — | идентичности, которым разрешён `GetCustomerAccessLinks` |
+| `SPIRIT_ROLE_CUSTOMER_ACCESS_ADMIN` | — | идентичности для административной блокировки и удаления |
 | `SPIRIT_ROLE_MANIFEST_WRITER` | — | идентичности, которым разрешён `ApplyFleetManifest` |
 | `SPIRIT_CLIENT_UUID_KEY` | — | ключ шифрования `client_uuid`, формат `<key_id>:<base64 32 байта>` |
 | `SPIRIT_CLIENT_UUID_KEY_FILE` | — | путь к файлу с тем же значением; имеет приоритет над переменной выше |
@@ -491,7 +513,7 @@ go run ./cmd/spiritvpnd
 Роли независимы: writer не подразумевает reader, потому что чтение отдаёт
 VLESS-ссылку вместе с `client_uuid`, то есть сами credentials. Сервису, которому
 нужно и то и другое, идентичность прописывается в оба списка. Списки —
-через запятую. Если все три пусты, старт падает: такой процесс отвечал бы
+через запятую. Если все четыре пусты, старт падает: такой процесс отвечал бы
 `PERMISSION_DENIED` на каждый вызов, и заметить это можно было бы только по
 жалобам вызывающего.
 

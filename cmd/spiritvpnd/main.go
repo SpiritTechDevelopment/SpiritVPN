@@ -34,6 +34,7 @@ import (
 	"github.com/RomanRyabinkin/SpiritVPN/internal/app"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/config"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/crypto"
+	"github.com/RomanRyabinkin/SpiritVPN/internal/grpcsvc"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/metrics"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/migrations"
 	"github.com/RomanRyabinkin/SpiritVPN/internal/nodeagent"
@@ -115,6 +116,9 @@ func run() error {
 	linksUC := app.NewGetCustomerAccessLinks(repository, sealer)
 	availableNodesUC := app.NewListAvailableNodes(repository)
 	manifestUC := app.NewApplyFleetManifest(repository)
+	adminStateUC := app.NewSetCustomerAccessState(repository, crypto.NewGenerator())
+	deleteUC := app.NewDeleteCustomerAccess(repository, crypto.NewGenerator(), deletionUsageGrace)
+	finalizeDeletionUC := app.NewFinalizeCustomerDeletions(repository)
 
 	owner := workerOwner()
 	materializeUC := app.NewMaterializeManifest(
@@ -150,7 +154,8 @@ func run() error {
 		registry.WrapUsageRetention(repository), usageDedupRetention, usageDedupBatchSize)
 	statsUC := registry.StatsWorker(repository)
 
-	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, availableNodesUC, manifestUC)
+	grpcServer, err := newGRPCServer(cfg.GRPC, logger, applyUC, linksUC, availableNodesUC, manifestUC,
+		grpcsvc.CustomerAccessAdministration{State: adminStateUC, Delete: deleteUC})
 	if err != nil {
 		return err
 	}
@@ -178,6 +183,7 @@ func run() error {
 	// истекающих customer в секунду. Координация у него — FOR UPDATE SKIP LOCKED
 	// на строке customer, ни джобы, ни lease нет.
 	start("expiry", expiryUC, expiryIdleInterval, expiryErrorBackoff)
+	start("finalize-deletion", finalizeDeletionUC, deletionIdleInterval, deletionErrorBackoff)
 
 	// Диспетчер параллелен, в отличие от воркера материализации: там шаг двигает
 	// общий курсор одной джобы, здесь каждый шаг берёт свою операцию под SKIP

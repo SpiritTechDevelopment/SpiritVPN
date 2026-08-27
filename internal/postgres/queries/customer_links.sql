@@ -14,7 +14,8 @@
 -- отдельный, а не объединён с выборкой ссылок.
 -- name: GetCustomerLinksHeader :one
 SELECT now()::timestamptz AS tx_now,
-       expires_at
+       expires_at,
+       lifecycle_state
 FROM customer_entitlements
 WHERE customer_id = $1;
 

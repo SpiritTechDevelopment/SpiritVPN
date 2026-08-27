@@ -42,13 +42,17 @@ type AuditEvent struct {
 }
 
 type CustomerEntitlement struct {
-	CustomerID        string
-	VpnFleetID        int64
-	ExpiresAt         time.Time
-	DesiredVersion    int64
-	LastCommandNumber pgtype.Numeric
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	CustomerID             string
+	VpnFleetID             *int64
+	ExpiresAt              *time.Time
+	DesiredVersion         int64
+	LastCommandNumber      pgtype.Numeric
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	LifecycleState         string
+	LastCommandFingerprint []byte
+	DeleteNotBefore        *time.Time
+	DeletedAt              *time.Time
 }
 
 type ManifestMaterializationJob struct {

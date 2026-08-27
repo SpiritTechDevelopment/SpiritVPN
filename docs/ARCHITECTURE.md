@@ -102,7 +102,7 @@ access ушла вперёд той версии, под которую опер
 
 ## Фоновые воркеры
 
-Семь воркеров, у всех одна форма: `ProcessNext(ctx) (progressed bool, err error)`.
+Восемь воркеров, у всех одна форма: `ProcessNext(ctx) (progressed bool, err error)`.
 Цикл в `cmd/spiritvpnd/worker.go` при `progressed` идёт на следующий шаг без паузы,
 на пустом проходе спит `idle`, на ошибке пишет в лог и спит 15 секунд.
 
@@ -114,6 +114,7 @@ access ушла вперёд той версии, под которую опер
 |---|---|---|---|
 | `materialize` | 1 | 5 с | `ClaimMaterializationJob`, lease 60 с |
 | `expiry` | 1 | 5 с | `LockNextDueExpiredCustomer`, `FOR UPDATE SKIP LOCKED` |
+| `finalize-deletion` | 1 | 5 с | `LockNextDeletionCandidate`, `FOR UPDATE SKIP LOCKED` |
 | `dispatch` | 8 | 1 с | `LeaseNextOperation`, lease 30 с |
 | `usage` | 8 | 3 с | `ClaimUsageNode`, lease 5 мин, не чаще 15 с на ноду |
 | `reconcile` | 1 | 15 с | `ClaimNodeForReconcile`, lease 5 мин, не чаще 5 мин на ноду |
@@ -143,7 +144,7 @@ access ушла вперёд той версии, под которую опер
 | 1 | `domain.ValidateApplyCommand` | до транзакции |
 | 2 | `tx.Now` | `SELECT now()` |
 | 3 | `tx.LockEntitlement` | `LockCustomerEntitlement`, `FOR UPDATE`; `nil` = новый customer |
-| 4 | `domain.IsStaleCommand` | `command_number <= last_command_number` → `return nil`, пустой commit |
+| 4 | `domain.ClassifyCommand` | меньший номер → stale, равный fingerprint → replay, равный номер с другим payload → conflict |
 | 5 | `tx.FleetIsCurrent` | флот присутствует в последнем принятом манифесте |
 | 6 | `LockOpenQuotaPeriod`, `LockNodeQuotaUsage`, `LoadTopology`, `LoadAccesses` | первые два `FOR UPDATE`, вторые два без locks |
 | 7 | `PlanApply` → `WritePlan` → `AppendAudit` | |
@@ -159,7 +160,8 @@ access `NewAccessID`, `NewAccountingID`, `NewClientUUID` и `Seal`. Операц
 
 `applyTx.WritePlan`, `postgres/apply.go`, шесть шагов:
 
-* `writeEntitlement`: `InsertCustomerEntitlement` либо `UpdateCustomerEntitlement`.
+* `writeEntitlement`: `InsertCustomerEntitlement`, `UpdateCustomerEntitlement`
+  либо реактивация `DELETED` tombstone.
   `last_command_number` двигается всегда, включая пустой план;
 * `writeQuotaPeriod`: при create и renewal `CloseOpenQuotaPeriod` и
   `InsertQuotaPeriod` одним timestamp, при смене лимита `UpdateQuotaPeriodQuota`;
@@ -174,6 +176,35 @@ access `NewAccessID`, `NewAccountingID`, `NewClientUUID` и `Seal`. Операц
 
 После commit юзера на ноде ещё нет. Пустой ответ означает, что desired state и
 операции зафиксированы в базе.
+
+## Административный lifecycle
+
+`customer_entitlements.lifecycle_state` образует автомат
+`ACTIVE ↔ BLOCKED → DELETING → DELETED`. Все три командных RPC используют одну
+корневую row lock, один `last_command_number` и fingerprint, поэтому Apply и
+Delete не могут обойти порядок друг друга.
+
+`SetCustomerAccessState(BLOCKED)` и `DeleteCustomerAccess` строят чистый
+`PlanForceAbsent`, повышают `desired_version`, supersede'ят старые ожидающие
+операции и атомарно кладут `ENSURE_ABSENT` в outbox для нод актуального manifest.
+В план входят также retired-поколения: на исчезнувших нодах они становятся
+`APPLIED` без недоставляемой операции. Уже `ABSENT` access также получает новую
+версию: на живой ноде административная команда подтверждает физическое
+отсутствие, а не доверяет только сохранённому флагу.
+
+Delete возвращает `PENDING`. `FinalizeCustomerDeletions` очищает одного
+сошедшегося customer в явном FK-порядке и превращает корневую строку в tombstone.
+В tombstone остаются ordering token и `customer_id`; следующий Apply с большим
+номером атомарно создаёт новый quota period и новые credentials.
+
+### Fence dispatcher/reconcile
+
+Incremental mutating RPC и `ReconcileUsers` не выполняются одновременно на одной
+ноде. `LeaseNextOperation` сначала блокирует строку `vpn_nodes` и проверяет
+отсутствие reconcile lease; `ClaimNodeForReconcile` под той же row lock проверяет
+отсутствие `IN_FLIGHT` operation. Если старый reconcile начался раньше Delete,
+новая `ENSURE_ABSENT` выполнится строго после него и останется последней
+физической операцией.
 
 ## Выдача ссылок
 

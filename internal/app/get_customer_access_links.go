@@ -65,6 +65,7 @@ func (uc *GetCustomerAccessLinks) Execute(ctx context.Context, customerID string
 // секрет в память не нужно.
 func (uc *GetCustomerAccessLinks) link(snapshot CustomerLinks, access AccessLinkSource) CustomerAccessLink {
 	status := domain.LinkStatusOf(domain.LinkInput{
+		Lifecycle:      snapshot.Lifecycle,
 		Now:            snapshot.Now,
 		ExpiresAt:      snapshot.ExpiresAt,
 		QuotaExhausted: access.QuotaExhausted,

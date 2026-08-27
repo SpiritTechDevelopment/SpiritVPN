@@ -23,6 +23,14 @@ service CustomerAccessService {
   // Возвращает ноды актуального manifest, доступные для продажи, сгруппированные
   // по fleet. Не зависит от customer и не обращается к node-agent.
   rpc ListAvailableNodes(ListAvailableNodesRequest) returns (ListAvailableNodesResponse);
+
+  // Административно блокирует или разблокирует доступ. Успех означает durable
+  // desired state; доставка удаления/добавления на ноды асинхронна.
+  rpc SetCustomerAccessState(SetCustomerAccessStateRequest) returns (SetCustomerAccessStateResponse);
+
+  // Начинает полное удаление customer. Пока агенты актуальных нод не подтвердили
+  // отсутствие и данные не очищены, возвращает PENDING. Повтор безопасен.
+  rpc DeleteCustomerAccess(DeleteCustomerAccessRequest) returns (DeleteCustomerAccessResponse);
 }
 
 message ApplyCustomerAccessRequest {
@@ -44,8 +52,8 @@ message ApplyCustomerAccessRequest {
   int64 expires_at_epoch_sec = 4;
 
   // Монотонно возрастающий по customer счётчик команд product. Должен быть > 0.
-  // Команда с command_number <= last_command_number — поглощаемый реордер/повтор:
-  // без side effects, ответ OK.
+  // Меньший command_number поглощается как reorder. Равный номер является
+  // повтором только при том же RPC и payload; иначе возвращается ALREADY_EXISTS.
   uint64 command_number = 5;
 }
 
@@ -74,14 +82,16 @@ enum AccessBlockReason {
   ACCESS_BLOCK_REASON_UNSPECIFIED = 0;
   ACCESS_BLOCK_REASON_TIME_EXPIRED = 1;
   ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED = 2;
+  ACCESS_BLOCK_REASON_ADMINISTRATIVE_BLOCK = 3;
+  ACCESS_BLOCK_REASON_DELETION_IN_PROGRESS = 4;
 }
 
 message CustomerAccessLink {
   AccessKind kind = 1;
   AccessLinkState state = 2;
 
-  // Присутствует (и обязателен) только для BLOCKED. Если применимы и expiry, и
-  // quota — возвращается TIME_EXPIRED.
+  // Присутствует (и обязателен) только для BLOCKED. Lifecycle имеет приоритет
+  // над expiry/quota; между expiry и quota возвращается TIME_EXPIRED.
   optional AccessBlockReason block_reason = 3;
 
   // Присутствует только для READY. Строится на лету из расшифрованного client_uuid
@@ -123,4 +133,33 @@ message AvailableNode {
 
   // Человекочитаемое ManifestNode.display_name.
   string display_name = 2;
+}
+
+enum AdministrativeAccessState {
+  ADMINISTRATIVE_ACCESS_STATE_UNSPECIFIED = 0;
+  ADMINISTRATIVE_ACCESS_STATE_ACTIVE = 1;
+  ADMINISTRATIVE_ACCESS_STATE_BLOCKED = 2;
+}
+
+message SetCustomerAccessStateRequest {
+  string customer_id = 1;
+  AdministrativeAccessState state = 2;
+  uint64 command_number = 3;
+}
+
+message SetCustomerAccessStateResponse {}
+
+enum CustomerDeletionState {
+  CUSTOMER_DELETION_STATE_UNSPECIFIED = 0;
+  CUSTOMER_DELETION_STATE_PENDING = 1;
+  CUSTOMER_DELETION_STATE_COMPLETED = 2;
+}
+
+message DeleteCustomerAccessRequest {
+  string customer_id = 1;
+  uint64 command_number = 2;
+}
+
+message DeleteCustomerAccessResponse {
+  CustomerDeletionState state = 1;
 }

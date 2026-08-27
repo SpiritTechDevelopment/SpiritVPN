@@ -27,6 +27,8 @@ const (
 	CustomerAccessService_ApplyCustomerAccess_FullMethodName    = "/spiritvpn.customer.v1.CustomerAccessService/ApplyCustomerAccess"
 	CustomerAccessService_GetCustomerAccessLinks_FullMethodName = "/spiritvpn.customer.v1.CustomerAccessService/GetCustomerAccessLinks"
 	CustomerAccessService_ListAvailableNodes_FullMethodName     = "/spiritvpn.customer.v1.CustomerAccessService/ListAvailableNodes"
+	CustomerAccessService_SetCustomerAccessState_FullMethodName = "/spiritvpn.customer.v1.CustomerAccessService/SetCustomerAccessState"
+	CustomerAccessService_DeleteCustomerAccess_FullMethodName   = "/spiritvpn.customer.v1.CustomerAccessService/DeleteCustomerAccess"
 )
 
 // CustomerAccessServiceClient is the client API for CustomerAccessService service.
@@ -48,6 +50,12 @@ type CustomerAccessServiceClient interface {
 	// Возвращает ноды актуального manifest, доступные для продажи, сгруппированные
 	// по fleet. Не зависит от customer и не обращается к node-agent.
 	ListAvailableNodes(ctx context.Context, in *ListAvailableNodesRequest, opts ...grpc.CallOption) (*ListAvailableNodesResponse, error)
+	// Административно блокирует или разблокирует доступ. Успех означает durable
+	// desired state; доставка удаления/добавления на ноды асинхронна.
+	SetCustomerAccessState(ctx context.Context, in *SetCustomerAccessStateRequest, opts ...grpc.CallOption) (*SetCustomerAccessStateResponse, error)
+	// Начинает полное удаление customer. Пока агенты актуальных нод не подтвердили
+	// отсутствие и данные не очищены, возвращает PENDING. Повтор безопасен.
+	DeleteCustomerAccess(ctx context.Context, in *DeleteCustomerAccessRequest, opts ...grpc.CallOption) (*DeleteCustomerAccessResponse, error)
 }
 
 type customerAccessServiceClient struct {
@@ -88,6 +96,26 @@ func (c *customerAccessServiceClient) ListAvailableNodes(ctx context.Context, in
 	return out, nil
 }
 
+func (c *customerAccessServiceClient) SetCustomerAccessState(ctx context.Context, in *SetCustomerAccessStateRequest, opts ...grpc.CallOption) (*SetCustomerAccessStateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetCustomerAccessStateResponse)
+	err := c.cc.Invoke(ctx, CustomerAccessService_SetCustomerAccessState_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *customerAccessServiceClient) DeleteCustomerAccess(ctx context.Context, in *DeleteCustomerAccessRequest, opts ...grpc.CallOption) (*DeleteCustomerAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteCustomerAccessResponse)
+	err := c.cc.Invoke(ctx, CustomerAccessService_DeleteCustomerAccess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CustomerAccessServiceServer is the server API for CustomerAccessService service.
 // All implementations must embed UnimplementedCustomerAccessServiceServer
 // for forward compatibility.
@@ -107,6 +135,12 @@ type CustomerAccessServiceServer interface {
 	// Возвращает ноды актуального manifest, доступные для продажи, сгруппированные
 	// по fleet. Не зависит от customer и не обращается к node-agent.
 	ListAvailableNodes(context.Context, *ListAvailableNodesRequest) (*ListAvailableNodesResponse, error)
+	// Административно блокирует или разблокирует доступ. Успех означает durable
+	// desired state; доставка удаления/добавления на ноды асинхронна.
+	SetCustomerAccessState(context.Context, *SetCustomerAccessStateRequest) (*SetCustomerAccessStateResponse, error)
+	// Начинает полное удаление customer. Пока агенты актуальных нод не подтвердили
+	// отсутствие и данные не очищены, возвращает PENDING. Повтор безопасен.
+	DeleteCustomerAccess(context.Context, *DeleteCustomerAccessRequest) (*DeleteCustomerAccessResponse, error)
 	mustEmbedUnimplementedCustomerAccessServiceServer()
 }
 
@@ -125,6 +159,12 @@ func (UnimplementedCustomerAccessServiceServer) GetCustomerAccessLinks(context.C
 }
 func (UnimplementedCustomerAccessServiceServer) ListAvailableNodes(context.Context, *ListAvailableNodesRequest) (*ListAvailableNodesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAvailableNodes not implemented")
+}
+func (UnimplementedCustomerAccessServiceServer) SetCustomerAccessState(context.Context, *SetCustomerAccessStateRequest) (*SetCustomerAccessStateResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCustomerAccessState not implemented")
+}
+func (UnimplementedCustomerAccessServiceServer) DeleteCustomerAccess(context.Context, *DeleteCustomerAccessRequest) (*DeleteCustomerAccessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteCustomerAccess not implemented")
 }
 func (UnimplementedCustomerAccessServiceServer) mustEmbedUnimplementedCustomerAccessServiceServer() {}
 func (UnimplementedCustomerAccessServiceServer) testEmbeddedByValue()                               {}
@@ -201,6 +241,42 @@ func _CustomerAccessService_ListAvailableNodes_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CustomerAccessService_SetCustomerAccessState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCustomerAccessStateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CustomerAccessServiceServer).SetCustomerAccessState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CustomerAccessService_SetCustomerAccessState_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CustomerAccessServiceServer).SetCustomerAccessState(ctx, req.(*SetCustomerAccessStateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CustomerAccessService_DeleteCustomerAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCustomerAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CustomerAccessServiceServer).DeleteCustomerAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CustomerAccessService_DeleteCustomerAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CustomerAccessServiceServer).DeleteCustomerAccess(ctx, req.(*DeleteCustomerAccessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CustomerAccessService_ServiceDesc is the grpc.ServiceDesc for CustomerAccessService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -219,6 +295,14 @@ var CustomerAccessService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAvailableNodes",
 			Handler:    _CustomerAccessService_ListAvailableNodes_Handler,
+		},
+		{
+			MethodName: "SetCustomerAccessState",
+			Handler:    _CustomerAccessService_SetCustomerAccessState_Handler,
+		},
+		{
+			MethodName: "DeleteCustomerAccess",
+			Handler:    _CustomerAccessService_DeleteCustomerAccess_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

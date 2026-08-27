@@ -51,6 +51,7 @@ func newGRPCServer(
 	links linksUseCase,
 	nodes availableNodesUseCase,
 	manifest manifestUseCase,
+	administration ...grpcsvc.CustomerAccessAdministration,
 ) (*grpc.Server, error) {
 	creds, err := transportCredentials(cfg)
 	if err != nil {
@@ -60,6 +61,7 @@ func newGRPCServer(
 	authorizer := grpcsvc.NewAuthorizer(map[grpcsvc.Role][]string{
 		grpcsvc.RoleCustomerAccessWriter: cfg.CustomerAccessWriters,
 		grpcsvc.RoleCustomerAccessReader: cfg.CustomerAccessReaders,
+		grpcsvc.RoleCustomerAccessAdmin:  cfg.CustomerAccessAdmins,
 		grpcsvc.RoleManifestWriter:       cfg.ManifestWriters,
 	})
 
@@ -81,7 +83,7 @@ func newGRPCServer(
 		),
 	)
 
-	customerv1.RegisterCustomerAccessServiceServer(server, grpcsvc.NewCustomerAccessServer(apply, links, nodes))
+	customerv1.RegisterCustomerAccessServiceServer(server, grpcsvc.NewCustomerAccessServer(apply, links, nodes, administration...))
 	manifestv1.RegisterManifestServiceServer(server, grpcsvc.NewManifestServer(manifest))
 
 	return server, nil

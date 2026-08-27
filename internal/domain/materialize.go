@@ -118,6 +118,10 @@ func (p MaterializationPlan) IsNoOp() bool {
 //     со всеми: исчезнувшая цель ретайрится независимо от срока
 //     (ограничение «только неистёкшим» касается лишь создания).
 func PlanMaterialize(in MaterializationInput) (MaterializationPlan, error) {
+	lifecycle := EffectiveLifecycle(&in.Entitlement)
+	if lifecycle == CustomerLifecycleDeleting || lifecycle == CustomerLifecycleDeleted {
+		return MaterializationPlan{}, nil
+	}
 	if in.OpenPeriod == nil {
 		return MaterializationPlan{}, ErrOpenPeriodMissing
 	}
@@ -141,14 +145,14 @@ func PlanMaterialize(in MaterializationInput) (MaterializationPlan, error) {
 	// будут доставлены.
 	if !expired {
 		for _, spec := range setPlan.Create {
-			spec.DesiredState = DesiredStateFor(in.Now, in.Entitlement.ExpiresAt, exhausted[spec.EntryNodeID])
+			spec.DesiredState = DesiredStateForLifecycle(lifecycle, in.Now, in.Entitlement.ExpiresAt, exhausted[spec.EntryNodeID])
 			spec.DesiredVersion = 1
 			plan.CreateAccesses = append(plan.CreateAccesses, spec)
 		}
 	}
 
-	plan.DesiredChanges = PlanDesiredChanges(setPlan.InSync, in.Now, in.Entitlement.ExpiresAt, exhausted)
-	plan.Repoints = planRepoints(setPlan.Repoint, in.Now, in.Entitlement.ExpiresAt, exhausted)
+	plan.DesiredChanges = PlanDesiredChangesForLifecycle(setPlan.InSync, lifecycle, in.Now, in.Entitlement.ExpiresAt, exhausted)
+	plan.Repoints = planRepoints(setPlan.Repoint, lifecycle, in.Now, in.Entitlement.ExpiresAt, exhausted)
 	plan.Retire = planRetire(setPlan.Retire, live)
 
 	plan.TouchedNodes = materializedTouchedNodes(plan)
@@ -195,6 +199,7 @@ func missingUsageNodes(in MaterializationInput, expired bool) []NodeID {
 // в то, что доставляется агенту, значит меняется сам desired-кортеж.
 func planRepoints(
 	specs []RepointSpec,
+	lifecycle CustomerLifecycle,
 	now, expiresAt time.Time,
 	exhausted map[NodeID]bool,
 ) []RepointChange {
@@ -208,7 +213,7 @@ func planRepoints(
 			AccessID:       spec.Access.ID,
 			EntryNodeID:    spec.Access.EntryNodeID,
 			NewEgressKey:   spec.NewEgressKey,
-			DesiredState:   DesiredStateFor(now, expiresAt, exhausted[spec.Access.EntryNodeID]),
+			DesiredState:   DesiredStateForLifecycle(lifecycle, now, expiresAt, exhausted[spec.Access.EntryNodeID]),
 			DesiredVersion: spec.Access.DesiredVersion + 1,
 		})
 	}

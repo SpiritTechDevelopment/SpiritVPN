@@ -28,6 +28,8 @@ const (
 	applyMethod          = customerv1.CustomerAccessService_ApplyCustomerAccess_FullMethodName
 	linksMethod          = customerv1.CustomerAccessService_GetCustomerAccessLinks_FullMethodName
 	availableNodesMethod = customerv1.CustomerAccessService_ListAvailableNodes_FullMethodName
+	setStateMethod       = customerv1.CustomerAccessService_SetCustomerAccessState_FullMethodName
+	deleteAccessMethod   = customerv1.CustomerAccessService_DeleteCustomerAccess_FullMethodName
 )
 
 // okHandler — обработчик, который просто фиксирует, что до него дошли.
@@ -272,6 +274,23 @@ func TestAuthorizeGrantsBothRolesWhenListedTwice(t *testing.T) {
 			&grpc.UnaryServerInfo{FullMethod: method}, okHandler(nil)); err != nil {
 			t.Errorf("метод %s: неожиданный отказ %v", method, err)
 		}
+	}
+}
+
+func TestAuthorizeKeepsAdministrativeRoleSeparate(t *testing.T) {
+	authorizer := NewAuthorizer(map[Role][]string{
+		RoleCustomerAccessAdmin: {"admin-svc"},
+	})
+	for _, method := range []string{setStateMethod, deleteAccessMethod} {
+		if _, err := authorizer.UnaryInterceptor()(tlsContext(certDNS("admin-svc")), nil,
+			&grpc.UnaryServerInfo{FullMethod: method}, okHandler(nil)); err != nil {
+			t.Fatalf("admin method %s: %v", method, err)
+		}
+	}
+	_, err := authorizer.UnaryInterceptor()(tlsContext(certDNS("admin-svc")), nil,
+		&grpc.UnaryServerInfo{FullMethod: applyMethod}, okHandler(nil))
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Apply code = %s", status.Code(err))
 	}
 }
 

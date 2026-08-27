@@ -54,6 +54,7 @@ docker build --target spiritvpnd -t spiritvpn-spiritvpnd:<тег> .
 | `SPIRIT_AGENT_TLS_CA_FILE` | обязательна | путь к CA агентов |
 | `SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER` | пусто | идентичности для `ApplyCustomerAccess` |
 | `SPIRIT_ROLE_CUSTOMER_ACCESS_READER` | пусто | идентичности для `GetCustomerAccessLinks` |
+| `SPIRIT_ROLE_CUSTOMER_ACCESS_ADMIN` | пусто | идентичности для `SetCustomerAccessState` и `DeleteCustomerAccess` |
 | `SPIRIT_ROLE_MANIFEST_WRITER` | пусто | идентичности для `ApplyFleetManifest` |
 | `SPIRIT_CLIENT_UUID_KEY` | обязательна | `<key_id>:<base64 32 байта>` |
 
@@ -64,8 +65,8 @@ docker build --target spiritvpnd -t spiritvpn-spiritvpnd:<тег> .
 останавливается на первой. Дословные тексты и полная таблица шагов инициализации
 собраны в разделе «Старт и остановка» документа [OPERATIONS.md](OPERATIONS.md).
 
-Одно правило не выводится из таблицы построчно. Три переменные ролей помечены как
-необязательные каждая, но пустыми одновременно быть не могут: процесс с тремя
+Одно правило не выводится из таблицы построчно. Четыре переменные ролей помечены как
+необязательные каждая, но пустыми одновременно быть не могут: процесс с четырьмя
 пустыми списками ответил бы `PERMISSION_DENIED` на любой вызов, и разбор такой
 конфигурации падает.
 

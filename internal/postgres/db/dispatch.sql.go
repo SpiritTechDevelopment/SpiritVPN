@@ -62,8 +62,11 @@ WITH leased AS (
     WHERE operation_id = (
         SELECT o.operation_id
         FROM agent_operations o
+        JOIN vpn_nodes gate ON gate.node_id = o.node_id
         WHERE o.status IN ('PENDING', 'RETRY_WAIT')
           AND o.next_attempt_at <= now()
+          AND (gate.reconcile_lease_expires_at IS NULL
+               OR gate.reconcile_lease_expires_at < now())
           AND NOT EXISTS (
               SELECT 1
               FROM agent_operations f
@@ -71,7 +74,11 @@ WITH leased AS (
                 AND f.status = 'IN_FLIGHT'
           )
         ORDER BY o.next_attempt_at, o.operation_id
-        FOR UPDATE SKIP LOCKED
+        -- Блокируется именно строка ноды, а не operation: общий порядок
+        -- customer writers — vpn_nodes перед agent_operations. После возврата
+        -- id внешний UPDATE заблокирует operation вторым. Вторая dispatch-
+        -- горутина пропустит уже занятую ноду по SKIP LOCKED.
+        FOR UPDATE OF gate SKIP LOCKED
         LIMIT 1
     )
     RETURNING operation_id, node_id, access_id, operation_type, desired_version, attempt_count

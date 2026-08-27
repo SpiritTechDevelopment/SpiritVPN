@@ -89,6 +89,17 @@ func IsStaleCommand(cmd ApplyCommand, ent *Entitlement) bool {
 // ValidateApplyCommand, не является устаревшей по IsStaleCommand, и fleet
 // существует в текущем manifest.
 func ClassifyApply(now time.Time, cmd ApplyCommand, ent *Entitlement) (ApplyDecision, error) {
+	if ent != nil {
+		switch EffectiveLifecycle(ent) {
+		case CustomerLifecycleDeleting:
+			return 0, ErrCustomerDeleting
+		case CustomerLifecycleDeleted:
+			if !cmd.ExpiresAt.After(now) {
+				return 0, ErrExpiryNotInFuture
+			}
+			return ApplyDecisionCreate, nil
+		}
+	}
 	// Новый customer: создание требует момента окончания в будущем.
 	if ent == nil {
 		if !cmd.ExpiresAt.After(now) {

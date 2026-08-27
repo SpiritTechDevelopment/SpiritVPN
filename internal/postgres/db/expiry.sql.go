@@ -7,6 +7,9 @@ package db
 
 import (
 	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const lockNextDueExpiredCustomer = `-- name: LockNextDueExpiredCustomer :one
@@ -15,6 +18,7 @@ SELECT customer_id, vpn_fleet_id, expires_at, desired_version, last_command_numb
        created_at, updated_at
 FROM customer_entitlements e
 WHERE e.expires_at <= now()
+  AND e.lifecycle_state = 'ACTIVE'
   AND EXISTS (
       SELECT 1
       FROM vpn_accesses a
@@ -26,6 +30,16 @@ ORDER BY e.expires_at, e.customer_id
 FOR UPDATE SKIP LOCKED
 LIMIT 1
 `
+
+type LockNextDueExpiredCustomerRow struct {
+	CustomerID        string
+	VpnFleetID        *int64
+	ExpiresAt         *time.Time
+	DesiredVersion    int64
+	LastCommandNumber pgtype.Numeric
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
 
 // Expiry worker.
 //
@@ -48,9 +62,9 @@ LIMIT 1
 // Строка возвращается целиком, а не одним customer_id: expires_at из неё
 // перечитывается под locком и задаёт план, чтобы expiry не снёс доступ после уже
 // закоммиченного renewal.
-func (q *Queries) LockNextDueExpiredCustomer(ctx context.Context) (CustomerEntitlement, error) {
+func (q *Queries) LockNextDueExpiredCustomer(ctx context.Context) (LockNextDueExpiredCustomerRow, error) {
 	row := q.db.QueryRow(ctx, lockNextDueExpiredCustomer)
-	var i CustomerEntitlement
+	var i LockNextDueExpiredCustomerRow
 	err := row.Scan(
 		&i.CustomerID,
 		&i.VpnFleetID,

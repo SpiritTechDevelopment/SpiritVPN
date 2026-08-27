@@ -25,6 +25,7 @@ SELECT customer_id, vpn_fleet_id, expires_at, desired_version, last_command_numb
        created_at, updated_at
 FROM customer_entitlements e
 WHERE e.expires_at <= now()
+  AND e.lifecycle_state = 'ACTIVE'
   AND EXISTS (
       SELECT 1
       FROM vpn_accesses a

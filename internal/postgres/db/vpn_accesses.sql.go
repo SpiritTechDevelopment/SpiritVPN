@@ -128,6 +128,20 @@ func (q *Queries) ListCustomerAccesses(ctx context.Context, customerID string) (
 	return items, nil
 }
 
+const markAccessDesiredApplied = `-- name: MarkAccessDesiredApplied :exec
+UPDATE vpn_accesses
+SET apply_state = 'APPLIED'
+WHERE access_id = $1
+  AND desired_state = 'ABSENT'
+`
+
+// Lifecycle-команда на ноде вне актуального manifest: доставлять некуда, а
+// logical ABSENT считается достигнутым. Desired tuple уже записан запросом выше.
+func (q *Queries) MarkAccessDesiredApplied(ctx context.Context, accessID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markAccessDesiredApplied, accessID)
+	return err
+}
+
 const updateAccessDesiredState = `-- name: UpdateAccessDesiredState :exec
 UPDATE vpn_accesses
 SET desired_state = $2,

@@ -40,6 +40,7 @@ const (
 	EnvGRPCClientCA  = "SPIRIT_GRPC_TLS_CLIENT_CA_FILE"
 	EnvRoleWriter    = "SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER"
 	EnvRoleReader    = "SPIRIT_ROLE_CUSTOMER_ACCESS_READER"
+	EnvRoleAdmin     = "SPIRIT_ROLE_CUSTOMER_ACCESS_ADMIN"
 	EnvRoleManifest  = "SPIRIT_ROLE_MANIFEST_WRITER"
 	EnvHTTPListen    = "SPIRIT_HTTP_LISTEN"
 	EnvClientUUIDKey = "SPIRIT_CLIENT_UUID_KEY"
@@ -116,6 +117,7 @@ type GRPC struct {
 	// в обоих списках явно.
 	CustomerAccessWriters []string
 	CustomerAccessReaders []string
+	CustomerAccessAdmins  []string
 
 	// ManifestWriters — identity infrastructure CI/CD. Роль отдельная от
 	// customer-ролей: манифест переписывает топологию целиком, и продуктовому
@@ -178,6 +180,7 @@ func Load(getenv func(string) string) (Config, error) {
 	cfg.GRPC.ClientCAFile = required(getenv, EnvGRPCClientCA, &errs)
 	cfg.GRPC.CustomerAccessWriters = identities(getenv(EnvRoleWriter))
 	cfg.GRPC.CustomerAccessReaders = identities(getenv(EnvRoleReader))
+	cfg.GRPC.CustomerAccessAdmins = identities(getenv(EnvRoleAdmin))
 	cfg.GRPC.ManifestWriters = identities(getenv(EnvRoleManifest))
 
 	// Конфигурация без единой идентичности поднимает сервер, который отвечает
@@ -185,9 +188,10 @@ func Load(getenv func(string) string) (Config, error) {
 	// такое можно только по жалобам вызывающего, поэтому падаем на старте.
 	if len(cfg.GRPC.CustomerAccessWriters) == 0 &&
 		len(cfg.GRPC.CustomerAccessReaders) == 0 &&
+		len(cfg.GRPC.CustomerAccessAdmins) == 0 &&
 		len(cfg.GRPC.ManifestWriters) == 0 {
-		errs = append(errs, fmt.Errorf("%w: %s, %s и %s пусты, ни один клиент не сможет вызвать ни один метод",
-			ErrMissing, EnvRoleWriter, EnvRoleReader, EnvRoleManifest))
+		errs = append(errs, fmt.Errorf("%w: %s, %s, %s и %s пусты, ни один клиент не сможет вызвать ни один метод",
+			ErrMissing, EnvRoleWriter, EnvRoleReader, EnvRoleAdmin, EnvRoleManifest))
 	}
 
 	cfg.Agent.CertFile = required(getenv, EnvAgentCertFile, &errs)
@@ -299,6 +303,7 @@ func (c Config) LogValue() slog.Value {
 		slog.String("grpc_client_ca_file", c.GRPC.ClientCAFile),
 		slog.Int("customer_access_writers", len(c.GRPC.CustomerAccessWriters)),
 		slog.Int("customer_access_readers", len(c.GRPC.CustomerAccessReaders)),
+		slog.Int("customer_access_admins", len(c.GRPC.CustomerAccessAdmins)),
 		slog.Int("manifest_writers", len(c.GRPC.ManifestWriters)),
 		slog.String("http_listen", c.HTTP.Listen),
 		slog.String("encryption_key_id", c.ClientUUIDKey.ID()),

@@ -43,3 +43,11 @@ SET desired_state = $2,
     desired_version = $3,
     apply_state = 'PENDING'
 WHERE access_id = $1;
+
+-- Lifecycle-команда на ноде вне актуального manifest: доставлять некуда, а
+-- logical ABSENT считается достигнутым. Desired tuple уже записан запросом выше.
+-- name: MarkAccessDesiredApplied :exec
+UPDATE vpn_accesses
+SET apply_state = 'APPLIED'
+WHERE access_id = $1
+  AND desired_state = 'ABSENT';

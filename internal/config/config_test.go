@@ -81,6 +81,7 @@ func TestLoadReadsAllValues(t *testing.T) {
 	env[config.EnvGRPCListen] = "127.0.0.1:9443"
 	env[config.EnvHTTPListen] = "127.0.0.1:9090"
 	env[config.EnvRoleReader] = "product-svc,support-portal"
+	env[config.EnvRoleAdmin] = "admin-svc"
 
 	cfg := mustLoad(t, env)
 
@@ -105,6 +106,9 @@ func TestLoadReadsAllValues(t *testing.T) {
 		if cfg.GRPC.CustomerAccessReaders[i] != want {
 			t.Errorf("reader[%d] = %q, ожидался %q", i, cfg.GRPC.CustomerAccessReaders[i], want)
 		}
+	}
+	if len(cfg.GRPC.CustomerAccessAdmins) != 1 || cfg.GRPC.CustomerAccessAdmins[0] != "admin-svc" {
+		t.Errorf("admins %v, ожидался admin-svc", cfg.GRPC.CustomerAccessAdmins)
 	}
 }
 

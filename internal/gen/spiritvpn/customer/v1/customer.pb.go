@@ -136,6 +136,8 @@ const (
 	AccessBlockReason_ACCESS_BLOCK_REASON_UNSPECIFIED             AccessBlockReason = 0
 	AccessBlockReason_ACCESS_BLOCK_REASON_TIME_EXPIRED            AccessBlockReason = 1
 	AccessBlockReason_ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED AccessBlockReason = 2
+	AccessBlockReason_ACCESS_BLOCK_REASON_ADMINISTRATIVE_BLOCK    AccessBlockReason = 3
+	AccessBlockReason_ACCESS_BLOCK_REASON_DELETION_IN_PROGRESS    AccessBlockReason = 4
 )
 
 // Enum value maps for AccessBlockReason.
@@ -144,11 +146,15 @@ var (
 		0: "ACCESS_BLOCK_REASON_UNSPECIFIED",
 		1: "ACCESS_BLOCK_REASON_TIME_EXPIRED",
 		2: "ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED",
+		3: "ACCESS_BLOCK_REASON_ADMINISTRATIVE_BLOCK",
+		4: "ACCESS_BLOCK_REASON_DELETION_IN_PROGRESS",
 	}
 	AccessBlockReason_value = map[string]int32{
 		"ACCESS_BLOCK_REASON_UNSPECIFIED":             0,
 		"ACCESS_BLOCK_REASON_TIME_EXPIRED":            1,
 		"ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED": 2,
+		"ACCESS_BLOCK_REASON_ADMINISTRATIVE_BLOCK":    3,
+		"ACCESS_BLOCK_REASON_DELETION_IN_PROGRESS":    4,
 	}
 )
 
@@ -179,6 +185,104 @@ func (AccessBlockReason) EnumDescriptor() ([]byte, []int) {
 	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{2}
 }
 
+type AdministrativeAccessState int32
+
+const (
+	AdministrativeAccessState_ADMINISTRATIVE_ACCESS_STATE_UNSPECIFIED AdministrativeAccessState = 0
+	AdministrativeAccessState_ADMINISTRATIVE_ACCESS_STATE_ACTIVE      AdministrativeAccessState = 1
+	AdministrativeAccessState_ADMINISTRATIVE_ACCESS_STATE_BLOCKED     AdministrativeAccessState = 2
+)
+
+// Enum value maps for AdministrativeAccessState.
+var (
+	AdministrativeAccessState_name = map[int32]string{
+		0: "ADMINISTRATIVE_ACCESS_STATE_UNSPECIFIED",
+		1: "ADMINISTRATIVE_ACCESS_STATE_ACTIVE",
+		2: "ADMINISTRATIVE_ACCESS_STATE_BLOCKED",
+	}
+	AdministrativeAccessState_value = map[string]int32{
+		"ADMINISTRATIVE_ACCESS_STATE_UNSPECIFIED": 0,
+		"ADMINISTRATIVE_ACCESS_STATE_ACTIVE":      1,
+		"ADMINISTRATIVE_ACCESS_STATE_BLOCKED":     2,
+	}
+)
+
+func (x AdministrativeAccessState) Enum() *AdministrativeAccessState {
+	p := new(AdministrativeAccessState)
+	*p = x
+	return p
+}
+
+func (x AdministrativeAccessState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AdministrativeAccessState) Descriptor() protoreflect.EnumDescriptor {
+	return file_spiritvpn_customer_v1_customer_proto_enumTypes[3].Descriptor()
+}
+
+func (AdministrativeAccessState) Type() protoreflect.EnumType {
+	return &file_spiritvpn_customer_v1_customer_proto_enumTypes[3]
+}
+
+func (x AdministrativeAccessState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AdministrativeAccessState.Descriptor instead.
+func (AdministrativeAccessState) EnumDescriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{3}
+}
+
+type CustomerDeletionState int32
+
+const (
+	CustomerDeletionState_CUSTOMER_DELETION_STATE_UNSPECIFIED CustomerDeletionState = 0
+	CustomerDeletionState_CUSTOMER_DELETION_STATE_PENDING     CustomerDeletionState = 1
+	CustomerDeletionState_CUSTOMER_DELETION_STATE_COMPLETED   CustomerDeletionState = 2
+)
+
+// Enum value maps for CustomerDeletionState.
+var (
+	CustomerDeletionState_name = map[int32]string{
+		0: "CUSTOMER_DELETION_STATE_UNSPECIFIED",
+		1: "CUSTOMER_DELETION_STATE_PENDING",
+		2: "CUSTOMER_DELETION_STATE_COMPLETED",
+	}
+	CustomerDeletionState_value = map[string]int32{
+		"CUSTOMER_DELETION_STATE_UNSPECIFIED": 0,
+		"CUSTOMER_DELETION_STATE_PENDING":     1,
+		"CUSTOMER_DELETION_STATE_COMPLETED":   2,
+	}
+)
+
+func (x CustomerDeletionState) Enum() *CustomerDeletionState {
+	p := new(CustomerDeletionState)
+	*p = x
+	return p
+}
+
+func (x CustomerDeletionState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CustomerDeletionState) Descriptor() protoreflect.EnumDescriptor {
+	return file_spiritvpn_customer_v1_customer_proto_enumTypes[4].Descriptor()
+}
+
+func (CustomerDeletionState) Type() protoreflect.EnumType {
+	return &file_spiritvpn_customer_v1_customer_proto_enumTypes[4]
+}
+
+func (x CustomerDeletionState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CustomerDeletionState.Descriptor instead.
+func (CustomerDeletionState) EnumDescriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{4}
+}
+
 type ApplyCustomerAccessRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Непрозрачная product-идентичность, 1..256 байт; не парсится, не попадает в
@@ -195,8 +299,8 @@ type ApplyCustomerAccessRequest struct {
 	// renewal; меньшее — FAILED_PRECONDITION.
 	ExpiresAtEpochSec int64 `protobuf:"varint,4,opt,name=expires_at_epoch_sec,json=expiresAtEpochSec,proto3" json:"expires_at_epoch_sec,omitempty"`
 	// Монотонно возрастающий по customer счётчик команд product. Должен быть > 0.
-	// Команда с command_number <= last_command_number — поглощаемый реордер/повтор:
-	// без side effects, ответ OK.
+	// Меньший command_number поглощается как reorder. Равный номер является
+	// повтором только при том же RPC и payload; иначе возвращается ALREADY_EXISTS.
 	CommandNumber uint64 `protobuf:"varint,5,opt,name=command_number,json=commandNumber,proto3" json:"command_number,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -352,8 +456,8 @@ type CustomerAccessLink struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Kind  AccessKind             `protobuf:"varint,1,opt,name=kind,proto3,enum=spiritvpn.customer.v1.AccessKind" json:"kind,omitempty"`
 	State AccessLinkState        `protobuf:"varint,2,opt,name=state,proto3,enum=spiritvpn.customer.v1.AccessLinkState" json:"state,omitempty"`
-	// Присутствует (и обязателен) только для BLOCKED. Если применимы и expiry, и
-	// quota — возвращается TIME_EXPIRED.
+	// Присутствует (и обязателен) только для BLOCKED. Lifecycle имеет приоритет
+	// над expiry/quota; между expiry и quota возвращается TIME_EXPIRED.
 	BlockReason *AccessBlockReason `protobuf:"varint,3,opt,name=block_reason,json=blockReason,proto3,enum=spiritvpn.customer.v1.AccessBlockReason,oneof" json:"block_reason,omitempty"`
 	// Присутствует только для READY. Строится на лету из расшифрованного client_uuid
 	// и текущего manifest; человекочитаемое имя — внутри фрагмента URI.
@@ -675,6 +779,198 @@ func (x *AvailableNode) GetDisplayName() string {
 	return ""
 }
 
+type SetCustomerAccessStateRequest struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	CustomerId    string                    `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	State         AdministrativeAccessState `protobuf:"varint,2,opt,name=state,proto3,enum=spiritvpn.customer.v1.AdministrativeAccessState" json:"state,omitempty"`
+	CommandNumber uint64                    `protobuf:"varint,3,opt,name=command_number,json=commandNumber,proto3" json:"command_number,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCustomerAccessStateRequest) Reset() {
+	*x = SetCustomerAccessStateRequest{}
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCustomerAccessStateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCustomerAccessStateRequest) ProtoMessage() {}
+
+func (x *SetCustomerAccessStateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCustomerAccessStateRequest.ProtoReflect.Descriptor instead.
+func (*SetCustomerAccessStateRequest) Descriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SetCustomerAccessStateRequest) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
+func (x *SetCustomerAccessStateRequest) GetState() AdministrativeAccessState {
+	if x != nil {
+		return x.State
+	}
+	return AdministrativeAccessState_ADMINISTRATIVE_ACCESS_STATE_UNSPECIFIED
+}
+
+func (x *SetCustomerAccessStateRequest) GetCommandNumber() uint64 {
+	if x != nil {
+		return x.CommandNumber
+	}
+	return 0
+}
+
+type SetCustomerAccessStateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCustomerAccessStateResponse) Reset() {
+	*x = SetCustomerAccessStateResponse{}
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCustomerAccessStateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCustomerAccessStateResponse) ProtoMessage() {}
+
+func (x *SetCustomerAccessStateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCustomerAccessStateResponse.ProtoReflect.Descriptor instead.
+func (*SetCustomerAccessStateResponse) Descriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{10}
+}
+
+type DeleteCustomerAccessRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CustomerId    string                 `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	CommandNumber uint64                 `protobuf:"varint,2,opt,name=command_number,json=commandNumber,proto3" json:"command_number,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteCustomerAccessRequest) Reset() {
+	*x = DeleteCustomerAccessRequest{}
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteCustomerAccessRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteCustomerAccessRequest) ProtoMessage() {}
+
+func (x *DeleteCustomerAccessRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteCustomerAccessRequest.ProtoReflect.Descriptor instead.
+func (*DeleteCustomerAccessRequest) Descriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DeleteCustomerAccessRequest) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
+func (x *DeleteCustomerAccessRequest) GetCommandNumber() uint64 {
+	if x != nil {
+		return x.CommandNumber
+	}
+	return 0
+}
+
+type DeleteCustomerAccessResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	State         CustomerDeletionState  `protobuf:"varint,1,opt,name=state,proto3,enum=spiritvpn.customer.v1.CustomerDeletionState" json:"state,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteCustomerAccessResponse) Reset() {
+	*x = DeleteCustomerAccessResponse{}
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteCustomerAccessResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteCustomerAccessResponse) ProtoMessage() {}
+
+func (x *DeleteCustomerAccessResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_spiritvpn_customer_v1_customer_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteCustomerAccessResponse.ProtoReflect.Descriptor instead.
+func (*DeleteCustomerAccessResponse) Descriptor() ([]byte, []int) {
+	return file_spiritvpn_customer_v1_customer_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DeleteCustomerAccessResponse) GetState() CustomerDeletionState {
+	if x != nil {
+		return x.State
+	}
+	return CustomerDeletionState_CUSTOMER_DELETION_STATE_UNSPECIFIED
+}
+
 var File_spiritvpn_customer_v1_customer_proto protoreflect.FileDescriptor
 
 const file_spiritvpn_customer_v1_customer_proto_rawDesc = "" +
@@ -714,7 +1010,19 @@ const file_spiritvpn_customer_v1_customer_proto_rawDesc = "" +
 	"\x05nodes\x18\x02 \x03(\v2$.spiritvpn.customer.v1.AvailableNodeR\x05nodes\"K\n" +
 	"\rAvailableNode\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12!\n" +
-	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName*Z\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\"\xaf\x01\n" +
+	"\x1dSetCustomerAccessStateRequest\x12\x1f\n" +
+	"\vcustomer_id\x18\x01 \x01(\tR\n" +
+	"customerId\x12F\n" +
+	"\x05state\x18\x02 \x01(\x0e20.spiritvpn.customer.v1.AdministrativeAccessStateR\x05state\x12%\n" +
+	"\x0ecommand_number\x18\x03 \x01(\x04R\rcommandNumber\" \n" +
+	"\x1eSetCustomerAccessStateResponse\"e\n" +
+	"\x1bDeleteCustomerAccessRequest\x12\x1f\n" +
+	"\vcustomer_id\x18\x01 \x01(\tR\n" +
+	"customerId\x12%\n" +
+	"\x0ecommand_number\x18\x02 \x01(\x04R\rcommandNumber\"b\n" +
+	"\x1cDeleteCustomerAccessResponse\x12B\n" +
+	"\x05state\x18\x01 \x01(\x0e2,.spiritvpn.customer.v1.CustomerDeletionStateR\x05state*Z\n" +
 	"\n" +
 	"AccessKind\x12\x1b\n" +
 	"\x17ACCESS_KIND_UNSPECIFIED\x10\x00\x12\x17\n" +
@@ -725,15 +1033,27 @@ const file_spiritvpn_customer_v1_customer_proto_rawDesc = "" +
 	"\x19ACCESS_LINK_STATE_PENDING\x10\x01\x12\x1b\n" +
 	"\x17ACCESS_LINK_STATE_READY\x10\x02\x12\x1d\n" +
 	"\x19ACCESS_LINK_STATE_BLOCKED\x10\x03\x12\x1c\n" +
-	"\x18ACCESS_LINK_STATE_FAILED\x10\x04*\x8f\x01\n" +
+	"\x18ACCESS_LINK_STATE_FAILED\x10\x04*\xeb\x01\n" +
 	"\x11AccessBlockReason\x12#\n" +
 	"\x1fACCESS_BLOCK_REASON_UNSPECIFIED\x10\x00\x12$\n" +
 	" ACCESS_BLOCK_REASON_TIME_EXPIRED\x10\x01\x12/\n" +
-	"+ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED\x10\x022\x98\x03\n" +
+	"+ACCESS_BLOCK_REASON_TRAFFIC_QUOTA_EXHAUSTED\x10\x02\x12,\n" +
+	"(ACCESS_BLOCK_REASON_ADMINISTRATIVE_BLOCK\x10\x03\x12,\n" +
+	"(ACCESS_BLOCK_REASON_DELETION_IN_PROGRESS\x10\x04*\x99\x01\n" +
+	"\x19AdministrativeAccessState\x12+\n" +
+	"'ADMINISTRATIVE_ACCESS_STATE_UNSPECIFIED\x10\x00\x12&\n" +
+	"\"ADMINISTRATIVE_ACCESS_STATE_ACTIVE\x10\x01\x12'\n" +
+	"#ADMINISTRATIVE_ACCESS_STATE_BLOCKED\x10\x02*\x8c\x01\n" +
+	"\x15CustomerDeletionState\x12'\n" +
+	"#CUSTOMER_DELETION_STATE_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fCUSTOMER_DELETION_STATE_PENDING\x10\x01\x12%\n" +
+	"!CUSTOMER_DELETION_STATE_COMPLETED\x10\x022\xa1\x05\n" +
 	"\x15CustomerAccessService\x12|\n" +
 	"\x13ApplyCustomerAccess\x121.spiritvpn.customer.v1.ApplyCustomerAccessRequest\x1a2.spiritvpn.customer.v1.ApplyCustomerAccessResponse\x12\x85\x01\n" +
 	"\x16GetCustomerAccessLinks\x124.spiritvpn.customer.v1.GetCustomerAccessLinksRequest\x1a5.spiritvpn.customer.v1.GetCustomerAccessLinksResponse\x12y\n" +
-	"\x12ListAvailableNodes\x120.spiritvpn.customer.v1.ListAvailableNodesRequest\x1a1.spiritvpn.customer.v1.ListAvailableNodesResponseB\xf3\x01\n" +
+	"\x12ListAvailableNodes\x120.spiritvpn.customer.v1.ListAvailableNodesRequest\x1a1.spiritvpn.customer.v1.ListAvailableNodesResponse\x12\x85\x01\n" +
+	"\x16SetCustomerAccessState\x124.spiritvpn.customer.v1.SetCustomerAccessStateRequest\x1a5.spiritvpn.customer.v1.SetCustomerAccessStateResponse\x12\x7f\n" +
+	"\x14DeleteCustomerAccess\x122.spiritvpn.customer.v1.DeleteCustomerAccessRequest\x1a3.spiritvpn.customer.v1.DeleteCustomerAccessResponseB\xf3\x01\n" +
 	"\x19com.spiritvpn.customer.v1B\rCustomerProtoP\x01ZQgithub.com/RomanRyabinkin/SpiritVPN/internal/gen/spiritvpn/customer/v1;customerv1\xa2\x02\x03SCX\xaa\x02\x15Spiritvpn.Customer.V1\xca\x02\x15Spiritvpn\\Customer\\V1\xe2\x02!Spiritvpn\\Customer\\V1\\GPBMetadata\xea\x02\x17Spiritvpn::Customer::V1b\x06proto3"
 
 var (
@@ -748,40 +1068,52 @@ func file_spiritvpn_customer_v1_customer_proto_rawDescGZIP() []byte {
 	return file_spiritvpn_customer_v1_customer_proto_rawDescData
 }
 
-var file_spiritvpn_customer_v1_customer_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_spiritvpn_customer_v1_customer_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_spiritvpn_customer_v1_customer_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_spiritvpn_customer_v1_customer_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_spiritvpn_customer_v1_customer_proto_goTypes = []any{
 	(AccessKind)(0),                        // 0: spiritvpn.customer.v1.AccessKind
 	(AccessLinkState)(0),                   // 1: spiritvpn.customer.v1.AccessLinkState
 	(AccessBlockReason)(0),                 // 2: spiritvpn.customer.v1.AccessBlockReason
-	(*ApplyCustomerAccessRequest)(nil),     // 3: spiritvpn.customer.v1.ApplyCustomerAccessRequest
-	(*ApplyCustomerAccessResponse)(nil),    // 4: spiritvpn.customer.v1.ApplyCustomerAccessResponse
-	(*GetCustomerAccessLinksRequest)(nil),  // 5: spiritvpn.customer.v1.GetCustomerAccessLinksRequest
-	(*CustomerAccessLink)(nil),             // 6: spiritvpn.customer.v1.CustomerAccessLink
-	(*GetCustomerAccessLinksResponse)(nil), // 7: spiritvpn.customer.v1.GetCustomerAccessLinksResponse
-	(*ListAvailableNodesRequest)(nil),      // 8: spiritvpn.customer.v1.ListAvailableNodesRequest
-	(*ListAvailableNodesResponse)(nil),     // 9: spiritvpn.customer.v1.ListAvailableNodesResponse
-	(*AvailableFleet)(nil),                 // 10: spiritvpn.customer.v1.AvailableFleet
-	(*AvailableNode)(nil),                  // 11: spiritvpn.customer.v1.AvailableNode
+	(AdministrativeAccessState)(0),         // 3: spiritvpn.customer.v1.AdministrativeAccessState
+	(CustomerDeletionState)(0),             // 4: spiritvpn.customer.v1.CustomerDeletionState
+	(*ApplyCustomerAccessRequest)(nil),     // 5: spiritvpn.customer.v1.ApplyCustomerAccessRequest
+	(*ApplyCustomerAccessResponse)(nil),    // 6: spiritvpn.customer.v1.ApplyCustomerAccessResponse
+	(*GetCustomerAccessLinksRequest)(nil),  // 7: spiritvpn.customer.v1.GetCustomerAccessLinksRequest
+	(*CustomerAccessLink)(nil),             // 8: spiritvpn.customer.v1.CustomerAccessLink
+	(*GetCustomerAccessLinksResponse)(nil), // 9: spiritvpn.customer.v1.GetCustomerAccessLinksResponse
+	(*ListAvailableNodesRequest)(nil),      // 10: spiritvpn.customer.v1.ListAvailableNodesRequest
+	(*ListAvailableNodesResponse)(nil),     // 11: spiritvpn.customer.v1.ListAvailableNodesResponse
+	(*AvailableFleet)(nil),                 // 12: spiritvpn.customer.v1.AvailableFleet
+	(*AvailableNode)(nil),                  // 13: spiritvpn.customer.v1.AvailableNode
+	(*SetCustomerAccessStateRequest)(nil),  // 14: spiritvpn.customer.v1.SetCustomerAccessStateRequest
+	(*SetCustomerAccessStateResponse)(nil), // 15: spiritvpn.customer.v1.SetCustomerAccessStateResponse
+	(*DeleteCustomerAccessRequest)(nil),    // 16: spiritvpn.customer.v1.DeleteCustomerAccessRequest
+	(*DeleteCustomerAccessResponse)(nil),   // 17: spiritvpn.customer.v1.DeleteCustomerAccessResponse
 }
 var file_spiritvpn_customer_v1_customer_proto_depIdxs = []int32{
 	0,  // 0: spiritvpn.customer.v1.CustomerAccessLink.kind:type_name -> spiritvpn.customer.v1.AccessKind
 	1,  // 1: spiritvpn.customer.v1.CustomerAccessLink.state:type_name -> spiritvpn.customer.v1.AccessLinkState
 	2,  // 2: spiritvpn.customer.v1.CustomerAccessLink.block_reason:type_name -> spiritvpn.customer.v1.AccessBlockReason
-	6,  // 3: spiritvpn.customer.v1.GetCustomerAccessLinksResponse.links:type_name -> spiritvpn.customer.v1.CustomerAccessLink
-	10, // 4: spiritvpn.customer.v1.ListAvailableNodesResponse.fleets:type_name -> spiritvpn.customer.v1.AvailableFleet
-	11, // 5: spiritvpn.customer.v1.AvailableFleet.nodes:type_name -> spiritvpn.customer.v1.AvailableNode
-	3,  // 6: spiritvpn.customer.v1.CustomerAccessService.ApplyCustomerAccess:input_type -> spiritvpn.customer.v1.ApplyCustomerAccessRequest
-	5,  // 7: spiritvpn.customer.v1.CustomerAccessService.GetCustomerAccessLinks:input_type -> spiritvpn.customer.v1.GetCustomerAccessLinksRequest
-	8,  // 8: spiritvpn.customer.v1.CustomerAccessService.ListAvailableNodes:input_type -> spiritvpn.customer.v1.ListAvailableNodesRequest
-	4,  // 9: spiritvpn.customer.v1.CustomerAccessService.ApplyCustomerAccess:output_type -> spiritvpn.customer.v1.ApplyCustomerAccessResponse
-	7,  // 10: spiritvpn.customer.v1.CustomerAccessService.GetCustomerAccessLinks:output_type -> spiritvpn.customer.v1.GetCustomerAccessLinksResponse
-	9,  // 11: spiritvpn.customer.v1.CustomerAccessService.ListAvailableNodes:output_type -> spiritvpn.customer.v1.ListAvailableNodesResponse
-	9,  // [9:12] is the sub-list for method output_type
-	6,  // [6:9] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	8,  // 3: spiritvpn.customer.v1.GetCustomerAccessLinksResponse.links:type_name -> spiritvpn.customer.v1.CustomerAccessLink
+	12, // 4: spiritvpn.customer.v1.ListAvailableNodesResponse.fleets:type_name -> spiritvpn.customer.v1.AvailableFleet
+	13, // 5: spiritvpn.customer.v1.AvailableFleet.nodes:type_name -> spiritvpn.customer.v1.AvailableNode
+	3,  // 6: spiritvpn.customer.v1.SetCustomerAccessStateRequest.state:type_name -> spiritvpn.customer.v1.AdministrativeAccessState
+	4,  // 7: spiritvpn.customer.v1.DeleteCustomerAccessResponse.state:type_name -> spiritvpn.customer.v1.CustomerDeletionState
+	5,  // 8: spiritvpn.customer.v1.CustomerAccessService.ApplyCustomerAccess:input_type -> spiritvpn.customer.v1.ApplyCustomerAccessRequest
+	7,  // 9: spiritvpn.customer.v1.CustomerAccessService.GetCustomerAccessLinks:input_type -> spiritvpn.customer.v1.GetCustomerAccessLinksRequest
+	10, // 10: spiritvpn.customer.v1.CustomerAccessService.ListAvailableNodes:input_type -> spiritvpn.customer.v1.ListAvailableNodesRequest
+	14, // 11: spiritvpn.customer.v1.CustomerAccessService.SetCustomerAccessState:input_type -> spiritvpn.customer.v1.SetCustomerAccessStateRequest
+	16, // 12: spiritvpn.customer.v1.CustomerAccessService.DeleteCustomerAccess:input_type -> spiritvpn.customer.v1.DeleteCustomerAccessRequest
+	6,  // 13: spiritvpn.customer.v1.CustomerAccessService.ApplyCustomerAccess:output_type -> spiritvpn.customer.v1.ApplyCustomerAccessResponse
+	9,  // 14: spiritvpn.customer.v1.CustomerAccessService.GetCustomerAccessLinks:output_type -> spiritvpn.customer.v1.GetCustomerAccessLinksResponse
+	11, // 15: spiritvpn.customer.v1.CustomerAccessService.ListAvailableNodes:output_type -> spiritvpn.customer.v1.ListAvailableNodesResponse
+	15, // 16: spiritvpn.customer.v1.CustomerAccessService.SetCustomerAccessState:output_type -> spiritvpn.customer.v1.SetCustomerAccessStateResponse
+	17, // 17: spiritvpn.customer.v1.CustomerAccessService.DeleteCustomerAccess:output_type -> spiritvpn.customer.v1.DeleteCustomerAccessResponse
+	13, // [13:18] is the sub-list for method output_type
+	8,  // [8:13] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_spiritvpn_customer_v1_customer_proto_init() }
@@ -795,8 +1127,8 @@ func file_spiritvpn_customer_v1_customer_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_spiritvpn_customer_v1_customer_proto_rawDesc), len(file_spiritvpn_customer_v1_customer_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   9,
+			NumEnums:      5,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

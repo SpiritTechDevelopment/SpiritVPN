@@ -22,11 +22,21 @@ func entitlementFromRow(row db.CustomerEntitlement) (domain.Entitlement, error) 
 	}
 
 	return domain.Entitlement{
-		FleetID:           row.VpnFleetID,
-		ExpiresAt:         row.ExpiresAt,
-		LastCommandNumber: lastCommandNumber,
-		DesiredVersion:    row.DesiredVersion,
+		FleetID:                valueOrZero(row.VpnFleetID),
+		ExpiresAt:              valueOrZero(row.ExpiresAt),
+		LastCommandNumber:      lastCommandNumber,
+		DesiredVersion:         row.DesiredVersion,
+		Lifecycle:              domain.CustomerLifecycle(row.LifecycleState),
+		LastCommandFingerprint: row.LastCommandFingerprint,
 	}, nil
+}
+
+func valueOrZero[T any](value *T) T {
+	if value == nil {
+		var zero T
+		return zero
+	}
+	return *value
 }
 
 // quotaPeriodFromRow переносит открытый период квоты в домен.

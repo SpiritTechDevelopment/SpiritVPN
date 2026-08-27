@@ -53,6 +53,12 @@ WITH claimed AS (
         FROM vpn_nodes n
         WHERE n.current
           AND (n.reconcile_lease_expires_at IS NULL OR n.reconcile_lease_expires_at < now())
+          AND NOT EXISTS (
+              SELECT 1
+              FROM agent_operations mutating
+              WHERE mutating.node_id = n.node_id
+                AND mutating.status = 'IN_FLIGHT'
+          )
           AND (
               n.needs_bootstrap
               OR n.reconcile_attempted_at IS NULL
@@ -159,6 +165,7 @@ JOIN customer_entitlements e ON e.customer_id = a.customer_id
 WHERE a.entry_node_id = $1::text
   AND a.retired_at IS NULL
   AND a.desired_state = 'PRESENT'
+  AND e.lifecycle_state = 'ACTIVE'
   AND e.expires_at > now()
   AND NOT EXISTS (
       SELECT 1

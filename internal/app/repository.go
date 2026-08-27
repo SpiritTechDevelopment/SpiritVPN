@@ -68,6 +68,45 @@ type ApplyTx interface {
 	AppendAudit(ctx context.Context, event AuditEvent) error
 }
 
+// LifecycleRepository сериализует административные команды на той же корневой
+// строке, что и ApplyCustomerAccess.
+type LifecycleRepository interface {
+	WithinLifecycleTx(ctx context.Context, fn func(LifecycleTx) error) error
+}
+
+type LifecycleTx interface {
+	Now(ctx context.Context) (time.Time, error)
+	LockEntitlement(ctx context.Context, customerID string) (*domain.Entitlement, error)
+	LockOpenQuotaPeriod(ctx context.Context, customerID string) (*domain.QuotaPeriod, error)
+	LockNodeQuotaUsage(ctx context.Context, periodID uuid.UUID) ([]domain.NodeQuotaUsage, error)
+	LoadTopology(ctx context.Context, fleetID int64) (domain.FleetTopology, error)
+	LoadLiveNodes(ctx context.Context) ([]domain.NodeID, error)
+	LoadAccesses(ctx context.Context, customerID string) ([]domain.Access, error)
+	WriteLifecycle(ctx context.Context, plan MaterializedLifecyclePlan) error
+	InsertDeletedTombstone(ctx context.Context, customerID string, commandNumber uint64, fingerprint []byte) error
+	AppendAudit(ctx context.Context, event AuditEvent) error
+}
+
+type MaterializedLifecyclePlan struct {
+	CustomerID         string
+	Target             domain.CustomerLifecycle
+	CommandNumber      uint64
+	CommandFingerprint []byte
+	DesiredVersion     int64
+	DeleteNotBefore    *time.Time
+	DesiredChanges     []domain.DesiredChange
+	TouchedNodes       []domain.NodeID
+	Operations         []AgentOperation
+	// AppliedWithoutOperation — access на нодах вне актуального manifest:
+	// доставлять некуда, logical ABSENT считается применённым сразу.
+	AppliedWithoutOperation []uuid.UUID
+}
+
+// DeletionRepository выполняет один атомарный шаг durable cleanup worker.
+type DeletionRepository interface {
+	FinalizeNextDeletion(ctx context.Context) (bool, error)
+}
+
 // LinksRepository читает всё, из чего строится ответ GetCustomerAccessLinks.
 //
 // Порт из одного метода, а не набор шагов транзакции как у ApplyRepository.
@@ -95,6 +134,7 @@ type CustomerLinks struct {
 	// Now — время PostgreSQL того же снимка, что и остальные поля.
 	Now       time.Time
 	ExpiresAt time.Time
+	Lifecycle domain.CustomerLifecycle
 
 	// Accesses отсортированы по (kind, logical_target_key, access_id) — порядок
 	// ответа фиксирован, и он же порядок строк запроса. Ретайрнутые access и цели,
@@ -586,7 +626,8 @@ type MaterializedPlan struct {
 	// customer запрещена и отсекается доменом.
 	FleetID int64
 	// CommandNumber попадает в last_command_number при успешном commit.
-	CommandNumber uint64
+	CommandNumber      uint64
+	CommandFingerprint []byte
 
 	Plan domain.ApplyPlan
 
