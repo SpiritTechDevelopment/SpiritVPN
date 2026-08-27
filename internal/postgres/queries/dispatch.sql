@@ -93,6 +93,14 @@ WITH leased AS (
         FOR UPDATE OF gate SKIP LOCKED
         LIMIT 1
     )
+      -- Subquery блокирует node gate, но намеренно не строку operation, чтобы
+      -- соблюдать общий порядок vpn_nodes -> agent_operations. Поэтому между
+      -- снимком subquery и блокировкой целевой строки другой writer может уже
+      -- перевести выбранную operation в IN_FLIGHT/SUPERSEDED. UPDATE обязан
+      -- повторно проверить eligibility после ожидания row lock, иначе он
+      -- «переарендует» уже IN_FLIGHT строку и обойдёт unique index той же строкой.
+      AND status IN ('PENDING', 'RETRY_WAIT')
+      AND next_attempt_at <= now()
     RETURNING operation_id, node_id, access_id, operation_type, desired_version, attempt_count
 )
 SELECT l.operation_id,
