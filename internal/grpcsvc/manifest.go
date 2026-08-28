@@ -118,8 +118,19 @@ func manifestNodeFrom(node *manifestv1.ManifestNode) domain.ManifestNode {
 			Fingerprint:      node.GetPublic().GetFingerprint(),
 			Transport:        node.GetPublic().GetTransport(),
 			Flow:             node.GetPublic().GetFlow(),
+			XHTTP:            manifestXHTTPFrom(node.GetPublic().GetXhttp()),
 			DisplayName:      node.GetDisplayName(),
 		},
+	}
+}
+
+func manifestXHTTPFrom(config *manifestv1.XHTTPConfig) *domain.XHTTPConfig {
+	if config == nil {
+		return nil
+	}
+	return &domain.XHTTPConfig{
+		Path: config.GetPath(),
+		Mode: config.GetMode(),
 	}
 }
 

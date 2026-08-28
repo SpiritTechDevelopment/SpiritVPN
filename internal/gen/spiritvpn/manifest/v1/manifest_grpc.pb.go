@@ -11,10 +11,10 @@
 // снапшот применяется атомарно или не применяется вовсе; массовая материализация
 // customer access идёт асинхронно durable-джобой после commit.
 //
-// Ограничения полей, которые protobuf выразить не может (schema_version == 1,
-// revision > 0, регэксп fingerprint, transport == "tcp", flow == "xtls-rprx-vision",
-// уникальность, ссылочная целостность, destructive-guard), валидирует backend до
-// проекции.
+// Ограничения полей, которые protobuf выразить не может (поддерживаемая
+// schema_version, revision > 0, регэксп fingerprint, совместимость transport и
+// xhttp, flow == "xtls-rprx-vision", уникальность, ссылочная целостность,
+// destructive-guard), валидирует backend до проекции.
 
 package manifestv1
 

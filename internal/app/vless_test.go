@@ -45,6 +45,24 @@ func TestBuildVLESSURIMatchesSpec(t *testing.T) {
 	}
 }
 
+func TestBuildVLESSURIXHTTP(t *testing.T) {
+	node := testNode()
+	node.Transport = domain.TransportXHTTP
+	node.Fingerprint = "firefox"
+	node.XHTTP = &domain.XHTTPConfig{Path: "/api/v1/connect", Mode: "auto"}
+
+	const want = "vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443" +
+		"?security=reality&encryption=none&pbk=pub-key&fp=firefox&type=xhttp" +
+		"&path=%2Fapi%2Fv1%2Fconnect&mode=auto" +
+		"&flow=xtls-rprx-vision&sni=www.example.org&sid=ab12" +
+		"#Netherlands"
+
+	got := app.BuildVLESSURI(testClientUUID, node, node.DisplayName)
+	if got != want {
+		t.Fatalf("URI\n  получено %q\n  ожидалось %q", got, want)
+	}
+}
+
 // TestBuildVLESSURIKeepsEmptyShortID — пустой sid остаётся в строке параметром с
 // пустым значением, а не исчезает: отсутствие ключа и пустое значение читаются
 // клиентами по-разному.
@@ -145,6 +163,21 @@ func TestNodePublicUsable(t *testing.T) {
 		{"нет fingerprint", func(n *domain.NodePublic) { n.Fingerprint = "" }, false},
 		{"нет transport", func(n *domain.NodePublic) { n.Transport = "" }, false},
 		{"нет flow", func(n *domain.NodePublic) { n.Flow = "" }, false},
+		{"xhttp с настройками", func(n *domain.NodePublic) {
+			n.Transport = domain.TransportXHTTP
+			n.XHTTP = &domain.XHTTPConfig{Path: "/connect", Mode: "auto"}
+		}, true},
+		{"xhttp без настроек", func(n *domain.NodePublic) {
+			n.Transport = domain.TransportXHTTP
+		}, false},
+		{"xhttp без path", func(n *domain.NodePublic) {
+			n.Transport = domain.TransportXHTTP
+			n.XHTTP = &domain.XHTTPConfig{Mode: "auto"}
+		}, false},
+		{"xhttp без mode", func(n *domain.NodePublic) {
+			n.Transport = domain.TransportXHTTP
+			n.XHTTP = &domain.XHTTPConfig{Path: "/connect"}
+		}, false},
 
 		{"пустая структура", func(n *domain.NodePublic) { *n = domain.NodePublic{} }, false},
 	}

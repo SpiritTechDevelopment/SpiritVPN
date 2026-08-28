@@ -4,18 +4,33 @@ import (
 	"net"
 	"regexp"
 	"strconv"
+	"strings"
+	"unicode"
 )
 
-// ManifestSchemaVersion — единственная поддерживаемая версия схемы манифеста для
-// этого документа.
-const ManifestSchemaVersion = 1
+// ManifestSchemaVersion — актуальная версия схемы манифеста. Backend также
+// принимает v1, чтобы обновление не требовало синхронного переключения infra.
+const (
+	ManifestSchemaVersionV1 = 1
+	ManifestSchemaVersion   = 2
+)
 
-// Значения, которые v1 поддерживает в единственном варианте. Другие
+// Значения transport и flow, поддерживаемые версиями манифеста. Другие
 // отклоняются на приёме; потребители проекции их не перепроверяют.
 const (
 	TransportTCP       = "tcp"
+	TransportXHTTP     = "xhttp"
 	FlowXTLSRprxVision = "xtls-rprx-vision"
 )
+
+const maxXHTTPPathBytes = 256
+
+var supportedXHTTPModes = map[string]struct{}{
+	"auto":       {},
+	"packet-up":  {},
+	"stream-up":  {},
+	"stream-one": {},
+}
 
 // Лимиты размера манифеста. Константы, а не конфигурация: ручка без потребителя — это ещё один
 // способ выкатить непроверенную нагрузкой топологию. Лимит самого
@@ -80,9 +95,9 @@ type ManifestSnapshot struct {
 //
 // Ошибки несут деталь из запроса: см. ManifestValidationError.
 func ValidateManifest(s ManifestSnapshot) error {
-	if s.SchemaVersion != ManifestSchemaVersion {
-		return manifestError(ErrManifestSchemaVersion, "получена %d, поддерживается %d",
-			s.SchemaVersion, ManifestSchemaVersion)
+	if s.SchemaVersion != ManifestSchemaVersionV1 && s.SchemaVersion != ManifestSchemaVersion {
+		return manifestError(ErrManifestSchemaVersion, "получена %d, поддерживаются %d и %d",
+			s.SchemaVersion, ManifestSchemaVersionV1, ManifestSchemaVersion)
 	}
 	// Revision здесь int64, а не uint64 с провода: колонка manifest_revisions.revision
 	// объявлена как bigint, и сужение закрепляется на границе gRPC вместе с проверкой
@@ -97,7 +112,7 @@ func ValidateManifest(s ManifestSnapshot) error {
 		return err
 	}
 
-	known, err := validateManifestNodes(s.Nodes)
+	known, err := validateManifestNodes(s.Nodes, s.SchemaVersion)
 	if err != nil {
 		return err
 	}
@@ -132,7 +147,7 @@ func validateManifestSize(s ManifestSnapshot) error {
 
 // validateManifestNodes проверяет ноды и возвращает множество известных node_id,
 // против которого дальше сверяются все ссылки.
-func validateManifestNodes(nodes []ManifestNode) (map[NodeID]struct{}, error) {
+func validateManifestNodes(nodes []ManifestNode, schemaVersion uint32) (map[NodeID]struct{}, error) {
 	known := make(map[NodeID]struct{}, len(nodes))
 
 	for _, node := range nodes {
@@ -147,7 +162,7 @@ func validateManifestNodes(nodes []ManifestNode) (map[NodeID]struct{}, error) {
 		if err := validateNodeAgent(node); err != nil {
 			return nil, err
 		}
-		if err := validateNodePublic(node); err != nil {
+		if err := validateNodePublic(node, schemaVersion); err != nil {
 			return nil, err
 		}
 	}
@@ -190,7 +205,7 @@ func validateNodeAgent(node ManifestNode) error {
 // Строже, чем NodePublic.Usable: тот отвечает на вопрос «соберётся ли URI» и
 // применяется к тому, что уже лежит в проекции. Здесь же решается, пускать ли
 // значение в проекцию вообще.
-func validateNodePublic(node ManifestNode) error {
+func validateNodePublic(node ManifestNode, schemaVersion uint32) error {
 	public := node.Public
 
 	switch {
@@ -207,14 +222,64 @@ func validateNodePublic(node ManifestNode) error {
 		return manifestError(ErrManifestNodeInvalid,
 			"нода %s: fingerprint %q не является ASCII-токеном 1..64 из [A-Za-z0-9._-]",
 			node.NodeID, public.Fingerprint)
-	case public.Transport != TransportTCP:
-		return manifestError(ErrManifestNodeInvalid, "нода %s: transport %q, v1 поддерживает только %q",
-			node.NodeID, public.Transport, TransportTCP)
 	case public.Flow != FlowXTLSRprxVision:
-		return manifestError(ErrManifestNodeInvalid, "нода %s: flow %q, v1 поддерживает только %q",
+		return manifestError(ErrManifestNodeInvalid, "нода %s: flow %q, поддерживается только %q",
 			node.NodeID, public.Flow, FlowXTLSRprxVision)
 	}
 
+	if schemaVersion == ManifestSchemaVersionV1 {
+		if public.Transport != TransportTCP {
+			return manifestError(ErrManifestNodeInvalid, "нода %s: transport %q, v1 поддерживает только %q",
+				node.NodeID, public.Transport, TransportTCP)
+		}
+		if public.XHTTP != nil {
+			return manifestError(ErrManifestNodeInvalid, "нода %s: xhttp недопустим для transport %q в v1",
+				node.NodeID, public.Transport)
+		}
+		return nil
+	}
+
+	switch public.Transport {
+	case TransportTCP:
+		if public.XHTTP != nil {
+			return manifestError(ErrManifestNodeInvalid, "нода %s: xhttp допустим только для transport %q",
+				node.NodeID, TransportXHTTP)
+		}
+	case TransportXHTTP:
+		if err := validateXHTTP(node.NodeID, public.XHTTP); err != nil {
+			return err
+		}
+	default:
+		return manifestError(ErrManifestNodeInvalid, "нода %s: неподдерживаемый transport %q",
+			node.NodeID, public.Transport)
+	}
+
+	return nil
+}
+
+func validateXHTTP(nodeID NodeID, config *XHTTPConfig) error {
+	if config == nil {
+		return manifestError(ErrManifestNodeInvalid, "нода %s: для transport %q обязателен xhttp",
+			nodeID, TransportXHTTP)
+	}
+	if config.Path == "" || !strings.HasPrefix(config.Path, "/") {
+		return manifestError(ErrManifestNodeInvalid, "нода %s: xhttp.path должен начинаться с '/'",
+			nodeID)
+	}
+	if len(config.Path) > maxXHTTPPathBytes {
+		return manifestError(ErrManifestNodeInvalid, "нода %s: xhttp.path длиннее %d байт",
+			nodeID, maxXHTTPPathBytes)
+	}
+	if strings.ContainsAny(config.Path, "?#") ||
+		strings.IndexFunc(config.Path, unicode.IsSpace) >= 0 ||
+		strings.IndexFunc(config.Path, unicode.IsControl) >= 0 {
+		return manifestError(ErrManifestNodeInvalid,
+			"нода %s: xhttp.path содержит пробел, управляющий символ, query или fragment", nodeID)
+	}
+	if _, ok := supportedXHTTPModes[config.Mode]; !ok {
+		return manifestError(ErrManifestNodeInvalid, "нода %s: неподдерживаемый xhttp.mode %q",
+			nodeID, config.Mode)
+	}
 	return nil
 }
 

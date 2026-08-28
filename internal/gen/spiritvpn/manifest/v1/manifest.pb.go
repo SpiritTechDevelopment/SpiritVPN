@@ -11,10 +11,10 @@
 // снапшот применяется атомарно или не применяется вовсе; массовая материализация
 // customer access идёт асинхронно durable-джобой после commit.
 //
-// Ограничения полей, которые protobuf выразить не может (schema_version == 1,
-// revision > 0, регэксп fingerprint, transport == "tcp", flow == "xtls-rprx-vision",
-// уникальность, ссылочная целостность, destructive-guard), валидирует backend до
-// проекции.
+// Ограничения полей, которые protobuf выразить не может (поддерживаемая
+// schema_version, revision > 0, регэксп fingerprint, совместимость transport и
+// xhttp, flow == "xtls-rprx-vision", уникальность, ссылочная целостность,
+// destructive-guard), валидирует backend до проекции.
 
 package manifestv1
 
@@ -86,7 +86,7 @@ func (ManifestApplyResult) EnumDescriptor() ([]byte, []int) {
 
 type ApplyFleetManifestRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Зафиксировано в 1 для этой версии документа.
+	// Версия 1 поддерживает только TCP. Версия 2 добавляет XHTTP.
 	SchemaVersion uint32 `protobuf:"varint,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
 	// Глобальная, строго возрастающая (не обязательно последовательная) revision.
 	Revision uint64 `protobuf:"varint,2,opt,name=revision,proto3" json:"revision,omitempty"`
@@ -312,10 +312,13 @@ type NodePublicConfig struct {
 	ServerName       string                 `protobuf:"bytes,4,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`                     // -> sni
 	ShortId          string                 `protobuf:"bytes,5,opt,name=short_id,json=shortId,proto3" json:"short_id,omitempty"`                              // -> sid
 	Fingerprint      string                 `protobuf:"bytes,6,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`                                     // -> fp; ASCII 1..64 из [A-Za-z0-9._-]
-	Flow             string                 `protobuf:"bytes,7,opt,name=flow,proto3" json:"flow,omitempty"`                                                   // v1: "xtls-rprx-vision"
-	Transport        string                 `protobuf:"bytes,8,opt,name=transport,proto3" json:"transport,omitempty"`                                         // v1: "tcp"
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	Flow             string                 `protobuf:"bytes,7,opt,name=flow,proto3" json:"flow,omitempty"`                                                   // "xtls-rprx-vision"
+	Transport        string                 `protobuf:"bytes,8,opt,name=transport,proto3" json:"transport,omitempty"`                                         // v1: "tcp"; v2: "tcp" или "xhttp"
+	// Обязателен только для transport == "xhttp" в schema_version 2. Для TCP
+	// должен отсутствовать.
+	Xhttp         *XHTTPConfig `protobuf:"bytes,9,opt,name=xhttp,proto3" json:"xhttp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NodePublicConfig) Reset() {
@@ -404,6 +407,67 @@ func (x *NodePublicConfig) GetTransport() string {
 	return ""
 }
 
+func (x *NodePublicConfig) GetXhttp() *XHTTPConfig {
+	if x != nil {
+		return x.Xhttp
+	}
+	return nil
+}
+
+type XHTTPConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// HTTP path XHTTP; непустой, начинается с '/', не содержит query/fragment.
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Один из: "auto", "packet-up", "stream-up", "stream-one".
+	Mode          string `protobuf:"bytes,2,opt,name=mode,proto3" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *XHTTPConfig) Reset() {
+	*x = XHTTPConfig{}
+	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *XHTTPConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*XHTTPConfig) ProtoMessage() {}
+
+func (x *XHTTPConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use XHTTPConfig.ProtoReflect.Descriptor instead.
+func (*XHTTPConfig) Descriptor() ([]byte, []int) {
+	return file_spiritvpn_manifest_v1_manifest_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *XHTTPConfig) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *XHTTPConfig) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
 // ManifestFleet — один продаваемый fleet: набор нод-участников плюс направленные
 // BRIDGE-связи между ними. Принятый vpn_fleet_id не удаляется и не переиспользуется.
 type ManifestFleet struct {
@@ -420,7 +484,7 @@ type ManifestFleet struct {
 
 func (x *ManifestFleet) Reset() {
 	*x = ManifestFleet{}
-	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[4]
+	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -432,7 +496,7 @@ func (x *ManifestFleet) String() string {
 func (*ManifestFleet) ProtoMessage() {}
 
 func (x *ManifestFleet) ProtoReflect() protoreflect.Message {
-	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[4]
+	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -445,7 +509,7 @@ func (x *ManifestFleet) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ManifestFleet.ProtoReflect.Descriptor instead.
 func (*ManifestFleet) Descriptor() ([]byte, []int) {
-	return file_spiritvpn_manifest_v1_manifest_proto_rawDescGZIP(), []int{4}
+	return file_spiritvpn_manifest_v1_manifest_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ManifestFleet) GetVpnFleetId() int64 {
@@ -488,7 +552,7 @@ type ManifestBridge struct {
 
 func (x *ManifestBridge) Reset() {
 	*x = ManifestBridge{}
-	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[5]
+	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -500,7 +564,7 @@ func (x *ManifestBridge) String() string {
 func (*ManifestBridge) ProtoMessage() {}
 
 func (x *ManifestBridge) ProtoReflect() protoreflect.Message {
-	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[5]
+	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -513,7 +577,7 @@ func (x *ManifestBridge) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ManifestBridge.ProtoReflect.Descriptor instead.
 func (*ManifestBridge) Descriptor() ([]byte, []int) {
-	return file_spiritvpn_manifest_v1_manifest_proto_rawDescGZIP(), []int{5}
+	return file_spiritvpn_manifest_v1_manifest_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ManifestBridge) GetRoutingKey() string {
@@ -562,7 +626,7 @@ type ApplyFleetManifestResponse struct {
 
 func (x *ApplyFleetManifestResponse) Reset() {
 	*x = ApplyFleetManifestResponse{}
-	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[6]
+	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -574,7 +638,7 @@ func (x *ApplyFleetManifestResponse) String() string {
 func (*ApplyFleetManifestResponse) ProtoMessage() {}
 
 func (x *ApplyFleetManifestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[6]
+	mi := &file_spiritvpn_manifest_v1_manifest_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -587,7 +651,7 @@ func (x *ApplyFleetManifestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyFleetManifestResponse.ProtoReflect.Descriptor instead.
 func (*ApplyFleetManifestResponse) Descriptor() ([]byte, []int) {
-	return file_spiritvpn_manifest_v1_manifest_proto_rawDescGZIP(), []int{6}
+	return file_spiritvpn_manifest_v1_manifest_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ApplyFleetManifestResponse) GetAppliedRevision() uint64 {
@@ -623,7 +687,7 @@ const file_spiritvpn_manifest_v1_manifest_proto_rawDesc = "" +
 	"\x0fNodeAgentConfig\x12\x1a\n" +
 	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x12&\n" +
 	"\x0ftls_server_name\x18\x02 \x01(\tR\rtlsServerName\x121\n" +
-	"\x14certificate_identity\x18\x03 \x01(\tR\x13certificateIdentity\"\xfe\x01\n" +
+	"\x14certificate_identity\x18\x03 \x01(\tR\x13certificateIdentity\"\xb8\x02\n" +
 	"\x10NodePublicConfig\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\x12\x12\n" +
 	"\x04port\x18\x02 \x01(\rR\x04port\x12,\n" +
@@ -633,7 +697,11 @@ const file_spiritvpn_manifest_v1_manifest_proto_rawDesc = "" +
 	"\bshort_id\x18\x05 \x01(\tR\ashortId\x12 \n" +
 	"\vfingerprint\x18\x06 \x01(\tR\vfingerprint\x12\x12\n" +
 	"\x04flow\x18\a \x01(\tR\x04flow\x12\x1c\n" +
-	"\ttransport\x18\b \x01(\tR\ttransport\"\x8d\x01\n" +
+	"\ttransport\x18\b \x01(\tR\ttransport\x128\n" +
+	"\x05xhttp\x18\t \x01(\v2\".spiritvpn.manifest.v1.XHTTPConfigR\x05xhttp\"5\n" +
+	"\vXHTTPConfig\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x12\n" +
+	"\x04mode\x18\x02 \x01(\tR\x04mode\"\x8d\x01\n" +
 	"\rManifestFleet\x12 \n" +
 	"\fvpn_fleet_id\x18\x01 \x01(\x03R\n" +
 	"vpnFleetId\x12\x19\n" +
@@ -672,31 +740,33 @@ func file_spiritvpn_manifest_v1_manifest_proto_rawDescGZIP() []byte {
 }
 
 var file_spiritvpn_manifest_v1_manifest_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_spiritvpn_manifest_v1_manifest_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_spiritvpn_manifest_v1_manifest_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_spiritvpn_manifest_v1_manifest_proto_goTypes = []any{
 	(ManifestApplyResult)(0),           // 0: spiritvpn.manifest.v1.ManifestApplyResult
 	(*ApplyFleetManifestRequest)(nil),  // 1: spiritvpn.manifest.v1.ApplyFleetManifestRequest
 	(*ManifestNode)(nil),               // 2: spiritvpn.manifest.v1.ManifestNode
 	(*NodeAgentConfig)(nil),            // 3: spiritvpn.manifest.v1.NodeAgentConfig
 	(*NodePublicConfig)(nil),           // 4: spiritvpn.manifest.v1.NodePublicConfig
-	(*ManifestFleet)(nil),              // 5: spiritvpn.manifest.v1.ManifestFleet
-	(*ManifestBridge)(nil),             // 6: spiritvpn.manifest.v1.ManifestBridge
-	(*ApplyFleetManifestResponse)(nil), // 7: spiritvpn.manifest.v1.ApplyFleetManifestResponse
+	(*XHTTPConfig)(nil),                // 5: spiritvpn.manifest.v1.XHTTPConfig
+	(*ManifestFleet)(nil),              // 6: spiritvpn.manifest.v1.ManifestFleet
+	(*ManifestBridge)(nil),             // 7: spiritvpn.manifest.v1.ManifestBridge
+	(*ApplyFleetManifestResponse)(nil), // 8: spiritvpn.manifest.v1.ApplyFleetManifestResponse
 }
 var file_spiritvpn_manifest_v1_manifest_proto_depIdxs = []int32{
 	2, // 0: spiritvpn.manifest.v1.ApplyFleetManifestRequest.nodes:type_name -> spiritvpn.manifest.v1.ManifestNode
-	5, // 1: spiritvpn.manifest.v1.ApplyFleetManifestRequest.fleets:type_name -> spiritvpn.manifest.v1.ManifestFleet
+	6, // 1: spiritvpn.manifest.v1.ApplyFleetManifestRequest.fleets:type_name -> spiritvpn.manifest.v1.ManifestFleet
 	3, // 2: spiritvpn.manifest.v1.ManifestNode.agent:type_name -> spiritvpn.manifest.v1.NodeAgentConfig
 	4, // 3: spiritvpn.manifest.v1.ManifestNode.public:type_name -> spiritvpn.manifest.v1.NodePublicConfig
-	6, // 4: spiritvpn.manifest.v1.ManifestFleet.bridges:type_name -> spiritvpn.manifest.v1.ManifestBridge
-	0, // 5: spiritvpn.manifest.v1.ApplyFleetManifestResponse.result:type_name -> spiritvpn.manifest.v1.ManifestApplyResult
-	1, // 6: spiritvpn.manifest.v1.ManifestService.ApplyFleetManifest:input_type -> spiritvpn.manifest.v1.ApplyFleetManifestRequest
-	7, // 7: spiritvpn.manifest.v1.ManifestService.ApplyFleetManifest:output_type -> spiritvpn.manifest.v1.ApplyFleetManifestResponse
-	7, // [7:8] is the sub-list for method output_type
-	6, // [6:7] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 4: spiritvpn.manifest.v1.NodePublicConfig.xhttp:type_name -> spiritvpn.manifest.v1.XHTTPConfig
+	7, // 5: spiritvpn.manifest.v1.ManifestFleet.bridges:type_name -> spiritvpn.manifest.v1.ManifestBridge
+	0, // 6: spiritvpn.manifest.v1.ApplyFleetManifestResponse.result:type_name -> spiritvpn.manifest.v1.ManifestApplyResult
+	1, // 7: spiritvpn.manifest.v1.ManifestService.ApplyFleetManifest:input_type -> spiritvpn.manifest.v1.ApplyFleetManifestRequest
+	8, // 8: spiritvpn.manifest.v1.ManifestService.ApplyFleetManifest:output_type -> spiritvpn.manifest.v1.ApplyFleetManifestResponse
+	8, // [8:9] is the sub-list for method output_type
+	7, // [7:8] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_spiritvpn_manifest_v1_manifest_proto_init() }
@@ -710,7 +780,7 @@ func file_spiritvpn_manifest_v1_manifest_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_spiritvpn_manifest_v1_manifest_proto_rawDesc), len(file_spiritvpn_manifest_v1_manifest_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

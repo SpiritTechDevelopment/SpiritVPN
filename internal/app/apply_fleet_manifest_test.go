@@ -230,7 +230,7 @@ func TestApplyManifestValidatesBeforeTransaction(t *testing.T) {
 	uc, repo := newManifestHarness(tx)
 
 	cmd := manifestCommand()
-	cmd.Snapshot.SchemaVersion = 2
+	cmd.Snapshot.SchemaVersion = domain.ManifestSchemaVersion + 1
 
 	_, err := uc.Execute(context.Background(), cmd)
 	if !errors.Is(err, domain.ErrManifestSchemaVersion) {

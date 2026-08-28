@@ -59,14 +59,20 @@ type canonicalAgent struct {
 }
 
 type canonicalPublic struct {
-	Address          string `json:"address"`
-	Port             int    `json:"port"`
-	RealityPublicKey string `json:"reality_public_key"`
-	ServerName       string `json:"server_name"`
-	ShortID          string `json:"short_id"`
-	Fingerprint      string `json:"fingerprint"`
-	Transport        string `json:"transport"`
-	Flow             string `json:"flow"`
+	Address          string          `json:"address"`
+	Port             int             `json:"port"`
+	RealityPublicKey string          `json:"reality_public_key"`
+	ServerName       string          `json:"server_name"`
+	ShortID          string          `json:"short_id"`
+	Fingerprint      string          `json:"fingerprint"`
+	Transport        string          `json:"transport"`
+	Flow             string          `json:"flow"`
+	XHTTP            *canonicalXHTTP `json:"xhttp,omitempty"`
+}
+
+type canonicalXHTTP struct {
+	Path string `json:"path"`
+	Mode string `json:"mode"`
 }
 
 type canonicalFleet struct {
@@ -111,6 +117,13 @@ func canonicalize(s ManifestSnapshot) canonicalManifest {
 	}
 
 	for _, node := range s.Nodes {
+		var xhttp *canonicalXHTTP
+		if node.Public.XHTTP != nil {
+			xhttp = &canonicalXHTTP{
+				Path: node.Public.XHTTP.Path,
+				Mode: node.Public.XHTTP.Mode,
+			}
+		}
 		canonical.Nodes = append(canonical.Nodes, canonicalNode{
 			NodeID: string(node.NodeID),
 			Agent: canonicalAgent{
@@ -127,6 +140,7 @@ func canonicalize(s ManifestSnapshot) canonicalManifest {
 				Fingerprint:      node.Public.Fingerprint,
 				Transport:        node.Public.Transport,
 				Flow:             node.Public.Flow,
+				XHTTP:            xhttp,
 			},
 			DisplayName: node.Public.DisplayName,
 		})

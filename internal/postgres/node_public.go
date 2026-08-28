@@ -19,15 +19,21 @@ import (
 // Схему внутри jsonb не версионируем — manifest уже версионирован
 // целиком своим schema_version.
 type nodePublicConfig struct {
-	Address          string `json:"address"`
-	Port             int    `json:"port"`
-	RealityPublicKey string `json:"reality_public_key"`
-	ServerName       string `json:"server_name"`
-	ShortID          string `json:"short_id"`
-	Fingerprint      string `json:"fingerprint"`
-	Transport        string `json:"transport"`
-	Flow             string `json:"flow"`
-	DisplayName      string `json:"display_name"`
+	Address          string                 `json:"address"`
+	Port             int                    `json:"port"`
+	RealityPublicKey string                 `json:"reality_public_key"`
+	ServerName       string                 `json:"server_name"`
+	ShortID          string                 `json:"short_id"`
+	Fingerprint      string                 `json:"fingerprint"`
+	Transport        string                 `json:"transport"`
+	Flow             string                 `json:"flow"`
+	XHTTP            *nodePublicXHTTPConfig `json:"xhttp,omitempty"`
+	DisplayName      string                 `json:"display_name"`
+}
+
+type nodePublicXHTTPConfig struct {
+	Path string `json:"path"`
+	Mode string `json:"mode"`
 }
 
 // nodeAgentConfig — раскладка jsonb-колонки vpn_nodes.agent_config: блок
@@ -53,6 +59,14 @@ func nodeConfigJSON(node domain.ManifestNode) (agent, public []byte) {
 		CertificateIdentity: node.Agent.CertificateIdentity,
 	})
 
+	var xhttp *nodePublicXHTTPConfig
+	if node.Public.XHTTP != nil {
+		xhttp = &nodePublicXHTTPConfig{
+			Path: node.Public.XHTTP.Path,
+			Mode: node.Public.XHTTP.Mode,
+		}
+	}
+
 	public, _ = json.Marshal(nodePublicConfig{
 		Address:          node.Public.Address,
 		Port:             node.Public.Port,
@@ -62,6 +76,7 @@ func nodeConfigJSON(node domain.ManifestNode) (agent, public []byte) {
 		Fingerprint:      node.Public.Fingerprint,
 		Transport:        node.Public.Transport,
 		Flow:             node.Public.Flow,
+		XHTTP:            xhttp,
 		DisplayName:      node.Public.DisplayName,
 	})
 
@@ -103,6 +118,14 @@ func nodePublicFrom(raw []byte) domain.NodePublic {
 		return domain.NodePublic{}
 	}
 
+	var xhttp *domain.XHTTPConfig
+	if config.XHTTP != nil {
+		xhttp = &domain.XHTTPConfig{
+			Path: config.XHTTP.Path,
+			Mode: config.XHTTP.Mode,
+		}
+	}
+
 	return domain.NodePublic{
 		Address:          config.Address,
 		Port:             config.Port,
@@ -112,6 +135,7 @@ func nodePublicFrom(raw []byte) domain.NodePublic {
 		Fingerprint:      config.Fingerprint,
 		Transport:        config.Transport,
 		Flow:             config.Flow,
+		XHTTP:            xhttp,
 		DisplayName:      config.DisplayName,
 	}
 }

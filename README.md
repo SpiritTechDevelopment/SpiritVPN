@@ -172,7 +172,7 @@ ordering tombstone не относятся к удаляемым operational-д�
 
 ```protobuf
 message ApplyFleetManifestRequest {
-  uint32 schema_version = 1;      // в v1 всегда 1
+  uint32 schema_version = 1;      // значение 1: TCP; значение 2: TCP или XHTTP
   uint64 revision       = 2;      // глобальная, строго возрастающая
   bool   allow_destructive = 3;   // разрешить удаление нод, membership и связей
   repeated ManifestNode  nodes  = 4;  // полный инвентарь нод снимка

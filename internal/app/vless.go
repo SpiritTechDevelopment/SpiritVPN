@@ -51,16 +51,25 @@ func BuildVLESSURI(clientUUID crypto.ClientUUID, node domain.NodePublic, display
 // набор параметров позиционно-независимо, но их отсутствие и пустота для
 // некоторых из них (sid) означают разное.
 func vlessQuery(node domain.NodePublic) string {
-	params := []struct{ key, value string }{
+	type queryParam struct{ key, value string }
+	params := []queryParam{
 		{"security", vlessSecurity},
 		{"encryption", vlessEncryption},
 		{"pbk", node.RealityPublicKey},
 		{"fp", node.Fingerprint},
 		{"type", node.Transport},
-		{"flow", node.Flow},
-		{"sni", node.ServerName},
-		{"sid", node.ShortID},
 	}
+	if node.Transport == domain.TransportXHTTP && node.XHTTP != nil {
+		params = append(params,
+			queryParam{"path", node.XHTTP.Path},
+			queryParam{"mode", node.XHTTP.Mode},
+		)
+	}
+	params = append(params,
+		queryParam{"flow", node.Flow},
+		queryParam{"sni", node.ServerName},
+		queryParam{"sid", node.ShortID},
+	)
 
 	var query strings.Builder
 	for i, param := range params {

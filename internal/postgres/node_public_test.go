@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/RomanRyabinkin/SpiritVPN/internal/domain"
@@ -39,6 +40,48 @@ func TestNodePublicFromPinsColumnFormat(t *testing.T) {
 
 	if got := nodePublicFrom([]byte(raw)); got != want {
 		t.Fatalf("разбор public_config\n  получено %+v\n  ожидалось %+v", got, want)
+	}
+}
+
+func TestNodePublicFromReadsXHTTP(t *testing.T) {
+	const raw = `{
+	  "address": "nl.example.com",
+	  "port": 443,
+	  "reality_public_key": "pub-key",
+	  "server_name": "www.example.org",
+	  "short_id": "ab12",
+	  "fingerprint": "firefox",
+	  "transport": "xhttp",
+	  "flow": "xtls-rprx-vision",
+	  "xhttp": {"path": "/api/v1/connect", "mode": "auto"},
+	  "display_name": "Netherlands"
+	}`
+
+	got := nodePublicFrom([]byte(raw))
+	if got.XHTTP == nil || got.XHTTP.Path != "/api/v1/connect" || got.XHTTP.Mode != "auto" {
+		t.Fatalf("XHTTP-настройки потеряны: %+v", got)
+	}
+	if !got.Usable() {
+		t.Fatalf("XHTTP-нода признана непригодной: %+v", got)
+	}
+}
+
+func TestNodeConfigJSONWritesXHTTP(t *testing.T) {
+	node := domain.ManifestNode{Public: domain.NodePublic{
+		Transport: domain.TransportXHTTP,
+		XHTTP: &domain.XHTTPConfig{
+			Path: "/api/v1/connect",
+			Mode: "auto",
+		},
+	}}
+
+	_, raw := nodeConfigJSON(node)
+	var config nodePublicConfig
+	if err := json.Unmarshal(raw, &config); err != nil {
+		t.Fatalf("разбор записанного JSON: %v", err)
+	}
+	if config.XHTTP == nil || config.XHTTP.Path != "/api/v1/connect" || config.XHTTP.Mode != "auto" {
+		t.Fatalf("XHTTP-настройки потеряны при записи: %s", raw)
 	}
 }
 

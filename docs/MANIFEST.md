@@ -17,7 +17,7 @@ FREEDOM-доступ, связь — BRIDGE-доступ. Добавили но�
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "revision": 42,
   "allow_destructive": false,
 
@@ -36,9 +36,13 @@ FREEDOM-доступ, связь — BRIDGE-доступ. Добавили но�
         "reality_public_key": "0rTG1Q...",
         "server_name": "www.microsoft.com",
         "short_id": "6ba85179",
-        "fingerprint": "chrome",
+        "fingerprint": "firefox",
         "flow": "xtls-rprx-vision",
-        "transport": "tcp"
+        "transport": "xhttp",
+        "xhttp": {
+          "path": "/api/v1/connect",
+          "mode": "auto"
+        }
       }
     },
     {
@@ -102,7 +106,8 @@ FREEDOM на `DE-1` и BRIDGE `NL-1 → DE-1`.
 | `public.server_name` | домен прикрытия REALITY | ссылка выдастся, клиент не подключится |
 | `public.reality_public_key`, `public.fingerprint` | параметры REALITY на ноде | ссылка выдастся, клиент не подключится |
 | `public.short_id` | короткий идентификатор REALITY, единственное поле `public`, которое разрешено оставить пустым | уходит в ссылку как `sid=`; пустое значение и отсутствие параметра для клиента означают разное, поэтому параметр не опускается |
-| `public.flow`, `public.transport` | зафиксированы в v1: `xtls-rprx-vision` и `tcp` | манифест отклонён |
+| `public.flow`, `public.transport` | flow равен `xtls-rprx-vision`; v2 поддерживает `tcp` и `xhttp` | манифест отклонён |
+| `public.xhttp` | обязательные `path` и `mode` для XHTTP; для TCP отсутствует | манифест отклонён либо ссылка не совпадёт с конфигом Xray |
 | `display_name` ноды и связи | человекочитаемое имя, попадает в название профиля у пользователя | косметика |
 | `vpn_fleet_id` | идентичность флота, назначается один раз навсегда | чужой номер отдаст customer чужую топологию |
 | `routing_key` | идентичность связи внутри флота | другое значение означает другую связь: новое поколение BRIDGE-доступов |
@@ -150,7 +155,7 @@ outbound он проверить не может: такая ошибка тих
 
 | правило | код ошибки |
 |---|---|
-| `schema_version` равен 1 | `MANIFEST_SCHEMA_VERSION` |
+| `schema_version` равен 1 или 2; новые манифесты используют 2 | `MANIFEST_SCHEMA_VERSION` |
 | `revision` больше нуля | `MANIFEST_REVISION_INVALID` |
 | не более 100 нод, 100 флотов, 900 связей суммарно, 10 нод во флоте | `MANIFEST_TOO_LARGE` |
 | `node_id`, `vpn_fleet_id`, `routing_key` внутри флота не повторяются | `MANIFEST_DUPLICATE` |
@@ -161,8 +166,11 @@ outbound он проверить не может: такая ошибка тих
 Требования к полям ноды: `endpoint` вида `host:port` с портом 1–65535;
 `tls_server_name` и `certificate_identity` непусты; `address` непуст, `port`
 1–65535; `reality_public_key` и `server_name` непусты; `fingerprint` — ASCII-токен
-длиной 1–64 из `[A-Za-z0-9._-]`; `transport` равен `tcp`; `flow` равен
-`xtls-rprx-vision`.
+длиной 1–64 из `[A-Za-z0-9._-]`; `flow` равен `xtls-rprx-vision`. Версия 1
+принимает только `tcp`. Версия 2 принимает `tcp` или `xhttp`; для `xhttp`
+обязательны `public.xhttp.path` (начинается с `/`, до 256 байт, без пробелов,
+query и fragment) и `public.xhttp.mode` (`auto`, `packet-up`, `stream-up` либо
+`stream-one`). Для TCP блок `public.xhttp` должен отсутствовать.
 
 Относительно уже принятого состояния, код ответа `FailedPrecondition`:
 

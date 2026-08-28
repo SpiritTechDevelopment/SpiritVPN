@@ -36,6 +36,12 @@ vless://<uuid>@<address>:<port>?security=reality&encryption=none&pbk=<public-key
 vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443?security=reality&encryption=none&pbk=pub-key&fp=chrome&type=tcp&flow=xtls-rprx-vision&sni=www.example.org&sid=ab12#Netherlands
 ```
 
+Для XHTTP после `type=xhttp` добавляются `path` и `mode`:
+
+```text
+vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443?security=reality&encryption=none&pbk=pub-key&fp=firefox&type=xhttp&path=%2Fapi%2Fv1%2Fconnect&mode=auto&flow=xtls-rprx-vision&sni=www.example.org&sid=ab12#Netherlands
+```
+
 | часть URI | значение | источник |
 |---|---|---|
 | схема | `vless` | константа протокола v1 |
@@ -46,15 +52,17 @@ vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443?security=reality
 | `encryption` | `none` | константа протокола v1 |
 | `pbk` | публичный ключ REALITY | `NodePublic.RealityPublicKey` |
 | `fp` | fingerprint клиента | `NodePublic.Fingerprint` |
-| `type` | транспорт, в v1 это `tcp` | `NodePublic.Transport` |
-| `flow` | flow, в v1 это `xtls-rprx-vision` | `NodePublic.Flow` |
+| `type` | `tcp` либо `xhttp` | `NodePublic.Transport` |
+| `path` | путь XHTTP; присутствует только для XHTTP | `NodePublic.XHTTP.Path` |
+| `mode` | режим XHTTP; присутствует только для XHTTP | `NodePublic.XHTTP.Mode` |
+| `flow` | `xtls-rprx-vision` | `NodePublic.Flow` |
 | `sni` | server name REALITY | `NodePublic.ServerName` |
 | `sid` | short ID REALITY | `NodePublic.ShortID` |
 | `display-name` | имя профиля у пользователя | `NodePublic.DisplayName` для `FREEDOM`, имя связи для `BRIDGE` |
 
 Порядок query-параметров фиксирован в `vlessQuery`
 (`internal/app/vless.go:53`): `security`, `encryption`, `pbk`, `fp`, `type`,
-`flow`, `sni`, `sid`. Параметры с пустыми значениями остаются в строке. В
+`path`, `mode` (только XHTTP), `flow`, `sni`, `sid`. Параметры с пустыми значениями остаются в строке. В
 частности, допустимый пустой short ID имеет форму `sid=`.
 
 Сборщик кодирует значения query и фрагмент средствами `net/url`. Имя профиля с
@@ -68,8 +76,8 @@ vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443?security=reality
 публичный ключ REALITY, server name, fingerprint, transport и flow
 (`internal/domain/node.go:46`). Пустые `ShortID` и `DisplayName` разрешены.
 
-Приём манифеста выполняет более строгую проверку: v1 принимает только `tcp` и
-`xtls-rprx-vision`, а fingerprint должен соответствовать
+Приём манифеста выполняет более строгую проверку: v1 принимает только `tcp`, а
+v2 — `tcp` и `xhttp`; flow равен `xtls-rprx-vision`, а fingerprint должен соответствовать
 `^[A-Za-z0-9._-]{1,64}$` (`internal/domain/manifest.go:193`). Read-путь повторно
 эти ограничения не применяет. Уже записанная нода продолжает участвовать в
 выдаче URI, если её данных достаточно по `NodePublic.Usable`. Все поля

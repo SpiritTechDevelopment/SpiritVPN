@@ -109,6 +109,11 @@ func TestApplyFleetManifestConvertsRequest(t *testing.T) {
 
 	req := manifestRequest()
 	req.AllowDestructive = true
+	req.Nodes[0].Public.Transport = domain.TransportXHTTP
+	req.Nodes[0].Public.Xhttp = &manifestv1.XHTTPConfig{
+		Path: "/api/v1/connect",
+		Mode: "auto",
+	}
 
 	if _, err := srv.ApplyFleetManifest(context.Background(), req); err != nil {
 		t.Fatalf("неожиданная ошибка: %v", err)
@@ -131,6 +136,9 @@ func TestApplyFleetManifestConvertsRequest(t *testing.T) {
 	}
 	if node.Public.Port != 443 || node.Agent.Endpoint != "10.0.0.11:9443" {
 		t.Errorf("параметры ноды %+v", node)
+	}
+	if node.Public.XHTTP == nil || node.Public.XHTTP.Path != "/api/v1/connect" || node.Public.XHTTP.Mode != "auto" {
+		t.Errorf("XHTTP-настройки не переложены: %+v", node.Public.XHTTP)
 	}
 
 	// Снапшот обязан быть валидным: транспорт ничего не теряет по дороге.

@@ -20,7 +20,7 @@ import (
 var (
 	// --- форма снапшота: INVALID_ARGUMENT ---
 
-	// ErrManifestSchemaVersion — schema_version не равна 1.
+	// ErrManifestSchemaVersion — schema_version не входит в поддерживаемый набор.
 	ErrManifestSchemaVersion = errors.New("domain: неподдерживаемая schema_version манифеста")
 
 	// ErrManifestRevisionInvalid — revision не положительна.

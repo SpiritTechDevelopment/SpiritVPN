@@ -58,6 +58,29 @@ func TestValidateManifestAcceptsSpecExample(t *testing.T) {
 	}
 }
 
+func TestValidateManifestAcceptsV1TCP(t *testing.T) {
+	snapshot := validSnapshot()
+	snapshot.SchemaVersion = ManifestSchemaVersionV1
+
+	if err := ValidateManifest(snapshot); err != nil {
+		t.Fatalf("валидный TCP-манифест v1 отвергнут: %v", err)
+	}
+}
+
+func TestValidateManifestAcceptsXHTTP(t *testing.T) {
+	for _, mode := range []string{"auto", "packet-up", "stream-up", "stream-one"} {
+		t.Run(mode, func(t *testing.T) {
+			snapshot := validSnapshot()
+			snapshot.Nodes[0].Public.Transport = TransportXHTTP
+			snapshot.Nodes[0].Public.XHTTP = &XHTTPConfig{Path: "/api/v1/connect", Mode: mode}
+
+			if err := ValidateManifest(snapshot); err != nil {
+				t.Fatalf("валидный XHTTP-манифест отвергнут: %v", err)
+			}
+		})
+	}
+}
+
 func TestValidateManifestRejects(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -66,7 +89,7 @@ func TestValidateManifestRejects(t *testing.T) {
 	}{
 		{
 			name:   "чужая schema_version",
-			mutate: func(s *ManifestSnapshot) { s.SchemaVersion = 2 },
+			mutate: func(s *ManifestSnapshot) { s.SchemaVersion = 3 },
 			want:   ErrManifestSchemaVersion,
 		},
 		{
@@ -219,6 +242,53 @@ func TestValidateManifestRejects(t *testing.T) {
 			name:   "неподдерживаемый transport",
 			mutate: func(s *ManifestSnapshot) { s.Nodes[0].Public.Transport = "ws" },
 			want:   ErrManifestNodeInvalid,
+		},
+		{
+			name: "xhttp без настроек",
+			mutate: func(s *ManifestSnapshot) {
+				s.Nodes[0].Public.Transport = TransportXHTTP
+			},
+			want: ErrManifestNodeInvalid,
+		},
+		{
+			name: "tcp с настройками xhttp",
+			mutate: func(s *ManifestSnapshot) {
+				s.Nodes[0].Public.XHTTP = &XHTTPConfig{Path: "/connect", Mode: "auto"}
+			},
+			want: ErrManifestNodeInvalid,
+		},
+		{
+			name: "xhttp path без начального слеша",
+			mutate: func(s *ManifestSnapshot) {
+				s.Nodes[0].Public.Transport = TransportXHTTP
+				s.Nodes[0].Public.XHTTP = &XHTTPConfig{Path: "connect", Mode: "auto"}
+			},
+			want: ErrManifestNodeInvalid,
+		},
+		{
+			name: "xhttp path с query",
+			mutate: func(s *ManifestSnapshot) {
+				s.Nodes[0].Public.Transport = TransportXHTTP
+				s.Nodes[0].Public.XHTTP = &XHTTPConfig{Path: "/connect?token=1", Mode: "auto"}
+			},
+			want: ErrManifestNodeInvalid,
+		},
+		{
+			name: "неподдерживаемый xhttp mode",
+			mutate: func(s *ManifestSnapshot) {
+				s.Nodes[0].Public.Transport = TransportXHTTP
+				s.Nodes[0].Public.XHTTP = &XHTTPConfig{Path: "/connect", Mode: "turbo"}
+			},
+			want: ErrManifestNodeInvalid,
+		},
+		{
+			name: "xhttp недопустим в v1",
+			mutate: func(s *ManifestSnapshot) {
+				s.SchemaVersion = ManifestSchemaVersionV1
+				s.Nodes[0].Public.Transport = TransportXHTTP
+				s.Nodes[0].Public.XHTTP = &XHTTPConfig{Path: "/connect", Mode: "auto"}
+			},
+			want: ErrManifestNodeInvalid,
 		},
 		{
 			name:   "неподдерживаемый flow",

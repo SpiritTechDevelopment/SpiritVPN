@@ -29,26 +29,42 @@ type NodePublic struct {
 	Fingerprint      string
 	Transport        string
 	Flow             string
+	XHTTP            *XHTTPConfig
 	DisplayName      string
+}
+
+// XHTTPConfig — параметры XHTTP, которые должны совпадать у Xray inbound и в
+// клиентской VLESS URI. Nil означает, что транспорт ноды не XHTTP.
+type XHTTPConfig struct {
+	Path string
+	Mode string
 }
 
 // Usable сообщает, что параметров хватает на рабочую VLESS URI.
 //
-// Это не проверка правил манифеста — та строже и живёт в ValidateManifest: она требует
-// ровно tcp и xtls-rprx-vision и проверяет форму fingerprint. Здесь же вопрос
+// Это не проверка правил манифеста — та строже и живёт в ValidateManifest: она проверяет
+// допустимый transport, требует xtls-rprx-vision и проверяет форму fingerprint. Здесь же вопрос
 // другой: можно ли вообще собрать ссылку из того, что уже лежит в проекции.
 // Read-путь не переспрашивает бизнес-правила приёма — иначе их смягчение в
-// будущей версии молча погасило бы ссылки, выданные по прежним правилам.
+// будущей версии молча погасило бы ссылки, выданные по прежним правилам. Для
+// XHTTP дополнительно нужны path и mode.
 //
 // ShortID в обязательные не входит: пустой sid — легальная конфигурация REALITY,
 // и с ним рабочая нода считалась бы сломанной. DisplayName тоже:
 // пустой фрагмент URI безвреден.
 func (n NodePublic) Usable() bool {
-	return n.Address != "" &&
+	baseUsable := n.Address != "" &&
 		n.Port > 0 && n.Port <= maxPort &&
 		n.RealityPublicKey != "" &&
 		n.ServerName != "" &&
 		n.Fingerprint != "" &&
 		n.Transport != "" &&
 		n.Flow != ""
+	if !baseUsable {
+		return false
+	}
+	if n.Transport == TransportXHTTP {
+		return n.XHTTP != nil && n.XHTTP.Path != "" && n.XHTTP.Mode != ""
+	}
+	return true
 }

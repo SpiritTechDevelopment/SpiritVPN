@@ -8,19 +8,21 @@ import (
 	"testing"
 )
 
-// goldenDigest — digest примера validSnapshot.
+// goldenDigestV1 — digest TCP-примера v1 до добавления XHTTP.
 //
 // Литерал здесь пиннит канонический payload побайтово: digest — SHA-256 ровно от
 // него, и любое изменение раскладки, порядка полей или экранирования сдвинет эту
 // строку. Менять её можно только осознанно и понимая, что все уже сохранённые в
 // manifest_revisions digest станут несравнимыми с вновь вычисляемыми.
-const goldenDigest = "ac2e6ab0d7a84fa83a4f5b681bba638d0b80eeee4537452564e4f5ab0a236300"
+const goldenDigestV1 = "ac2e6ab0d7a84fa83a4f5b681bba638d0b80eeee4537452564e4f5ab0a236300"
 
 func TestCanonicalizeManifestGolden(t *testing.T) {
-	payload, digest := CanonicalizeManifest(validSnapshot())
+	snapshot := validSnapshot()
+	snapshot.SchemaVersion = ManifestSchemaVersionV1
+	payload, digest := CanonicalizeManifest(snapshot)
 
-	if digest != goldenDigest {
-		t.Fatalf("digest %q, ожидался %q\npayload: %s", digest, goldenDigest, payload)
+	if digest != goldenDigestV1 {
+		t.Fatalf("digest %q, ожидался %q\npayload: %s", digest, goldenDigestV1, payload)
 	}
 
 	// Digest обязан быть SHA-256 именно того payload, который уедет в колонку:
@@ -87,6 +89,10 @@ func TestCanonicalizeManifestSeesContentChange(t *testing.T) {
 		"egress_tag связи":  func(s *ManifestSnapshot) { s.Fleets[0].Bridges[0].EgressTag = "other-exit" },
 		"состав fleet":      func(s *ManifestSnapshot) { s.Fleets[0].NodeIDs = []NodeID{"NL-1"} },
 		"новый fleet":       func(s *ManifestSnapshot) { s.Fleets = append(s.Fleets, ManifestFleet{FleetID: 11}) },
+		"настройки XHTTP": func(s *ManifestSnapshot) {
+			s.Nodes[0].Public.Transport = TransportXHTTP
+			s.Nodes[0].Public.XHTTP = &XHTTPConfig{Path: "/connect", Mode: "auto"}
+		},
 	}
 
 	for name, mutate := range changes {
