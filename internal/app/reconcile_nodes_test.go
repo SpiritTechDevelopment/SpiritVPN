@@ -133,6 +133,7 @@ func reconcileNode(t *testing.T, users ...app.ReconcileUser) *app.ClaimedReconci
 			NodeID: "NL-1", Address: "nl-1:9443",
 			TLSServerName: "nl-1", CertificateIdentity: "nl-1",
 		},
+		Transport:       domain.TransportTCP,
 		Flow:            domain.FlowXTLSRprxVision,
 		DesiredRevision: 7,
 		// Нода после потери состояния: ей набор нужен целиком, и путь полного
@@ -269,11 +270,12 @@ func TestReconcileAbortsOnUnreadableCredential(t *testing.T) {
 	}
 }
 
-// TestReconcileSkipsNodeWithBrokenPublicConfig — пустой flow означает
+// TestReconcileSkipsNodeWithBrokenPublicConfig — пустой transport означает
 // неразобравшийся public_config. Отправить набор с чужим flow — сломать на ноде
 // всех разом, поэтому она пропускается целиком.
 func TestReconcileSkipsNodeWithBrokenPublicConfig(t *testing.T) {
 	node := reconcileNode(t, reconcileUser(t, "acc-1"))
+	node.Transport = ""
 	node.Flow = ""
 
 	uc, _, agent := newReconcileHarness(t, node, reconcileApplied())
@@ -283,6 +285,34 @@ func TestReconcileSkipsNodeWithBrokenPublicConfig(t *testing.T) {
 	}
 	if agent.calls != 0 {
 		t.Errorf("агент вызван %d раз при непригодном public_config", agent.calls)
+	}
+}
+
+// TestReconcileSendsSetForXHTTPNode закрепляет, что признаком непригодной
+// колонки служит transport, а не flow.
+//
+// У XHTTP-ноды flow пуст штатно: Vision поверх этого транспорта не работает.
+// Проверка по flow выбрасывала бы такие ноды из reconcile навсегда — состав
+// пользователей переставал бы сходиться молча, с жалобой в логе на исправную
+// колонку.
+func TestReconcileSendsSetForXHTTPNode(t *testing.T) {
+	node := reconcileNode(t, reconcileUser(t, "acc-1"))
+	node.Transport = domain.TransportXHTTP
+	node.Flow = ""
+
+	uc, _, agent := newReconcileHarness(t, node, reconcileApplied())
+
+	if _, err := uc.ProcessNext(context.Background()); err != nil {
+		t.Fatalf("ProcessNext: %v", err)
+	}
+	if agent.calls != 1 {
+		t.Fatalf("вызовов агента %d, ожидался 1: XHTTP-нода пропущена", agent.calls)
+	}
+	if len(agent.users) != 1 {
+		t.Fatalf("до агента доехало %d юзеров, ожидался 1", len(agent.users))
+	}
+	if agent.users[0].Flow != "" {
+		t.Errorf("агенту ушёл flow %q, ожидался пустой", agent.users[0].Flow)
 	}
 }
 

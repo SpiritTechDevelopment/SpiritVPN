@@ -185,11 +185,15 @@ func (uc *ReconcileNodes) drifted(ctx context.Context, node ClaimedReconcileNode
 // с ноды удалён, поэтому пропуск нерасшифровавшегося снял бы рабочий доступ и
 // превратил отказ ключа в потерю сервиса.
 func (uc *ReconcileNodes) materialize(ctx context.Context, node ClaimedReconcileNode) ([]nodeagent.User, bool) {
-	// Пустой flow означает, что public_config ноды не разобрался: колонка битая
-	// либо не заполнена. Отправить набор с чужим flow — сломать на ноде всех
+	// Пустой transport означает, что public_config ноды не разобрался: колонка
+	// битая либо не заполнена. Отправить набор с чужим flow — сломать на ноде всех
 	// разом, поэтому такая нода пропускается целиком. По непригодному
 	// public_config выдача ссылок гасит одну ссылку, здесь на кону вся нода.
-	if node.Flow == "" {
+	//
+	// Признаком служит transport, а не flow: у XHTTP-ноды flow пуст штатно, и
+	// проверка по нему выбрасывала бы такие ноды из reconcile навсегда, оставляя
+	// в логе жалобу на исправную колонку.
+	if node.Transport == "" {
 		uc.Logger.LogAttrs(ctx, slog.LevelError, "reconcile пропущен: public_config ноды непригоден",
 			slog.String("node_id", string(node.NodeID)))
 		return nil, false

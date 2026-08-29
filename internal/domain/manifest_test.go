@@ -72,6 +72,7 @@ func TestValidateManifestAcceptsXHTTP(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			snapshot := validSnapshot()
 			snapshot.Nodes[0].Public.Transport = TransportXHTTP
+			snapshot.Nodes[0].Public.Flow = ""
 			snapshot.Nodes[0].Public.XHTTP = &XHTTPConfig{Path: "/api/v1/connect", Mode: mode}
 
 			if err := ValidateManifest(snapshot); err != nil {
@@ -294,6 +295,31 @@ func TestValidateManifestRejects(t *testing.T) {
 			name:   "неподдерживаемый flow",
 			mutate: func(s *ManifestSnapshot) { s.Nodes[0].Public.Flow = "none" },
 			want:   ErrManifestNodeInvalid,
+		},
+		{
+			name:   "пустой flow у tcp",
+			mutate: func(s *ManifestSnapshot) { s.Nodes[0].Public.Flow = "" },
+			want:   ErrManifestNodeInvalid,
+		},
+		{
+			// Vision поверх XHTTP отвергается клиентом ещё до подключения к ноде,
+			// поэтому такая ссылка не даёт ни отказа на агенте, ни следа в
+			// мониторинге. Приём манифеста — единственное место, где это видно.
+			name: "vision-flow поверх xhttp",
+			mutate: func(s *ManifestSnapshot) {
+				s.Nodes[0].Public.Transport = TransportXHTTP
+				s.Nodes[0].Public.XHTTP = &XHTTPConfig{Path: "/connect", Mode: "packet-up"}
+				s.Nodes[0].Public.Flow = FlowXTLSRprxVision
+			},
+			want: ErrManifestNodeInvalid,
+		},
+		{
+			name: "пустой flow у tcp в v1",
+			mutate: func(s *ManifestSnapshot) {
+				s.SchemaVersion = ManifestSchemaVersionV1
+				s.Nodes[0].Public.Flow = ""
+			},
+			want: ErrManifestNodeInvalid,
 		},
 
 		// --- лимиты размера ---

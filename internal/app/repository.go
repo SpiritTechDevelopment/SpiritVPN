@@ -340,7 +340,14 @@ type ClaimedReconcileNode struct {
 	NodeID   domain.NodeID
 	Endpoint nodeagent.Endpoint
 
+	// Transport — транспорт ноды из её public_config. Читается не ради отправки:
+	// в набор он не входит, а служит признаком того, что колонка вообще
+	// разобралась. Пустым он бывает только у нулевой структуры, тогда как flow
+	// пуст штатно у любой XHTTP-ноды.
+	Transport string
+
 	// Flow — параметр входной ноды из её public_config, общий для всех её юзеров.
+	// Пуст у XHTTP: Vision поверх этого транспорта не работает.
 	Flow string
 
 	// DesiredRevision зафиксирована в момент чтения набора. Ею же результат

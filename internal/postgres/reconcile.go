@@ -67,10 +67,13 @@ func (r *Repository) ClaimNodeForReconcile(
 		return nil, fmt.Errorf("postgres: commit захвата reconcile: %w", err)
 	}
 
+	public := nodePublicFrom(row.PublicConfig)
+
 	claimed := &app.ClaimedReconcileNode{
 		NodeID:          domain.NodeID(row.NodeID),
 		Endpoint:        nodeAgentFrom(row.NodeID, row.AgentConfig),
-		Flow:            nodePublicFrom(row.PublicConfig).Flow,
+		Transport:       public.Transport,
+		Flow:            public.Flow,
 		DesiredRevision: row.DesiredRevision,
 		NeedsBootstrap:  row.NeedsBootstrap,
 		Users:           make([]app.ReconcileUser, 0, len(users)),

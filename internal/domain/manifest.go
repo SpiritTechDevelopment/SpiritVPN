@@ -199,8 +199,8 @@ func validateNodeAgent(node ManifestNode) error {
 	return nil
 }
 
-// validateNodePublic — обязательные REALITY-поля и единственные поддерживаемые
-// значения transport и flow.
+// validateNodePublic — обязательные REALITY-поля, поддерживаемые значения
+// transport и совместимый с ним flow.
 //
 // Строже, чем NodePublic.Usable: тот отвечает на вопрос «соберётся ли URI» и
 // применяется к тому, что уже лежит в проекции. Здесь же решается, пускать ли
@@ -222,9 +222,6 @@ func validateNodePublic(node ManifestNode, schemaVersion uint32) error {
 		return manifestError(ErrManifestNodeInvalid,
 			"нода %s: fingerprint %q не является ASCII-токеном 1..64 из [A-Za-z0-9._-]",
 			node.NodeID, public.Fingerprint)
-	case public.Flow != FlowXTLSRprxVision:
-		return manifestError(ErrManifestNodeInvalid, "нода %s: flow %q, поддерживается только %q",
-			node.NodeID, public.Flow, FlowXTLSRprxVision)
 	}
 
 	if schemaVersion == ManifestSchemaVersionV1 {
@@ -236,7 +233,7 @@ func validateNodePublic(node ManifestNode, schemaVersion uint32) error {
 			return manifestError(ErrManifestNodeInvalid, "нода %s: xhttp недопустим для transport %q в v1",
 				node.NodeID, public.Transport)
 		}
-		return nil
+		return validateFlow(node.NodeID, public.Transport, public.Flow)
 	}
 
 	switch public.Transport {
@@ -252,6 +249,33 @@ func validateNodePublic(node ManifestNode, schemaVersion uint32) error {
 	default:
 		return manifestError(ErrManifestNodeInvalid, "нода %s: неподдерживаемый transport %q",
 			node.NodeID, public.Transport)
+	}
+
+	return validateFlow(node.NodeID, public.Transport, public.Flow)
+}
+
+// validateFlow — flow задаётся транспортом, а не выбирается независимо от него.
+//
+// Vision работает только там, где VLESS дотягивается до соединения напрямую:
+// tls.Conn, reality.Conn либо VLESS Encryption. XHTTP заворачивает поток в HTTP,
+// и Xray отвечает "XTLS only supports TLS and REALITY directly for now."
+// Отказ при этом происходит на стороне клиента, до подключения к ноде, поэтому
+// ни агент, ни мониторинг ноды такую ссылку не увидят вовсе: единственное место,
+// где несовместимость ещё можно заметить, — этот приём.
+func validateFlow(nodeID NodeID, transport, flow string) error {
+	if transport == TransportXHTTP {
+		if flow != "" {
+			return manifestError(ErrManifestNodeInvalid,
+				"нода %s: flow %q, для transport %q flow обязан быть пустым",
+				nodeID, flow, TransportXHTTP)
+		}
+		return nil
+	}
+
+	if flow != FlowXTLSRprxVision {
+		return manifestError(ErrManifestNodeInvalid,
+			"нода %s: flow %q, для transport %q поддерживается только %q",
+			nodeID, flow, transport, FlowXTLSRprxVision)
 	}
 
 	return nil

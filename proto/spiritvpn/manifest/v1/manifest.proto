@@ -8,8 +8,8 @@ syntax = "proto3";
 // customer access идёт асинхронно durable-джобой после commit.
 //
 // Ограничения полей, которые protobuf выразить не может (поддерживаемая
-// schema_version, revision > 0, регэксп fingerprint, совместимость transport и
-// xhttp, flow == "xtls-rprx-vision", уникальность, ссылочная целостность,
+// schema_version, revision > 0, регэксп fingerprint, совместимость transport с
+// xhttp и с flow, уникальность, ссылочная целостность,
 // destructive-guard), валидирует backend до проекции.
 package spiritvpn.manifest.v1;
 
@@ -70,7 +70,7 @@ message NodePublicConfig {
   string server_name = 4; // -> sni
   string short_id = 5; // -> sid
   string fingerprint = 6; // -> fp; ASCII 1..64 из [A-Za-z0-9._-]
-  string flow = 7; // "xtls-rprx-vision"
+  string flow = 7; // "xtls-rprx-vision" при transport "tcp"; пустой при "xhttp"
   string transport = 8; // v1: "tcp"; v2: "tcp" или "xhttp"
 
   // Обязателен только для transport == "xhttp" в schema_version 2. Для TCP

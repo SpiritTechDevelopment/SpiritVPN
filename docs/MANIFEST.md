@@ -37,11 +37,11 @@ FREEDOM-доступ, связь — BRIDGE-доступ. Добавили но�
         "server_name": "www.microsoft.com",
         "short_id": "6ba85179",
         "fingerprint": "firefox",
-        "flow": "xtls-rprx-vision",
+        "flow": "",
         "transport": "xhttp",
         "xhttp": {
           "path": "/api/v1/connect",
-          "mode": "auto"
+          "mode": "packet-up"
         }
       }
     },
@@ -106,7 +106,7 @@ FREEDOM на `DE-1` и BRIDGE `NL-1 → DE-1`.
 | `public.server_name` | домен прикрытия REALITY | ссылка выдастся, клиент не подключится |
 | `public.reality_public_key`, `public.fingerprint` | параметры REALITY на ноде | ссылка выдастся, клиент не подключится |
 | `public.short_id` | короткий идентификатор REALITY, единственное поле `public`, которое разрешено оставить пустым | уходит в ссылку как `sid=`; пустое значение и отсутствие параметра для клиента означают разное, поэтому параметр не опускается |
-| `public.flow`, `public.transport` | flow равен `xtls-rprx-vision`; v2 поддерживает `tcp` и `xhttp` | манифест отклонён |
+| `public.flow`, `public.transport` | v2 поддерживает `tcp` и `xhttp`; flow задаётся транспортом: `xtls-rprx-vision` у `tcp`, пустой у `xhttp` | манифест отклонён |
 | `public.xhttp` | обязательные `path` и `mode` для XHTTP; для TCP отсутствует | манифест отклонён либо ссылка не совпадёт с конфигом Xray |
 | `display_name` ноды и связи | человекочитаемое имя, попадает в название профиля у пользователя | косметика |
 | `vpn_fleet_id` | идентичность флота, назначается один раз навсегда | чужой номер отдаст customer чужую топологию |
@@ -166,11 +166,18 @@ outbound он проверить не может: такая ошибка тих
 Требования к полям ноды: `endpoint` вида `host:port` с портом 1–65535;
 `tls_server_name` и `certificate_identity` непусты; `address` непуст, `port`
 1–65535; `reality_public_key` и `server_name` непусты; `fingerprint` — ASCII-токен
-длиной 1–64 из `[A-Za-z0-9._-]`; `flow` равен `xtls-rprx-vision`. Версия 1
+длиной 1–64 из `[A-Za-z0-9._-]`. Версия 1
 принимает только `tcp`. Версия 2 принимает `tcp` или `xhttp`; для `xhttp`
 обязательны `public.xhttp.path` (начинается с `/`, до 256 байт, без пробелов,
 query и fragment) и `public.xhttp.mode` (`auto`, `packet-up`, `stream-up` либо
 `stream-one`). Для TCP блок `public.xhttp` должен отсутствовать.
+
+`flow` определяется транспортом: у `tcp` он равен `xtls-rprx-vision`, у `xhttp`
+обязан быть пустым. Vision требует, чтобы VLESS дотягивался до соединения
+напрямую, а XHTTP заворачивает поток в HTTP — Xray отвечает `XTLS only supports
+TLS and REALITY directly for now.` на стороне клиента, до подключения к ноде.
+Такая ссылка не оставляет следа ни на агенте, ни в мониторинге, поэтому приём
+манифеста — единственное место, где несовпадение ещё можно заметить.
 
 Относительно уже принятого состояния, код ответа `FailedPrecondition`:
 

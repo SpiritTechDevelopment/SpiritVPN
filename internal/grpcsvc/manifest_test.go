@@ -110,6 +110,7 @@ func TestApplyFleetManifestConvertsRequest(t *testing.T) {
 	req := manifestRequest()
 	req.AllowDestructive = true
 	req.Nodes[0].Public.Transport = domain.TransportXHTTP
+	req.Nodes[0].Public.Flow = ""
 	req.Nodes[0].Public.Xhttp = &manifestv1.XHTTPConfig{
 		Path: "/api/v1/connect",
 		Mode: "auto",

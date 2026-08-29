@@ -50,6 +50,10 @@ func BuildVLESSURI(clientUUID crypto.ClientUUID, node domain.NodePublic, display
 // сортирует ключи по алфавиту. Пустые значения не опускаются — клиенты читают
 // набор параметров позиционно-независимо, но их отсутствие и пустота для
 // некоторых из них (sid) означают разное.
+//
+// Flow — исключение из этого правила: у XHTTP-ноды его нет вовсе, и ссылка
+// повторяет конфигурацию ноды буквально, а не объявляет flow заданным и пустым.
+// Форма TCP-ссылки при этом не меняется: там flow непуст всегда.
 func vlessQuery(node domain.NodePublic) string {
 	type queryParam struct{ key, value string }
 	params := []queryParam{
@@ -65,8 +69,10 @@ func vlessQuery(node domain.NodePublic) string {
 			queryParam{"mode", node.XHTTP.Mode},
 		)
 	}
+	if node.Flow != "" {
+		params = append(params, queryParam{"flow", node.Flow})
+	}
 	params = append(params,
-		queryParam{"flow", node.Flow},
 		queryParam{"sni", node.ServerName},
 		queryParam{"sid", node.ShortID},
 	)

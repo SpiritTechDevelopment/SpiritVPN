@@ -45,16 +45,24 @@ func TestBuildVLESSURIMatchesSpec(t *testing.T) {
 	}
 }
 
+// TestBuildVLESSURIXHTTP — у XHTTP-ноды flow пуст, и параметр в ссылке
+// отсутствует целиком.
+//
+// Xray на стороне клиента отвергает Vision поверх XHTTP словами "XTLS only
+// supports TLS and REALITY directly for now.", то есть ссылка с flow не дошла бы
+// даже до ноды. Приём манифеста такую ноду не пропустит, но форма ссылки
+// закрепляется и здесь: это то, что видит пользователь.
 func TestBuildVLESSURIXHTTP(t *testing.T) {
 	node := testNode()
 	node.Transport = domain.TransportXHTTP
 	node.Fingerprint = "firefox"
-	node.XHTTP = &domain.XHTTPConfig{Path: "/api/v1/connect", Mode: "auto"}
+	node.Flow = ""
+	node.XHTTP = &domain.XHTTPConfig{Path: "/api/v1/connect", Mode: "packet-up"}
 
 	const want = "vless://f81d4fae-7dec-11d0-a765-00a0c91e6bf6@nl.example.com:443" +
 		"?security=reality&encryption=none&pbk=pub-key&fp=firefox&type=xhttp" +
-		"&path=%2Fapi%2Fv1%2Fconnect&mode=auto" +
-		"&flow=xtls-rprx-vision&sni=www.example.org&sid=ab12" +
+		"&path=%2Fapi%2Fv1%2Fconnect&mode=packet-up" +
+		"&sni=www.example.org&sid=ab12" +
 		"#Netherlands"
 
 	got := app.BuildVLESSURI(testClientUUID, node, node.DisplayName)
@@ -162,10 +170,17 @@ func TestNodePublicUsable(t *testing.T) {
 		{"нет server name", func(n *domain.NodePublic) { n.ServerName = "" }, false},
 		{"нет fingerprint", func(n *domain.NodePublic) { n.Fingerprint = "" }, false},
 		{"нет transport", func(n *domain.NodePublic) { n.Transport = "" }, false},
-		{"нет flow", func(n *domain.NodePublic) { n.Flow = "" }, false},
+		{"нет flow у tcp", func(n *domain.NodePublic) { n.Flow = "" }, false},
 		{"xhttp с настройками", func(n *domain.NodePublic) {
 			n.Transport = domain.TransportXHTTP
 			n.XHTTP = &domain.XHTTPConfig{Path: "/connect", Mode: "auto"}
+		}, true},
+		// Ровно та форма, в которой XHTTP-нода приходит из манифеста: flow у неё
+		// нет вовсе. Требовать его значило бы гасить ссылки исправных нод.
+		{"xhttp без flow", func(n *domain.NodePublic) {
+			n.Transport = domain.TransportXHTTP
+			n.Flow = ""
+			n.XHTTP = &domain.XHTTPConfig{Path: "/connect", Mode: "packet-up"}
 		}, true},
 		{"xhttp без настроек", func(n *domain.NodePublic) {
 			n.Transport = domain.TransportXHTTP

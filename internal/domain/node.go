@@ -43,11 +43,15 @@ type XHTTPConfig struct {
 // Usable сообщает, что параметров хватает на рабочую VLESS URI.
 //
 // Это не проверка правил манифеста — та строже и живёт в ValidateManifest: она проверяет
-// допустимый transport, требует xtls-rprx-vision и проверяет форму fingerprint. Здесь же вопрос
+// допустимый transport, сверяет flow с транспортом и проверяет форму fingerprint. Здесь же вопрос
 // другой: можно ли вообще собрать ссылку из того, что уже лежит в проекции.
 // Read-путь не переспрашивает бизнес-правила приёма — иначе их смягчение в
 // будущей версии молча погасило бы ссылки, выданные по прежним правилам. Для
 // XHTTP дополнительно нужны path и mode.
+//
+// Flow обязателен не всегда: у XHTTP-ноды его нет вовсе, потому что Vision
+// поверх этого транспорта не работает. Требовать его от всех значило бы объявить
+// каждую XHTTP-ноду сломанной.
 //
 // ShortID в обязательные не входит: пустой sid — легальная конфигурация REALITY,
 // и с ним рабочая нода считалась бы сломанной. DisplayName тоже:
@@ -58,13 +62,12 @@ func (n NodePublic) Usable() bool {
 		n.RealityPublicKey != "" &&
 		n.ServerName != "" &&
 		n.Fingerprint != "" &&
-		n.Transport != "" &&
-		n.Flow != ""
+		n.Transport != ""
 	if !baseUsable {
 		return false
 	}
 	if n.Transport == TransportXHTTP {
 		return n.XHTTP != nil && n.XHTTP.Path != "" && n.XHTTP.Mode != ""
 	}
-	return true
+	return n.Flow != ""
 }
