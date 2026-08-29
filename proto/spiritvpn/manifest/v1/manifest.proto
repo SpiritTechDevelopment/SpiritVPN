@@ -9,8 +9,8 @@ syntax = "proto3";
 //
 // Ограничения полей, которые protobuf выразить не может (поддерживаемая
 // schema_version, revision > 0, регэксп fingerprint, совместимость transport с
-// xhttp и с flow, уникальность, ссылочная целостность,
-// destructive-guard), валидирует backend до проекции.
+// xhttp и с flow, уникальность, ссылочная целостность, destructive-guard),
+// валидирует backend до проекции.
 package spiritvpn.manifest.v1;
 
 // ManifestService принимает полные versioned-снапшоты топологии от инфраструктуры.

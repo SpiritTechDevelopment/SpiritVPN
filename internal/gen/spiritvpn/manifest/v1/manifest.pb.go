@@ -12,9 +12,9 @@
 // customer access идёт асинхронно durable-джобой после commit.
 //
 // Ограничения полей, которые protobuf выразить не может (поддерживаемая
-// schema_version, revision > 0, регэксп fingerprint, совместимость transport и
-// xhttp, flow == "xtls-rprx-vision", уникальность, ссылочная целостность,
-// destructive-guard), валидирует backend до проекции.
+// schema_version, revision > 0, регэксп fingerprint, совместимость transport с
+// xhttp и с flow, уникальность, ссылочная целостность, destructive-guard),
+// валидирует backend до проекции.
 
 package manifestv1
 
@@ -312,7 +312,7 @@ type NodePublicConfig struct {
 	ServerName       string                 `protobuf:"bytes,4,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`                     // -> sni
 	ShortId          string                 `protobuf:"bytes,5,opt,name=short_id,json=shortId,proto3" json:"short_id,omitempty"`                              // -> sid
 	Fingerprint      string                 `protobuf:"bytes,6,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`                                     // -> fp; ASCII 1..64 из [A-Za-z0-9._-]
-	Flow             string                 `protobuf:"bytes,7,opt,name=flow,proto3" json:"flow,omitempty"`                                                   // "xtls-rprx-vision"
+	Flow             string                 `protobuf:"bytes,7,opt,name=flow,proto3" json:"flow,omitempty"`                                                   // "xtls-rprx-vision" при transport "tcp"; пустой при "xhttp"
 	Transport        string                 `protobuf:"bytes,8,opt,name=transport,proto3" json:"transport,omitempty"`                                         // v1: "tcp"; v2: "tcp" или "xhttp"
 	// Обязателен только для transport == "xhttp" в schema_version 2. Для TCP
 	// должен отсутствовать.
