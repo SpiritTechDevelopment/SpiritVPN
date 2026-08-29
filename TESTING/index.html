@@ -1,0 +1,1677 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Документация backend-сервиса управления VPN-инфраструктурой SpiritVPN">
+      
+      
+        <meta name="author" content="Roman Ryabinkin, Pavel Lensky">
+      
+      
+      
+        <link rel="prev" href="../VLESS/">
+      
+      
+        <link rel="next" href="../CHANGELOG_GUIDE/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Руководство по тестированию - SpiritVPN Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="SpiritVPN Documentation" class="md-header__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SpiritVPN Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Руководство по тестированию
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить тёмную тему"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Включить тёмную тему" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить светлую тему"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Включить светлую тему" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Главная
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ARCHITECTURE/" class="md-tabs__link">
+          
+  
+  
+  Архитектура
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Разработка
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../DEPLOYMENT/" class="md-tabs__link">
+          
+  
+  
+  Инфраструктура
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="SpiritVPN Documentation" class="md-nav__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SpiritVPN Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Главная
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Архитектура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Архитектура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Общая архитектура
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../API/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Внешний API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATABASE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    База данных
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFEST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VLESS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VLESS URI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Разработка
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Разработка
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Руководство по тестированию
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Руководство по тестированию
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Состав
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Гейт интеграционных тестов
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        База интеграционных тестов
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Фикстуры
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Двойники портов
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Тесты домена
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mtls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Рукопожатие mTLS
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Конкурентные тесты
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Покрытие
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Размещение нового теста
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CHANGELOG_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Правила Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Инфраструктура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Инфраструктура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Развёртывание
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPERATIONS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Эксплуатация
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Состав
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Гейт интеграционных тестов
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        База интеграционных тестов
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Фикстуры
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Двойники портов
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Тесты домена
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mtls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Рукопожатие mTLS
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Конкурентные тесты
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Покрытие
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Размещение нового теста
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="_1">Тестирование</h1>
+<p>Документ отвечает на вопрос, как устроены тесты репозитория: чем отбираются
+интеграционные, откуда берётся чистая база, как написаны двойники портов и куда
+класть новый тест.</p>
+<p>Команды <code>make</code> перечислены в <code>README.md</code>, разделы «Разработка» и
+«Тестирование». Схема базы разобрана в <a href="../DATABASE/">DATABASE.md</a>, состав
+воркеров в <a href="../ARCHITECTURE/">ARCHITECTURE.md</a>, переменные окружения самого
+процесса в <a href="../DEPLOYMENT/">DEPLOYMENT.md</a>. У тестов свои переменные, они ниже, и
+с конфигурацией процесса не пересекаются.</p>
+<h2 id="_2">Состав</h2>
+<p>502 теста в 72 файлах, одиннадцать пакетов.</p>
+<table>
+<thead>
+<tr>
+<th>пакет</th>
+<th>файлов</th>
+<th>тестов</th>
+<th>нужна база</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>internal/postgres</code></td>
+<td>15</td>
+<td>109</td>
+<td>да, кроме десяти</td>
+</tr>
+<tr>
+<td><code>internal/app</code></td>
+<td>13</td>
+<td>99</td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>internal/domain</code></td>
+<td>13</td>
+<td>83</td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>internal/grpcsvc</code></td>
+<td>3</td>
+<td>47</td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>cmd/spiritvpnd</code></td>
+<td>7</td>
+<td>39</td>
+<td>да, у шести</td>
+</tr>
+<tr>
+<td><code>internal/crypto</code></td>
+<td>5</td>
+<td>32</td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>internal/nodeagent</code></td>
+<td>3</td>
+<td>32</td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>internal/metrics</code></td>
+<td>6</td>
+<td>27</td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>cmd/migrate</code></td>
+<td>1</td>
+<td>9</td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>internal/config</code></td>
+<td>1</td>
+<td>8</td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>internal/migrations</code></td>
+<td>1</td>
+<td>2</td>
+<td>нет</td>
+</tr>
+</tbody>
+</table>
+<p>Десять тестов <code>internal/postgres</code>, обходящихся без базы, лежат в
+<code>internal/postgres/node_public_test.go</code>, <code>numeric_test.go</code>, <code>links_test.go</code> и
+<code>available_nodes_test.go</code>: разбор <code>public_config</code>, преобразование
+<code>numeric(20,0)</code> в <code>uint64</code> и маппинг строк read-моделей.</p>
+<p>Библиотек тестирования в <code>go.mod</code> нет: ни testify, ни генератора моков, ни
+sqlmock. Сравнения написаны на <code>if</code> с <code>t.Fatalf</code> и <code>t.Errorf</code>, двойники портов
+собраны руками. Единственная сторонняя обвязка это
+<code>prometheus/client_golang/prometheus/testutil</code> в <code>internal/metrics</code>: <code>ToFloat64</code>
+читает значение конкретной серии в 40 местах, <code>GatherAndLint</code> вызывается один
+раз в <code>internal/metrics/registry_test.go:38</code>: он собирает весь реестр и
+отбирает замечания по своему namespace, новую метрику подхватит сам. Соседний
+<code>TestNoCustomerIDLabels</code> (строка 57) устроен обратным образом, на белом списке
+меток; заводя метку, впишите её туда, иначе тест упадёт.</p>
+<p>Каталогов <code>testdata</code> в репозитории нет. Зафиксированный эталон один:
+<code>goldenDigest</code> в <code>internal/domain/manifest_digest_test.go:17</code>, шестнадцатеричная
+строка прямо в исходнике. Правка канонического представления манифеста валит
+<code>TestCanonicalizeManifestGolden</code> и только его: остальные тесты дайджеста
+(<code>internal/postgres/manifest_integration_test.go:142</code>,
+<code>internal/app/apply_fleet_manifest_test.go:143</code>) вычисляют ожидаемое значение той
+же функцией и остаются зелёными.</p>
+<h2 id="_3">Гейт интеграционных тестов</h2>
+<p>Гейт это пара переменных окружения <code>SPIRITVPN_INTEGRATION_TESTS</code> и
+<code>DATABASE_URL</code>. Реализаций две, и при неполном наборе они ведут себя по-разному.</p>
+<table>
+<thead>
+<tr>
+<th>набор переменных</th>
+<th><code>TestMain</code> (<code>internal/postgres/apply_integration_test.go:39</code>)</th>
+<th><code>newSchemaPool</code> (<code>cmd/spiritvpnd/schema_integration_test.go:33</code>)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>обе заданы</td>
+<td>накатывает миграции, гоняет все тесты пакета</td>
+<td>пересоздаёт свою схему, гоняет тест</td>
+</tr>
+<tr>
+<td><code>SPIRITVPN_INTEGRATION_TESTS</code> пуст</td>
+<td>сразу <code>m.Run()</code>; проходят шесть тестов без базы</td>
+<td><code>t.Skip</code> на строке 37</td>
+</tr>
+<tr>
+<td>он задан, <code>DATABASE_URL</code> пуст</td>
+<td>сообщение в stderr и <code>os.Exit(1)</code></td>
+<td><code>t.Fatal</code> на строке 44</td>
+</tr>
+</tbody>
+</table>
+<p>Разница видна в последней строке. <code>os.Exit(1)</code> валит пакет <code>internal/postgres</code>
+до первого теста, <code>t.Fatal</code> роняет только вызвавший тест. Забыв <code>DATABASE_URL</code>,
+вы получите либо одну строку про пустой DSN и ни одного результата теста, либо
+шесть падений в <code>cmd/spiritvpnd</code> при зелёном остальном прогоне.</p>
+<p><code>testing.Short()</code> не вызывает ни один тест репозитория. Цель <code>test-unit</code>
+передаёт <code>-short</code>, и набор от этого флага не меняется: <code>go test -short ./...</code> и
+<code>go test ./...</code> без заданных переменных отбирают одно и то же. Офлайновость
+обычного прогона держится на гейте.</p>
+<p>Приставка <code>TestIntegration</code> в имени это второй механизм отбора: цель
+<code>test-integration</code> передаёт <code>-run Integration</code>. Функций с такой приставкой 102,
+из них 96 в <code>internal/postgres</code> и 6 в
+<code>cmd/spiritvpnd/schema_integration_test.go</code>, поэтому прогон захватывает два
+пакета. Тест, которому нужна база, но названный иначе, в этот прогон не попадёт,
+а в обычном уйдёт в <code>t.Skip</code>, и не выполнится нигде.</p>
+<h2 id="_4">База интеграционных тестов</h2>
+<p><code>docker-compose.dev.yml</code> поднимает отдельный экземпляр PostgreSQL, не связанный с
+<code>docker-compose.yml</code>.</p>
+<table>
+<thead>
+<tr>
+<th>параметр</th>
+<th>значение</th>
+<th>следствие</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>образ</td>
+<td><code>postgres:14-alpine</code></td>
+<td>та же мажорная версия, что в <code>services:</code> у <code>.github/workflows/ci.yml</code></td>
+</tr>
+<tr>
+<td>порт</td>
+<td>5433</td>
+<td>подключение по привычке на 5432 попадёт мимо этой базы</td>
+</tr>
+<tr>
+<td>данные</td>
+<td><code>tmpfs</code> на <code>/var/lib/postgresql/data</code></td>
+<td>содержимое умирает вместе с контейнером</td>
+</tr>
+<tr>
+<td><code>fsync</code>, <code>synchronous_commit</code>, <code>full_page_writes</code></td>
+<td><code>off</code></td>
+<td>сохранять здесь нечего, прогон быстрее</td>
+</tr>
+<tr>
+<td>healthcheck</td>
+<td><code>pg_isready</code></td>
+<td><code>docker compose up --wait</code> дожидается готовности</td>
+</tr>
+</tbody>
+</table>
+<p>Схему накатывает <code>migrateUp</code> (<code>internal/postgres/apply_integration_test.go:60</code>)
+пакетом <code>internal/migrations</code>, тем же, что и команда деплоя. Тесты идут по той
+схеме, из которой sqlc сгенерировал код в <code>internal/postgres/db</code>.</p>
+<p>Перед каждым тестом <code>newFixture</code> выполняет <code>TRUNCATE ... CASCADE</code> по списку
+<code>truncatedTables</code> (<code>internal/postgres/apply_integration_test.go:90</code>). Список
+явный, 15 таблиц, в порядке, обратном зависимостям. Заводя таблицу в схеме,
+допишите её сюда: без строки в списке данные предыдущего теста доедут до
+следующего и дадут падение, не связанное с проверяемым кодом.</p>
+<p>Тесты <code>cmd/spiritvpnd</code> работают в отдельной схеме
+<code>spiritvpnd_schema_check_test</code>. <code>newSchemaPool</code> прописывает её в <code>search_path</code>
+соединения и пересоздаёт на каждый вызов вместе с собственной таблицей
+<code>schema_migrations</code>. Проверяемая функция <code>schemaCheck</code> обращается к
+<code>schema_migrations</code> по захардкоженному имени, и <code>search_path</code> уводит запрос в
+таблицу теста. Тесты двигают версию схемы и поднимают флаг <code>dirty</code>; настоящую
+<code>schema_migrations</code> в это время использует <code>internal/postgres</code>, чьи тесты идут
+параллельным процессом того же <code>go test ./...</code>.</p>
+<h2 id="_5">Фикстуры</h2>
+<p>Фикстура это функция, отдающая чистую базу вместе с use case, собранным на
+настоящих адаптерах. Корень один: <code>newFixture</code>
+(<code>internal/postgres/apply_integration_test.go:109</code>). Он проверяет гейт, при
+пустой переменной делает <code>t.Skip</code> на строке 113, открывает пул, чистит таблицы и
+возвращает <code>ApplyCustomerAccess</code> вместе с <code>*pgxpool.Pool</code>. Генератор
+идентификаторов и шифр внутри настоящие: <code>crypto.NewGenerator</code> и <code>testCipher</code>
+(строка 136) на детерминированном ключе.</p>
+<p>Остальные шесть функций вызывают корень и надстраивают use case поверх того же
+пула и того же шифра. Все они возвращают структуру целиком, поля перечислены
+рядом с объявлением.</p>
+<table>
+<thead>
+<tr>
+<th>функция</th>
+<th>место</th>
+<th>состав</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>newManifestFixture</code></td>
+<td><code>internal/postgres/manifest_integration_test.go:22</code></td>
+<td><code>ApplyFleetManifest</code></td>
+</tr>
+<tr>
+<td><code>newLinksFixture</code></td>
+<td><code>internal/postgres/links_integration_test.go:28</code></td>
+<td><code>ApplyCustomerAccess</code> и <code>GetCustomerAccessLinks</code></td>
+</tr>
+<tr>
+<td><code>newMaterializeStack</code></td>
+<td><code>internal/postgres/materialize_integration_test.go:32</code></td>
+<td>манифест, customer, материализация, ссылки</td>
+</tr>
+<tr>
+<td><code>newDispatchStack</code></td>
+<td><code>internal/postgres/dispatch_integration_test.go:105</code></td>
+<td>то же плюс диспетчер и поддельный агент; TTL lease берёт параметром</td>
+</tr>
+<tr>
+<td><code>newExpiryStack</code></td>
+<td><code>internal/postgres/expiry_integration_test.go:32</code></td>
+<td>состав <code>newDispatchStack</code> плюс истечение сроков</td>
+</tr>
+<tr>
+<td><code>newUsageStack</code></td>
+<td><code>internal/postgres/usage_integration_test.go:89</code></td>
+<td>манифест, customer, материализация, ссылки, диспетчер, сбор трафика, два разных поддельных агента и буфер логов</td>
+</tr>
+</tbody>
+</table>
+<p>Второй этаж один: <code>newInventoryStack</code>
+(<code>internal/postgres/reconcile_integration_test.go:360</code>) принимает готовый
+<code>usageStack</code> параметром и добавляет к нему <code>ReconcileNodes</code>.</p>
+<p>Буфер логов в <code>usageStack</code> собирает всё, что воркеры написали за прогон, целиком.
+По нему работает <code>TestIntegrationNoSecretsInLogs</code>
+(<code>internal/postgres/secrets_integration_test.go:79</code>): добавив в воркер новую
+строку лога с полем из credential, вы уроните именно этот тест.</p>
+<p>Чистую базу даёт только корень лестницы. Новый интеграционный тест начинайте с
+одной из перечисленных функций; собственный <code>pgxpool.New</code> получит пул без
+<code>TRUNCATE</code>, то есть остатки предыдущего теста.</p>
+<h2 id="_6">Двойники портов</h2>
+<p>Двойник это подставная реализация порта app-слоя, написанная в тестовом файле.
+Одиннадцать файлов <code>internal/app</code> объявляют пакет <code>app_test</code>, внешний по
+отношению к <code>app</code>, и видят только экспортированное. Внутренний файл один,
+<code>internal/app/prune_usage_dedup_test.go</code> с <code>package app</code>.</p>
+<p>Устройство двойника видно на <code>fakeDispatchRepo</code>
+(<code>internal/app/dispatch_operations_test.go:24</code>). Помимо заготовленных ответов и
+ошибок он ведёт поле <code>journal</code>: каждый метод дописывает туда своё имя, а
+<code>WithinResultTx</code> (строка 64) обрамляет вызов записями <code>tx-begin</code> и <code>tx-commit</code>.
+Один тип реализует и <code>DispatchRepository</code>, и <code>ResultTx</code>, поэтому по вызову
+<code>SetAccessApplyState</code> не видно, внутри транзакции он сработал или снаружи;
+видно это только по положению записи между <code>tx-begin</code> и <code>tx-commit</code>. Двойник
+агента пишет своё <code>rpc</code> в тот же журнал (строка 173 передаёт ему указатель на
+поле), и проверка <code>equalSteps</code> (строка 222) сравнивает всю последовательность
+целиком. Так фиксируется, что доставка на ноду идёт вне транзакции записи
+результата.</p>
+<p>Не все зависимости в этих тестах подставные. <code>testSealer</code>
+(<code>internal/app/dispatch_operations_test.go:136</code>) собирает настоящий
+<code>crypto.Cipher</code> на детерминированном ключе вместо заглушки, которой пользуются
+соседние тесты. Тест сверяет <code>client_uuid</code>, уехавший на ноду, с тем, что был
+запечатан; заглушка с подменённым <code>Open</code> вернула бы заготовленное значение и эту
+сверку бы сняла.</p>
+<h2 id="_7">Тесты домена</h2>
+<p><code>internal/domain</code> это 83 теста в 13 файлах, без базы и без двойников: функции
+пакета чистые, вход и выход у них значения.</p>
+<p>Фикстуры общие на весь пакет. Тесты объявляют <code>package domain</code>, и конструктор,
+написанный в одном файле, работает во всех остальных: <code>exampleTopology</code>
+(<code>internal/domain/access_test.go:21</code>) и <code>materializedAccesses</code>
+(<code>internal/domain/apply_test.go:13</code>) собирают вход тестам материализации из
+третьего файла. Разыскивая, откуда взялось значение, ищите по всему пакету.</p>
+<p>Преобладающая форма это конструктор согласованного входа рядом с хелпером,
+зовущим планировщик и валящим тест на ошибке. <code>materializeInput</code>
+(<code>internal/domain/materialize_test.go:15</code>) с <code>planOrFailMaterialize</code> (строка 30);
+той же парой устроен <code>internal/domain/manifest_plan_test.go</code>, <code>projectionOf</code>
+(строка 11) и <code>planOrFail</code> (строка 45). Тест поверх такой пары ломает ровно одно
+условие базового входа: <code>TestPlanMaterializeAddsNode</code>
+(<code>internal/domain/materialize_test.go:56</code>) дописывает ноду в топологию и в список
+живых, остального не трогает. Новый случай пишется так же, собирать
+<code>MaterializationInput</code> с нуля не нужно.</p>
+<p>Табличная форма с <code>t.Run</code> встречается точечно: 14 вызовов на весь пакет, больше
+всего в <code>internal/domain/command_test.go</code> (три). Четыре файла обходятся без неё
+вовсе.</p>
+<p>Соответствие адаптеров портам проверяется на этапе компиляции, одиннадцатью
+объявлениями в трёх местах.</p>
+<table>
+<thead>
+<tr>
+<th>место</th>
+<th>что закреплено</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>internal/postgres/expiry.go:159</code>, <code>internal/postgres/usage.go:445</code>, <code>internal/postgres/dispatch.go:188</code></td>
+<td><code>*Repository</code> закрывает <code>ExpiryRepository</code>, <code>UsageRepository</code>, <code>DispatchRepository</code></td>
+</tr>
+<tr>
+<td><code>internal/postgres/apply_integration_test.go:33</code> и <code>:34</code>, <code>internal/postgres/manifest_integration_test.go:20</code>, <code>internal/postgres/links_integration_test.go:26</code>, <code>internal/postgres/materialize_integration_test.go:19</code></td>
+<td>ещё четыре порта репозитория плюс <code>ApplyTx</code> на <code>*applyTx</code>; ссылка на порт живёт в тесте</td>
+</tr>
+<tr>
+<td><code>internal/app/ports_test.go:15-17</code></td>
+<td><code>*crypto.Generator</code>, <code>*crypto.Cipher</code> и <code>app.SystemClock</code> закрывают <code>IDs</code>, <code>CredentialSealer</code> и <code>Clock</code></td>
+</tr>
+</tbody>
+</table>
+<p>Сняв метод из интерфейса порта или переименовав его, вы получите ошибку
+компиляции, а не упавший тест. Восемь объявлений из одиннадцати стоят в тестовых
+файлах, и <code>go build ./...</code> их не увидит; ошибка вылезет на <code>go vet</code> или
+<code>go test</code>.</p>
+<h2 id="mtls">Рукопожатие mTLS</h2>
+<p>Границу mTLS проверяют с двух сторон, обе с настоящим TLS и настоящей проверкой
+цепочки до CA.</p>
+<table>
+<thead>
+<tr>
+<th>файл</th>
+<th>что поднимается</th>
+<th>что закрывается</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cmd/spiritvpnd/mtls_test.go</code></td>
+<td>продакшн-сборщик <code>newGRPCServer</code> (вызов на строке 296) слушает на <code>127.0.0.1:0</code>; <code>tls.RequireAndVerifyClientCert</code> приходит из <code>cmd/spiritvpnd/grpc.go:117</code></td>
+<td>12 тестов: сопоставление URI SAN с ролью, отказ без клиентского сертификата, отказ по чужому CA, игнорирование Common Name, отсутствие выданной ссылки в логах</td>
+</tr>
+<tr>
+<td><code>internal/nodeagent/client_test.go</code></td>
+<td>поддельный агент (<code>startAgent</code>, строка 242), требующий и проверяющий клиентский сертификат backend</td>
+<td>backend как клиент: разбор кодов ответа, постоянная ошибка при несовпадении идентичности, переиспользование соединения на ноду и его замена при смене endpoint</td>
+</tr>
+</tbody>
+</table>
+<p>База ни одному из этих файлов не нужна. В <code>cmd/spiritvpnd/mtls_test.go</code> за
+use case стоят заглушки, <code>internal/nodeagent/client_test.go</code> до слоя хранения
+вообще не доходит.</p>
+<p><code>internal/grpcsvc/interceptors_test.go</code> рукопожатия не делает. Хелпер
+<code>tlsContext</code> (строка 45) кладёт в контекст готовый <code>peer.Peer</code> с уже разобранной
+цепочкой сертификатов. 22 теста файла покрывают решение по идентичности и роли,
+состав полей лога и отображение доменных ошибок в коды gRPC. Непокрытым остаётся
+всё, что происходит до интерцептора: проверка цепочки, срок действия
+сертификата, минимальная версия TLS. Испортив <code>ClientCAs</code> или <code>MinVersion</code> в
+сборке сервера, вы увидите падение в <code>cmd/spiritvpnd/mtls_test.go</code>, а в
+<code>internal/grpcsvc</code> ничего не изменится.</p>
+<h2 id="_8">Конкурентные тесты</h2>
+<p>Схем две, и они противоположны по ожиданию.</p>
+<p>Первая: конкурирующая транзакция держит строку и не коммитится, испытуемый вызов
+уходит в горутину, тест убеждается, что горутина не вернулась, снимает блокировку
+и дожидается результата.</p>
+<table>
+<thead>
+<tr>
+<th>тест</th>
+<th>что держит конкурент</th>
+<th>что обязано произойти</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TestIntegrationApplySerializesConcurrentCommands</code> (<code>internal/postgres/apply_integration_test.go:634</code>)</td>
+<td><code>SELECT ... FOR UPDATE</code> на корневой строке customer</td>
+<td>вторая команда ждёт, <code>last_command_number</code> во время ожидания не двигается</td>
+</tr>
+<tr>
+<td><code>TestIntegrationDispatchRefusesSecondInFlightOnNode</code> (<code>internal/postgres/dispatch_integration_test.go:277</code>)</td>
+<td>перевод операции в <code>IN_FLIGHT</code> без commit</td>
+<td><code>LeaseNext</code> не берёт вторую операцию той же ноды и возвращается без ошибки</td>
+</tr>
+</tbody>
+</table>
+<p>Lifecycle покрыт на трёх уровнях: <code>internal/domain/lifecycle_test.go</code> проверяет
+автомат и command fingerprint, <code>internal/app/customer_lifecycle_test.go</code> —
+планы Block/Delete без БД, а <code>internal/postgres/lifecycle_integration_test.go</code> —
+полный путь <code>ACTIVE → BLOCKED → DELETING → DELETED → Apply/ACTIVE</code> с физическим
+удалением старых строк и новыми credentials. Отдельный интеграционный тест
+фиксирует конфликт одинакового <code>command_number</code> у разных RPC.</p>
+<p>Вторая схема обратная. <code>TestIntegrationExpirySkipsLockedCustomer</code>
+(<code>internal/postgres/expiry_integration_test.go:241</code>) держит строку единственного
+готового к истечению customer и требует, чтобы воркер вернулся немедленно и с
+пустыми руками. Ожидание дольше пяти секунд валит тест: так выглядит <code>FOR UPDATE</code>
+без <code>SKIP LOCKED</code> в запросе.</p>
+<p>Тест на конкуренцию легко написать так, что он останется зелёным и после снятия
+проверяемой защиты. В <code>TestIntegrationDispatchRefusesSecondInFlightOnNode</code> от
+этого сделан отдельный шаг (строка 289):</p>
+<pre><code class="language-sql">UPDATE agent_operations SET next_attempt_at = now() + interval '1 hour' WHERE node_id &lt;&gt; $1
+</code></pre>
+<p>Он убирает из выборки операции всех прочих нод. Без него <code>ORDER BY</code> отдаёт
+глобально первую готовую операцию, она оказывается на свободной ноде,
+конкуренции за занятую не возникает, и тест проходит при снятом частичном
+уникальном индексе. Написав такой тест, снимите проверяемую защиту и убедитесь,
+что он падает.</p>
+<h2 id="_9">Покрытие</h2>
+<p>Профиль снимает шаг <code>Run tests</code> (<code>.github/workflows/ci.yml:70</code>):
+<code>go test -race -coverprofile=coverage.out -covermode=atomic ./...</code>.
+Интеграционные тесты посчитаны в этой же job: у неё объявлен <code>services: postgres</code>
+и обе переменные гейта заданы на уровне job.</p>
+<p>Порог 80 проверяет шаг <code>Check coverage threshold</code>. Он стоит после выгрузки
+<code>coverage.html</code> артефактом; переставив его выше, вы потеряете отчёт ровно в тех
+прогонах, где покрытие просело. Шаг разбирает вывод <code>go tool cover -func</code> и
+отдельно проверяет, что процент вообще разобрался: пустая строка валит шаг, а не
+проходит его молча.</p>
+<p>Число зависит от способа счёта. По умолчанию каждый пакет считается по себе, код
+<code>internal/domain</code> засчитывается только тестами <code>internal/domain</code>. С
+<code>-coverpkg=./...</code> в знаменатель попадают все пакеты, включая покрываемые чужими
+тестами, и итог получается заметно ниже. Порог настроен на первый способ, тот,
+что в команде выше; сравнивать локальный прогон с CI имеет смысл при совпадающем
+наборе флагов и при поднятой базе.</p>
+<h2 id="_10">Размещение нового теста</h2>
+<table>
+<thead>
+<tr>
+<th>что проверяется</th>
+<th>пакет</th>
+<th>приставка имени</th>
+<th>нужна база</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>правило домена, план по заданному входу</td>
+<td><code>internal/domain</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td>порядок вызовов портов, ветки их ошибок</td>
+<td><code>internal/app</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td>SQL: блокировки, индексы, порядок строк, типы колонок</td>
+<td><code>internal/postgres</code></td>
+<td><code>TestIntegration</code></td>
+<td>да</td>
+</tr>
+<tr>
+<td>преобразование protobuf в домен, коды ошибок</td>
+<td><code>internal/grpcsvc</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td>решение по идентичности и роли, состав полей лога</td>
+<td><code>internal/grpcsvc</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td>разговор с агентом по gRPC, классификация ответов</td>
+<td><code>internal/nodeagent</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td>сборка процесса, mTLS, завершение, запуск воркеров</td>
+<td><code>cmd/spiritvpnd</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td>проверка готовности по <code>schema_migrations</code></td>
+<td><code>cmd/spiritvpnd</code></td>
+<td><code>TestIntegration</code></td>
+<td>да</td>
+</tr>
+<tr>
+<td>имена, метки и заполнение метрик</td>
+<td><code>internal/metrics</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td>разбор переменных окружения</td>
+<td><code>internal/config</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td>встроенный набор миграций и его версия</td>
+<td><code>internal/migrations</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td>команда наката схемы</td>
+<td><code>cmd/migrate</code></td>
+<td><code>Test</code></td>
+<td>нет</td>
+</tr>
+</tbody>
+</table>
+<p>Тест из строк с базой начинается с фикстуры (<code>internal/postgres</code>) или с
+<code>newSchemaPool</code> (<code>cmd/spiritvpnd</code>) и обязан называться с <code>TestIntegration</code>. При
+другом имени <code>-run Integration</code> его не запустит, а обычный прогон уведёт в
+<code>t.Skip</code>, и тест не выполнится ни в одном режиме.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

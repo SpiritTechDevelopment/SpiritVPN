@@ -1,0 +1,2317 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Документация backend-сервиса управления VPN-инфраструктурой SpiritVPN">
+      
+      
+        <meta name="author" content="Roman Ryabinkin, Pavel Lensky">
+      
+      
+      
+        <link rel="prev" href="../DEPLOYMENT/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Эксплуатация - SpiritVPN Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="SpiritVPN Documentation" class="md-header__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SpiritVPN Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Эксплуатация
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить тёмную тему"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Включить тёмную тему" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить светлую тему"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Включить светлую тему" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Главная
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ARCHITECTURE/" class="md-tabs__link">
+          
+  
+  
+  Архитектура
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../TESTING/" class="md-tabs__link">
+          
+  
+  
+  Разработка
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../DEPLOYMENT/" class="md-tabs__link">
+          
+  
+  
+  Инфраструктура
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="SpiritVPN Documentation" class="md-nav__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SpiritVPN Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Главная
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Архитектура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Архитектура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Общая архитектура
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../API/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Внешний API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATABASE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    База данных
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFEST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VLESS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VLESS URI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Разработка
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Разработка
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TESTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Руководство по тестированию
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CHANGELOG_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Правила Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Инфраструктура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Инфраструктура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Развёртывание
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Эксплуатация
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Эксплуатация
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Куда смотреть первым делом
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Служебный порт
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Служебный порт">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#healthlive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /health/live
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#healthready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /health/ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Метрики
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Метрики">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Самонаблюдение
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Очередь операций
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ноды
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Трафик
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Манифест
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сроки и квоты
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Процесс
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чего в метриках нет
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Залипшие операции
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Недоступная нода
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Недоступная нода">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что система делает сама
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Когда вмешиваться
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Квота и срок
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Квота и срок">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Исчерпанная квота
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Истёкший срок
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Административная блокировка и удаление
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чтение логов
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Старт и остановка
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Куда смотреть первым делом
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Служебный порт
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Служебный порт">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#healthlive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /health/live
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#healthready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /health/ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Метрики
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Метрики">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Самонаблюдение
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Очередь операций
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ноды
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Трафик
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Манифест
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сроки и квоты
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Процесс
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чего в метриках нет
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Залипшие операции
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_14" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Недоступная нода
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Недоступная нода">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_15" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Что система делает сама
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Когда вмешиваться
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Квота и срок
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Квота и срок">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Исчерпанная квота
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Истёкший срок
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Административная блокировка и удаление
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Чтение логов
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Старт и остановка
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="_1">Эксплуатация</h1>
+<p>Что процесс рассказывает о себе и как этим пользоваться, когда что-то не работает.</p>
+<p>Три источника: служебный HTTP-порт с проверками готовности, метрики Prometheus и
+structured logs в stderr. Первый отвечает «жив ли процесс», второй «идёт ли
+работа», третий «что именно случилось с конкретной нодой или командой».</p>
+<h2 id="_2">Куда смотреть первым делом</h2>
+<table>
+<thead>
+<tr>
+<th>симптом</th>
+<th>первая проверка</th>
+<th>раздел</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>команды product-сервиса не проходят</td>
+<td><code>/health/ready</code>, затем <code>grpc_code</code> в логе</td>
+<td>Служебный порт, Чтение логов</td>
+</tr>
+<tr>
+<td>ссылки выданы, но не работают</td>
+<td><code>spiritvpn_accesses{apply_state="FAILED"}</code> и <code>{apply_state="RETRYING"}</code></td>
+<td>Залипшие операции</td>
+</tr>
+<tr>
+<td>трафик не начисляется</td>
+<td><code>spiritvpn_node_usage_pull_age_seconds</code> по нодам</td>
+<td>Недоступная нода</td>
+</tr>
+<tr>
+<td>ссылка перестала работать у части клиентов</td>
+<td><code>spiritvpn_exhausted_node_quotas</code>, <code>spiritvpn_expired_customers</code></td>
+<td>Квота и срок</td>
+</tr>
+<tr>
+<td>метрики выглядят правдоподобно, но не меняются</td>
+<td><code>spiritvpn_stats_last_refresh_timestamp_seconds</code></td>
+<td>Метрики, самонаблюдение</td>
+</tr>
+<tr>
+<td>новая ревизия манифеста не доехала до нод</td>
+<td><code>spiritvpn_manifest_revision</code> против <code>spiritvpn_manifest_materialized_revision</code></td>
+<td>Метрики, манифест</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">Служебный порт</h2>
+<p><code>SPIRIT_HTTP_LISTEN</code>, по умолчанию <code>:8080</code>. Сервер собирается в
+<code>cmd/spiritvpnd/health.go:30</code>, на нём три обработчика: <code>GET /health/live</code>,
+<code>GET /health/ready</code>, <code>GET /metrics</code>.</p>
+<p>TLS у порта нет, клиентский сертификат он не спрашивает, идентичность вызывающего
+не проверяет ни на одном из трёх путей. Любой, кто дотянулся до порта по сети,
+читает <code>/metrics</code> целиком, а там перечислены все <code>node_id</code> флота, объёмы
+подтверждённого трафика и глубина очередей. Ограничение одно, и это сетевая
+доступность порта.</p>
+<p><code>ReadHeaderTimeout</code> 5 секунд: соединение, не приславшее заголовки, отпускается
+само.</p>
+<h3 id="healthlive">/health/live</h3>
+<p>Отвечает <code>200 ok</code> всегда, <code>handleLive</code>, <code>cmd/spiritvpnd/health.go:50</code>. Ни базы,
+ни нод, ни ключа шифрования он не касается.</p>
+<p>Отказ liveness означает ровно одно: процесс не принимает соединения на служебном
+порту. О состоянии PostgreSQL он не говорит ничего, и искать по нему причину
+деградации бесполезно.</p>
+<h3 id="healthready">/health/ready</h3>
+<p>Три проверки подряд, <code>readinessChecks</code>, <code>cmd/spiritvpnd/health.go:84</code>. Порядок
+фиксирован по возрастанию стоимости, первая же неудача прекращает обход. На все
+три вместе отведено 3 секунды (<code>readinessTimeout</code>), после чего проверка
+считается неуспешной.</p>
+<p>Успех это <code>200 ready</code>. Неудача это <code>503</code> с телом <code>not ready: &lt;имя проверки&gt;</code>.
+Больше в ответе ничего нет: текст ошибки pgx содержит параметры подключения, и
+наружу он не уходит.</p>
+<table>
+<thead>
+<tr>
+<th>имя в ответе</th>
+<th>что проверяет</th>
+<th>что делать</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>postgres</code></td>
+<td><code>pool.Ping</code></td>
+<td>база недоступна или исчерпан пул, смотреть <code>spiritvpn_db_pool_*</code> в предыдущих scrape</td>
+</tr>
+<tr>
+<td><code>schema</code></td>
+<td><code>SELECT version, dirty FROM schema_migrations</code></td>
+<td>либо миграции не накатаны до нужной версии, либо прерванная миграция оставила <code>dirty</code></td>
+</tr>
+<tr>
+<td><code>encryption_key</code></td>
+<td><code>cipher.SelfTest()</code></td>
+<td><code>SPIRIT_CLIENT_UUID_KEY</code> не тот, что использовался при записи</td>
+</tr>
+</tbody>
+</table>
+<p>Проверка <code>schema</code> требует версию не ниже встроенной в бинарь, <code>schemaCheck</code>,
+<code>cmd/spiritvpnd/health.go:107</code>. Схема новее бинаря готовность не отменяет. Пара
+<code>spiritvpn_binary_schema_version</code> ниже <code>spiritvpn_schema_version</code> это нормальное
+состояние во время выкатки, а не повод искать поломку; тревожит обратное
+соотношение и <code>spiritvpn_schema_dirty</code> равный единице.</p>
+<h2 id="_4">Метрики</h2>
+<p>Префикс всех метрик <code>spiritvpn</code>, <code>internal/metrics/registry.go:28</code>. Строки HELP
+английские. Метки <code>customer_id</code> нет ни у одной метрики, и это проверяется тестом
+по белому списку.</p>
+<p>Всего 37 серий: 33 объявлены в <code>internal/metrics/registry.go</code>, ещё 4 отдаёт
+коллектор пула соединений, <code>internal/metrics/pool.go:24</code>. Сверх них в выдаче есть
+стандартные <code>go_*</code> и <code>process_*</code>.</p>
+<p>Метрики делятся по происхождению, и от этого зависит, насколько свежее значение
+вы читаете.</p>
+<p>Первая половина снимается декораторами портов в момент вызова: <code>WrapAgent</code>
+(<code>internal/metrics/agent.go:29</code>), <code>WrapSealer</code> (<code>sealer.go:18</code>),
+<code>WrapUsageRetention</code> (<code>retention.go:20</code>). Эти значения актуальны на момент
+scrape.</p>
+<p>Вторая половина приезжает снимком состояния БД, который делает воркер <code>stats</code>
+раз в 15 секунд (<code>statsRefreshInterval</code>, <code>cmd/spiritvpnd/worker.go:161</code>).
+Обработчик <code>/metrics</code> в базу не ходит и отдаёт последний снимок из памяти, так
+что эти значения отстают на интервал снимка.</p>
+<p>Вектор, в который ни разу ничего не записали, в <code>/metrics</code> отсутствует целиком.
+Предзаполнены нулями только <code>spiritvpn_agent_operations</code>, <code>spiritvpn_accesses</code>
+(<code>seedEnums</code>, <code>registry.go:374</code>) и оба исхода
+<code>spiritvpn_stats_refreshes_total</code>. До первого похода к ноде серий
+<code>spiritvpn_agent_*</code> в выдаче нет, и отсутствие серии в такой момент не означает
+нуля.</p>
+<h3 id="_5">Самонаблюдение</h3>
+<p>Читать первыми. Отказавший воркер снимка выглядит как застывшие, но
+правдоподобные числа во всех метриках второй половины.</p>
+<table>
+<thead>
+<tr>
+<th>метрика</th>
+<th>метки</th>
+<th>что означает отклонение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spiritvpn_stats_last_refresh_timestamp_seconds</code></td>
+<td>нет</td>
+<td>возраст заметно больше 15 секунд означает, что весь снимок БД устарел и остальные gauge читать нельзя</td>
+</tr>
+<tr>
+<td><code>spiritvpn_stats_refreshes_total</code></td>
+<td><code>result</code>: <code>ok</code>, <code>error</code></td>
+<td>растущий <code>error</code> при неподвижном <code>ok</code> означает, что база не отдаёт снимок; текст в логе воркера <code>stats</code></td>
+</tr>
+<tr>
+<td><code>spiritvpn_schema_version</code></td>
+<td>нет</td>
+<td>версия схемы в базе</td>
+</tr>
+<tr>
+<td><code>spiritvpn_binary_schema_version</code></td>
+<td>нет</td>
+<td>версия миграций в бинаре; выше <code>schema_version</code> означает, что процесс не готов</td>
+</tr>
+<tr>
+<td><code>spiritvpn_schema_dirty</code></td>
+<td>нет</td>
+<td>единица означает прерванную миграцию, процесс не готов</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_6">Очередь операций</h3>
+<table>
+<thead>
+<tr>
+<th>метрика</th>
+<th>метки</th>
+<th>что означает отклонение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spiritvpn_agent_operations</code></td>
+<td><code>status</code>: шесть статусов</td>
+<td>накопление в <code>PENDING</code> или <code>RETRY_WAIT</code> означает, что очередь не разбирается</td>
+</tr>
+<tr>
+<td><code>spiritvpn_agent_operation_oldest_age_seconds</code></td>
+<td><code>status</code></td>
+<td>возраст самой старой операции статуса по <code>created_at</code></td>
+</tr>
+<tr>
+<td><code>spiritvpn_accesses</code></td>
+<td><code>desired_state</code>, <code>apply_state</code></td>
+<td>ненулевой <code>FAILED</code> означает access, до которого диспетчер больше не дойдёт</td>
+</tr>
+</tbody>
+</table>
+<p>Возраст осмыслен только для <code>PENDING</code> и <code>RETRY_WAIT</code>. Строки терминальных
+статусов из таблицы не удаляются, и их возраст растёт вечно при полностью
+исправной системе.</p>
+<p><code>spiritvpn_accesses</code> считает только неретайрнутые строки. Восемь серий, пара
+<code>desired_state</code> (<code>PRESENT</code>, <code>ABSENT</code>) на <code>apply_state</code> (<code>PENDING</code>, <code>APPLIED</code>,
+<code>RETRYING</code>, <code>FAILED</code>).</p>
+<h3 id="_7">Ноды</h3>
+<table>
+<thead>
+<tr>
+<th>метрика</th>
+<th>метки</th>
+<th>что означает отклонение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spiritvpn_agent_calls_total</code></td>
+<td><code>node</code>, <code>method</code>, <code>code</code></td>
+<td>распределение исходов вызовов; коды перечислены в <code>internal/nodeagent/outcome.go:19</code></td>
+</tr>
+<tr>
+<td><code>spiritvpn_agent_call_duration_seconds</code></td>
+<td><code>method</code>, <code>code</code></td>
+<td>гистограмма до 30 секунд; метки <code>node</code> у неё нет</td>
+</tr>
+<tr>
+<td><code>spiritvpn_agent_last_success_timestamp_seconds</code></td>
+<td><code>node</code></td>
+<td>возраст больше минуты означает, что нода не отвечает: <code>GetNodeState</code> идёт к каждой ноде раз в 15 секунд</td>
+</tr>
+<tr>
+<td><code>spiritvpn_agent_alert_outcomes_total</code></td>
+<td><code>node</code>, <code>code</code></td>
+<td>любой прирост требует разбора; сюда попадают <code>IDENTITY_MISMATCH</code>, <code>NODE_CONFIG_INVALID</code>, <code>AGENT_UNKNOWN_STATUS</code>, <code>UNAUTHENTICATED</code>, <code>PERMISSION_DENIED</code>, <code>UNIMPLEMENTED</code>, <code>TRANSPORT</code></td>
+</tr>
+<tr>
+<td><code>spiritvpn_node_xray_reachable</code></td>
+<td><code>node</code></td>
+<td>ноль означает, что агент жив, а Xray на ноде нет</td>
+</tr>
+<tr>
+<td><code>spiritvpn_node_xray_uptime_seconds</code></td>
+<td><code>node</code></td>
+<td>сброс к малому значению означает перезапуск Xray</td>
+</tr>
+<tr>
+<td><code>spiritvpn_node_needs_bootstrap</code></td>
+<td><code>node</code></td>
+<td>единица означает, что агенту запрещено удалять юзеров до полного набора</td>
+</tr>
+<tr>
+<td><code>spiritvpn_reconcile_drift_total</code></td>
+<td><code>node</code>, <code>kind</code>: <code>added</code>, <code>replaced</code>, <code>removed</code></td>
+<td>устойчиво ненулевой rate означает, что состояние ноды расходится молча</td>
+</tr>
+<tr>
+<td><code>spiritvpn_inventory_observations_total</code></td>
+<td><code>node</code>, <code>result</code>: <code>complete</code>, <code>incomplete</code>, <code>not_observed</code></td>
+<td>нода, у которой не бывает <code>complete</code>, из сверки выпадает и расхождений не показывает</td>
+</tr>
+</tbody>
+</table>
+<p>Значения <code>method</code>: <code>EnsureUserPresent</code>, <code>EnsureUserAbsent</code>, <code>GetNodeState</code>,
+<code>ReconcileUsers</code>, <code>ObserveUsers</code>. Последний это тот же RPC <code>GetNodeState</code> с
+<code>include_users</code>, разведённый в отдельную метку по цене вызова.</p>
+<p>Три gauge <code>node_xray_reachable</code>, <code>node_xray_uptime_seconds</code> и
+<code>node_needs_bootstrap</code> показывают последнее наблюдённое состояние, а не текущее.
+Снятая с манифеста нода перестаёт опрашиваться, и её серии застывают на
+последнем значении навсегда. Читать их без
+<code>spiritvpn_agent_last_success_timestamp_seconds</code> нельзя: <code>reachable=1</code> у ноды,
+последний успех которой был вчера, означает вчерашний день. Авторитетный состав
+флота даёт <code>spiritvpn_node_usage_pull_age_seconds</code>, он приезжает снимком БД и
+снятую ноду теряет.</p>
+<h3 id="_8">Трафик</h3>
+<table>
+<thead>
+<tr>
+<th>метрика</th>
+<th>метки</th>
+<th>что означает отклонение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spiritvpn_node_usage_pull_age_seconds</code></td>
+<td><code>node</code></td>
+<td>время с последней попытки опроса; больше 15 секунд с запасом означает, что воркер до ноды не доходит</td>
+</tr>
+<tr>
+<td><code>spiritvpn_node_usage_acked_sequence</code></td>
+<td><code>node</code></td>
+<td>остановка при растущем <code>pull_age</code> и есть backlog на ноде</td>
+</tr>
+<tr>
+<td><code>spiritvpn_node_usage_lease_expired</code></td>
+<td><code>node</code></td>
+<td>единица означает, что держатель lease умер, не сняв его</td>
+</tr>
+<tr>
+<td><code>spiritvpn_usage_pull_capped_total</code></td>
+<td><code>node</code></td>
+<td>агент отдал ровно потолок порций, в спуле осталось ещё; устойчивый прирост означает, что опрос не успевает</td>
+</tr>
+<tr>
+<td><code>spiritvpn_traffic_quarantine_rows</code></td>
+<td><code>reason</code>: <code>UNKNOWN_ACCOUNTING_ID</code>, <code>NO_QUOTA_PERIOD</code></td>
+<td>число строк карантина, растёт монотонно до ретенции, alert строится на <code>rate()</code></td>
+</tr>
+<tr>
+<td><code>spiritvpn_usage_dedup_oldest_age_seconds</code></td>
+<td>нет</td>
+<td>в норме колеблется около окна ретенции в 6 часов и к нулю не идёт</td>
+</tr>
+<tr>
+<td><code>spiritvpn_usage_dedup_rows_pruned_total</code></td>
+<td>нет</td>
+<td>неподвижен при растущем возрасте самой старой записи означает отказ уборки</td>
+</tr>
+</tbody>
+</table>
+<p>Возраст дедуп-записей превышает окно по двум причинам, и метрика их не
+различает: либо встал воркер <code>prune-usage-dedup</code>, либо у какой-то ноды давно не
+двигался курсор и её строки нельзя удалять как неподтверждённые. Разделяются они
+по <code>spiritvpn_node_usage_pull_age_seconds</code> из той же выдачи.</p>
+<h3 id="_9">Манифест</h3>
+<table>
+<thead>
+<tr>
+<th>метрика</th>
+<th>метки</th>
+<th>что означает отклонение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spiritvpn_manifest_revision</code></td>
+<td>нет</td>
+<td>последняя принятая ревизия</td>
+</tr>
+<tr>
+<td><code>spiritvpn_manifest_materialized_revision</code></td>
+<td>нет</td>
+<td>последняя ревизия, чей fan-out по всем customer завершён</td>
+</tr>
+<tr>
+<td><code>spiritvpn_manifest_materialization_lag_seconds</code></td>
+<td>нет</td>
+<td>возраст самой старой незавершённой джобы; ноль означает, что незавершённых нет</td>
+</tr>
+</tbody>
+</table>
+<p>Отставание <code>materialized_revision</code> от <code>manifest_revision</code> означает, что новая
+топология до части customer ещё не доехала. Ноль в <code>materialization_lag_seconds</code>
+при таком отставании читается как «джоба не создана или уже помечена <code>FAILED</code>»,
+а не как «лага нет».</p>
+<h3 id="_10">Сроки и квоты</h3>
+<table>
+<thead>
+<tr>
+<th>метрика</th>
+<th>метки</th>
+<th>что означает отклонение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spiritvpn_expired_customers</code></td>
+<td>нет</td>
+<td>customer с наступившим <code>expires_at</code>, у которых остался хотя бы один <code>PRESENT</code>-access</td>
+</tr>
+<tr>
+<td><code>spiritvpn_expiry_lag_seconds</code></td>
+<td>нет</td>
+<td>насколько просрочен самый старый непогашенный customer</td>
+</tr>
+<tr>
+<td><code>spiritvpn_exhausted_node_quotas</code></td>
+<td>нет</td>
+<td>ноды с выставленным <code>exhausted_at</code> в открытом периоде квоты</td>
+</tr>
+</tbody>
+</table>
+<p>Первые две строятся на том же предикате, что и <code>LockNextDueExpiredCustomer</code>, и
+меряют ровно ту очередь, которую разбирает воркер <code>expiry</code>. Что снимает каждое из
+трёх состояний, описано ниже, в разделе «Квота и срок».</p>
+<h3 id="_11">Процесс</h3>
+<table>
+<thead>
+<tr>
+<th>метрика</th>
+<th>метки</th>
+<th>что означает отклонение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spiritvpn_worker_leases_held</code></td>
+<td><code>worker</code>: <code>dispatch</code>, <code>materialize</code>, <code>usage</code></td>
+<td>занятость, штатная работа</td>
+</tr>
+<tr>
+<td><code>spiritvpn_worker_leases_expired</code></td>
+<td><code>worker</code></td>
+<td>держатель умер, не сняв lease; работу подберёт следующий шаг</td>
+</tr>
+<tr>
+<td><code>spiritvpn_credential_open_errors_total</code></td>
+<td>нет</td>
+<td>любое ненулевое значение означает расхождение ключа шифрования</td>
+</tr>
+<tr>
+<td><code>spiritvpn_db_pool_connections</code></td>
+<td><code>state</code>: <code>total</code>, <code>idle</code>, <code>acquired</code>, <code>constructing</code></td>
+<td><code>acquired</code>, упёршийся в <code>spiritvpn_db_pool_max_connections</code>, означает исчерпание пула</td>
+</tr>
+<tr>
+<td><code>spiritvpn_db_pool_max_connections</code></td>
+<td>нет</td>
+<td><code>SPIRIT_DB_MAX_CONNS</code>, по умолчанию 10</td>
+</tr>
+<tr>
+<td><code>spiritvpn_db_pool_acquires_total</code></td>
+<td><code>result</code>: <code>total</code>, <code>empty</code>, <code>canceled</code></td>
+<td>растущий <code>empty</code> означает, что захваты ждут свободного соединения</td>
+</tr>
+<tr>
+<td><code>spiritvpn_db_pool_acquire_wait_seconds_total</code></td>
+<td>нет</td>
+<td>суммарное ожидание соединения</td>
+</tr>
+</tbody>
+</table>
+<p>Значения <code>expiry</code> среди воркеров нет: он координируется
+<code>FOR UPDATE SKIP LOCKED</code> на строке customer, и lease у него отсутствует.
+Показывать по нему нечего, а искать зависший <code>expiry</code> следует по
+<code>spiritvpn_expiry_lag_seconds</code>.</p>
+<p><code>credential_open_errors_total</code> не различает места отказа. Расшифровка идёт двумя
+путями, диспетчер собирает payload перед RPC и выдача ссылок строит VLESS URI, и
+оба гасят по одной единице работы молча: ссылка не отдаётся, операция уходит в
+повтор.</p>
+<h3 id="_12">Чего в метриках нет</h3>
+<p>Искать серию под эти три наблюдения бесполезно.</p>
+<table>
+<thead>
+<tr>
+<th>наблюдение</th>
+<th>где взять</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>потеря спула на ноде, то есть безвозвратно потерянный трафик</td>
+<td>запись ERROR «спул ноды сменился, часть трафика не учтена», <code>internal/app/pull_usage.go:384</code></td>
+</tr>
+<tr>
+<td>расхождения, найденные сверкой до отправки набора</td>
+<td>запись WARN «нода разошлась с desired state» с полями <code>missing</code>, <code>extra</code>, <code>mismatch</code>, <code>internal/app/reconcile_nodes.go:173</code></td>
+</tr>
+<tr>
+<td>глубина спула на агенте</td>
+<td>нигде, backend её не знает; ближайшее приближение это <code>spiritvpn_usage_pull_capped_total</code></td>
+</tr>
+</tbody>
+</table>
+<p>Второй пункт легко спутать с <code>spiritvpn_reconcile_drift_total</code>: тот считает
+изменения, которые применил <code>ReconcileUsers</code> (<code>added</code>, <code>replaced</code>, <code>removed</code>),
+и появляется только после успешной отправки набора. Расхождения, найденные
+<code>app.CompareInventory</code> до отправки, метрикой не покрыты.</p>
+<h2 id="_13">Залипшие операции</h2>
+<p>Строка <code>agent_operations</code> живёт по циклу, описанному в
+<a href="../ARCHITECTURE/">архитектуре</a>. Здесь только то, как каждый статус выглядит
+снаружи и что с ним делать.</p>
+<table>
+<thead>
+<tr>
+<th>статус</th>
+<th>как выглядит</th>
+<th>разберётся ли сам</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PENDING</code></td>
+<td>создана, ещё не взята диспетчером</td>
+<td>да, пока жив хоть один из восьми циклов доставки</td>
+</tr>
+<tr>
+<td><code>IN_FLIGHT</code></td>
+<td>взята под lease на 30 секунд, RPC в полёте</td>
+<td>да; возраст больше lease означает умершего держателя, и это же видно в <code>worker_leases_expired{worker="dispatch"}</code></td>
+</tr>
+<tr>
+<td><code>RETRY_WAIT</code></td>
+<td>ждёт <code>next_attempt_at</code>, пауза до 5 минут</td>
+<td>да, число попыток не ограничено</td>
+</tr>
+<tr>
+<td><code>FAILED_PERMANENT</code></td>
+<td>терминальная, повторов не будет</td>
+<td>нет</td>
+</tr>
+</tbody>
+</table>
+<p><code>PENDING</code> с растущим возрастом при нулевом <code>IN_FLIGHT</code> означает, что диспетчер до
+очереди не доходит вовсе. Все восемь горутин стоят на отказе базы: искать запись
+«шаг воркера отказал» с <code>worker=dispatch</code>, там же и текст ошибки.</p>
+<p><code>RETRY_WAIT</code> в накоплении это чаще всего одна недоступная нода. Разбирать по
+<code>last_error_code</code>:</p>
+<pre><code class="language-sql">SELECT node_id, last_error_code, count(*), min(created_at)
+FROM agent_operations
+WHERE status = 'RETRY_WAIT'
+GROUP BY node_id, last_error_code
+ORDER BY count DESC;
+</code></pre>
+<p><code>FAILED_PERMANENT</code> повторно не берётся никогда. Ровно восемь кодов приводят
+операцию сюда, <code>classify</code> и <code>classifyTransport</code>, <code>internal/nodeagent/outcome.go:60</code>
+и <code>:95</code>: <code>AGENT_PERMANENT</code>, <code>AGENT_UNKNOWN_STATUS</code>, <code>INVALID_ARGUMENT</code>,
+<code>FAILED_PRECONDITION</code>, <code>UNAUTHENTICATED</code>, <code>PERMISSION_DENIED</code>, <code>UNIMPLEMENTED</code>,
+<code>IDENTITY_MISMATCH</code>. Четыре последних чинятся вне backend: это сертификаты и
+версия агента.</p>
+<p>В этом списке нет <code>CREDENTIAL_UNREADABLE</code>, отказа расшифровать <code>client_uuid</code>
+(<code>internal/app/dispatch_operations.go:150</code>). Он классифицирован retryable с
+alert, и операция с ним уходит в бесконечный <code>RETRY_WAIT</code>. Ищите такую очередь по
+ненулевому <code>spiritvpn_credential_open_errors_total</code>: сменой desired state она не
+лечится, расшифровка провалится и в следующем поколении.</p>
+<p>Восстанавливается после <code>FAILED_PERMANENT</code> не операция, а access. Два пути:</p>
+<ol>
+<li>новая команда product-сервиса двигает <code>desired_version</code>, и появляется новая
+   операция;</li>
+<li>воркер <code>reconcile</code> в течение 5 минут отправляет ноде полный набор, после чего
+   <code>MarkNodeAccessesApplied</code> переводит <code>apply_state</code> в <code>APPLIED</code>.</li>
+</ol>
+<p>Второй путь срабатывает сам, но только если сверка проходит целиком: набор
+авторитетен, и любая неудача по дороге (нода не ответила, <code>client_uuid</code> не
+расшифровался, <code>flow</code> пустой) отменяет шаг и оставляет <code>apply_state</code> в <code>FAILED</code>
+до следующего интервала.</p>
+<p>Саму строку <code>FAILED_PERMANENT</code> не трогает ни один из путей.
+<code>CompleteNodeOperationsByReconcile</code> закрывает только <code>PENDING</code> и <code>RETRY_WAIT</code>
+(<code>internal/postgres/queries/reconcile.sql:138</code>), терминальная остаётся записью
+журнала исполнения. Счётчик <code>agent_operations{status="FAILED_PERMANENT"}</code> от
+этого растёт монотонно, и alert на его абсолютное значение сработает один раз и
+навсегда. Действующее состояние показывает
+<code>spiritvpn_accesses{apply_state="FAILED"}</code>.</p>
+<h2 id="_14">Недоступная нода</h2>
+<p>Порядок появления признаков, если нода перестала отвечать:</p>
+<ol>
+<li>в пределах 15 секунд перестаёт расти
+   <code>spiritvpn_agent_last_success_timestamp_seconds{node}</code>: <code>GetNodeState</code> ходит
+   к каждой ноде каждый интервал опроса, и это самый ранний признак;</li>
+<li><code>spiritvpn_agent_calls_total{node,code="UNAVAILABLE"}</code> начинает расти, для
+   зависшего агента вместо него <code>DEADLINE_EXCEEDED</code>;</li>
+<li><code>spiritvpn_node_usage_pull_age_seconds{node}</code> растёт, <code>acked_sequence</code> стоит:
+   трафик копится в спуле агента;</li>
+<li><code>spiritvpn_agent_operations{status="RETRY_WAIT"}</code> растёт, если на эту ноду в
+   этот момент были адресованы операции.</li>
+</ol>
+<h3 id="_15">Что система делает сама</h3>
+<p>Доставка уходит в экспоненциальный backoff с потолком 5 минут и не сдаётся:
+<code>UNAVAILABLE</code> и <code>DEADLINE_EXCEEDED</code> классифицированы как retryable, и предела
+попыток нет. Опрос трафика продолжает подходить к ноде раз в 15 секунд и после
+восстановления заберёт весь накопленный спул, начиная с подтверждённой позиции.
+Сверка приходит раз в 5 минут и приводит ноду к desired state одним полным
+набором.</p>
+<p>Короткая недоступность вмешательства не требует вообще: после возврата ноды все
+четыре признака рассасываются без участия оператора, а трафик за время простоя
+начисляется задним числом.</p>
+<h3 id="_16">Когда вмешиваться</h3>
+<table>
+<thead>
+<tr>
+<th>признак</th>
+<th>что это</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>растёт <code>spiritvpn_agent_alert_outcomes_total{code="IDENTITY_MISMATCH"}</code></td>
+<td>нода предъявила сертификат с чужой идентичностью</td>
+</tr>
+<tr>
+<td>растёт <code>{code="NODE_CONFIG_INVALID"}</code></td>
+<td>в манифесте у ноды непригодный <code>agent_config</code>, чинится следующей ревизией манифеста</td>
+</tr>
+<tr>
+<td>растёт <code>{code="TRANSPORT"}</code></td>
+<td>неопознанная ошибка транспорта, разбирать по полю <code>message</code> в записи «опрос ноды не удался»</td>
+</tr>
+<tr>
+<td><code>spiritvpn_node_xray_reachable{node}</code> равен нулю при свежем <code>last_success</code></td>
+<td>агент жив, Xray на ноде нет; операции на неё будут повторяться без конца</td>
+</tr>
+</tbody>
+</table>
+<p>Что происходит с манифестом, пока нода молчит, описано в
+<a href="../MANIFEST/">MANIFEST.md</a>.</p>
+<h2 id="_17">Квота и срок</h2>
+<p>Оба состояния гасят access одинаково: <code>desired_state</code> становится <code>ABSENT</code>,
+операция уезжает на ноду, юзер удаляется из Xray. Клиент видит переставшую
+работать ссылку. Различаются они тем, что снимает блокировку.</p>
+<h3 id="_18">Исчерпанная квота</h3>
+<p><code>spiritvpn_exhausted_node_quotas</code> считает ноды с выставленным <code>exhausted_at</code>
+внутри открытого периода. Единица счёта нода, не customer: <code>exhausted_at</code> живёт
+в <code>node_quota_usage</code>, и гасятся все access этого customer на этой ноде. Закрытые
+периоды в метрику не входят.</p>
+<p>Тот же учтённый расход доступен product-сервису в <code>consumed_bytes</code> ответа
+<code>GetCustomerAccessLinks</code>, рядом с <code>usage_quota_bytes</code>. У FREEDOM поля относятся к
+самой ноде, у BRIDGE — к entry-ноде; ссылки с общей entry-нодой показывают одно
+значение. Для остатка используется
+<code>max(usage_quota_bytes - consumed_bytes, 0)</code>, а не беззнаковое вычитание.</p>
+<p>Это не live-счётчик Xray. Usage-воркер опрашивает node-agent не чаще одного раза
+в 15 секунд на ноду, а при недоступности ноды расход остаётся у агента и попадёт
+в backend после восстановления. Поэтому <code>consumed_bytes</code> может временно
+отставать, затем вырасти скачком и превысить лимит; это штатно.</p>
+<p>Снимают исчерпание две разные команды, и различает их только <code>expires_at</code>,
+<code>ClassifyApply</code>, <code>internal/domain/command.go:91</code>:</p>
+<table>
+<thead>
+<tr>
+<th>команда</th>
+<th>что происходит с расходом</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>expires_at</code> строго больше сохранённого (<code>RENEWAL</code>)</td>
+<td>текущий период квоты закрывается, открывается новый с нулевым расходом, исчерпанных нод не остаётся ни одной</td>
+</tr>
+<tr>
+<td><code>expires_at</code> тот же, <code>usage_quota_bytes</code> больше (<code>QUOTA_CHANGE</code>)</td>
+<td>период тот же, накопленный трафик остаётся, <code>RecomputeExhausted</code> снимает <code>exhausted_at</code> только с тех нод, чей расход стал ниже нового лимита</td>
+</tr>
+</tbody>
+</table>
+<p>Из этого следует, что поднятие квоты без продления возвращает не всех: нода, уже
+перебравшая и новый лимит, останется исчерпанной, и её access останутся
+погашенными.</p>
+<h3 id="_19">Истёкший срок</h3>
+<p><code>spiritvpn_expired_customers</code> считает customer с наступившим <code>expires_at</code>, у
+которых остался хотя бы один <code>PRESENT</code>-access. <code>spiritvpn_expiry_lag_seconds</code>
+показывает, насколько просрочен самый старый из них.</p>
+<p>При пустой очереди обе метрики равны нулю: <code>expiry_lag_seconds</code> считается по
+тому же множеству и при его отсутствии сворачивается в ноль
+(<code>internal/postgres/queries/stats.sql:108</code>). Ноль в лаге сам по себе ничего не
+доказывает, читать его нужно вместе со счётчиком. Устойчиво растущий лаг при
+ненулевом счётчике означает, что воркер <code>expiry</code> не работает, а не что клиентов
+много.</p>
+<p>Снимается продлением: <code>ApplyCustomerAccess</code> с <code>expires_at</code> дальше сохранённого.
+Сокращение срока отвергается кодом <code>EXPIRY_REGRESSION</code>.</p>
+<p>Все три метрики раздела приезжают снимком БД, то есть с задержкой до 15 секунд.</p>
+<h2 id="_20">Административная блокировка и удаление</h2>
+<p><code>BLOCKED</code> — обратимое состояние: подписка, quota periods и credentials остаются
+в БД, но ссылки не выдаются и dispatcher доставляет <code>ENSURE_ABSENT</code>. Renewal во
+время блока не включает доступ. Разблокировка возвращает только access с
+действующим сроком и неисчерпанной квотой.</p>
+<p><code>DELETING</code> — незавершённое физическое удаление. Проверка состояния:</p>
+<pre><code class="language-sql">SELECT customer_id, lifecycle_state, delete_not_before, updated_at
+FROM customer_entitlements
+WHERE lifecycle_state IN ('BLOCKED', 'DELETING')
+ORDER BY updated_at;
+</code></pre>
+<p>Если <code>DELETING</code> не переходит в <code>DELETED</code>, сначала ищите актуальные операции
+customer в <code>PENDING</code>, <code>RETRY_WAIT</code>, <code>IN_FLIGHT</code> или <code>FAILED_PERMANENT</code> через join
+<code>agent_operations → vpn_accesses</code>. При retryable отказе backend продолжит сам;
+<code>FAILED_PERMANENT</code> требует исправить причину и отправить Delete с новым большим
+<code>command_number</code>, чтобы появилась новая проверочная операция.</p>
+<p><code>DELETED</code> означает, что operational-строки очищены. В
+<code>customer_entitlements</code> остаётся только tombstone для порядка команд; это не
+утечка незавершённого cleanup. Вернуть customer можно новым
+<code>ApplyCustomerAccess</code>: он выдаст новые credentials.</p>
+<p>Dispatcher и reconcile взаимно исключены на одной ноде через row lock
+<code>vpn_nodes</code>. Поэтому старый полный набор не может остаться последней мутацией
+после успешного административного удаления.</p>
+<h2 id="_21">Чтение логов</h2>
+<p>JSON в stderr, <code>newLogger</code>, <code>cmd/spiritvpnd/logging.go:17</code>. Уровень задаёт
+<code>SPIRIT_LOG_LEVEL</code>, по умолчанию <code>info</code>.</p>
+<p>Одна запись на каждый gRPC-вызов, <code>LoggingUnaryInterceptor</code>,
+<code>internal/grpcsvc/logging.go:22</code>. Поля записи и стабильные коды ошибок описаны в
+<a href="../API/">API.md</a>.</p>
+<p>Корреляция идёт по <code>request_id</code>. Он кладётся в контекст первым interceptor'ом и
+уезжает оттуда в две стороны: в запись <code>grpc</code> и в записи pgx, у метода <code>Log</code>
+трейсера тот же контекст под рукой (<code>pgxLogger</code>, <code>cmd/spiritvpnd/logging.go:33</code>).
+Запрос к базе и породивший его RPC сходятся по одному значению. На уровне <code>info</code>
+записей pgx нет: трейсер переключается на подробный режим только при
+<code>SPIRIT_LOG_LEVEL=debug</code>, <code>tracerLevel</code>, <code>cmd/spiritvpnd/logging.go:70</code>.</p>
+<p>У записей фоновых воркеров <code>request_id</code> пустой: входящего вызова у них нет, а
+<code>pgxLogger</code> кладёт поле безусловно. Корреляция там идёт по <code>node_id</code>.</p>
+<p>Чего в логах нет никогда: тела запроса и ответа RPC, аргументов SQL-запросов.
+Аргументы отбрасываются в <code>pgxLogger</code> до записи, а не уровнем логирования, так
+что включение <code>debug</code> на проде их не откроет.</p>
+<p>Записи, за которыми ходят чаще всего:</p>
+<table>
+<thead>
+<tr>
+<th>сообщение</th>
+<th>уровень</th>
+<th>где</th>
+<th>о чём</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>шаг воркера отказал</code></td>
+<td>ERROR</td>
+<td><code>cmd/spiritvpnd/worker.go:212</code></td>
+<td>поле <code>worker</code> называет отказавший цикл, дальше пауза 15 секунд</td>
+</tr>
+<tr>
+<td><code>спул ноды сменился, часть трафика не учтена</code></td>
+<td>ERROR</td>
+<td><code>internal/app/pull_usage.go:384</code></td>
+<td>нода потеряла спул, трафик за окно потерян безвозвратно</td>
+</tr>
+<tr>
+<td><code>опрос ноды не удался</code></td>
+<td>WARN или ERROR</td>
+<td><code>internal/app/pull_usage.go:366</code></td>
+<td>ERROR при <code>Alert</code> у исхода</td>
+</tr>
+<tr>
+<td><code>нода разошлась с desired state</code></td>
+<td>WARN</td>
+<td><code>internal/app/reconcile_nodes.go:173</code></td>
+<td>поля <code>missing</code>, <code>extra</code>, <code>mismatch</code> с числом расхождений</td>
+</tr>
+<tr>
+<td><code>инвентарь ноды непригоден для сверки</code></td>
+<td>INFO</td>
+<td><code>internal/app/reconcile_nodes.go:163</code></td>
+<td>поле <code>reason</code>; штатно для только что поднявшегося агента, тревожит повторяемость</td>
+</tr>
+<tr>
+<td><code>reconcile пропущен: client_uuid не расшифровывается</code></td>
+<td>ERROR</td>
+<td><code>internal/app/reconcile_nodes.go:204</code></td>
+<td>сверка ноды остановлена целиком, парная метрика <code>credential_open_errors_total</code></td>
+</tr>
+<tr>
+<td><code>reconcile пропущен: public_config ноды непригоден</code></td>
+<td>ERROR</td>
+<td><code>internal/app/reconcile_nodes.go:193</code></td>
+<td>в манифесте у ноды пустой <code>flow</code></td>
+</tr>
+<tr>
+<td><code>поверхность отказала</code></td>
+<td>ERROR</td>
+<td><code>cmd/spiritvpnd/main.go:266</code></td>
+<td>отказал слушатель gRPC или HTTP, следом идёт shutdown</td>
+</tr>
+</tbody>
+</table>
+<p>Уровень записи <code>grpc</code> выбирает <code>levelFor</code>, <code>internal/grpcsvc/logging.go:51</code>.
+ERROR там означает вину backend (<code>INTERNAL</code>, <code>UNKNOWN</code>, <code>DATA_LOSS</code>,
+<code>UNAVAILABLE</code>), WARN означает отказ по правилам контракта, то есть штатную работу
+сервиса. Alert по потоку ошибок строить нужно на ERROR: продление с сокращением
+срока или неизвестный флот приходят от вызывающего и в разборе не нуждаются.</p>
+<h2 id="_22">Старт и остановка</h2>
+<p>Отказ старта не бывает записью JSON. Любая ошибка, возвращённая из <code>run</code>,
+печатается <code>main</code> одной обычной строкой в stderr с префиксом <code>spiritvpnd:</code>
+(<code>cmd/spiritvpnd/main.go:52</code>), и выход идёт с кодом 1. Логгер к этому моменту
+чаще всего уже собран, но в этот путь он не подключён, так что искать причину
+grep'ом по полю <code>msg</code> бесполезно.</p>
+<p>Порядок инициализации в <code>run</code>, <code>cmd/spiritvpnd/main.go:60</code>. Валит старт всё
+перечисленное:</p>
+<table>
+<thead>
+<tr>
+<th>шаг</th>
+<th>что валит</th>
+<th>текст</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config.Load</code></td>
+<td>переменная не задана, значение не разбирается, ключ не в формате <code>&lt;key_id&gt;:&lt;base64&gt;</code> или не той длины</td>
+<td><code>config: обязательная переменная не задана</code>, <code>config: некорректное значение</code>, ошибки <code>crypto:</code> по ключу</td>
+</tr>
+<tr>
+<td><code>crypto.NewCipher</code> и <code>SelfTest</code></td>
+<td>ключ разобрался, но шифр на нём не работает</td>
+<td><code>шифр client_uuid</code>, <code>самопроверка ключа шифрования</code></td>
+</tr>
+<tr>
+<td><code>newPool</code></td>
+<td>DSN не разбирается, база не ответила за 10 секунд</td>
+<td><code>SPIRIT_DATABASE_URL не разбирается как DSN PostgreSQL</code>, <code>подключение к PostgreSQL</code></td>
+</tr>
+<tr>
+<td><code>nodeagent.New</code></td>
+<td>не читается клиентская пара или CA агентов, CA без единого сертификата</td>
+<td><code>nodeagent: клиентская пара TLS</code>, <code>nodeagent: CA агентов</code></td>
+</tr>
+<tr>
+<td><code>newGRPCServer</code></td>
+<td>не читается серверная пара или CA клиентов</td>
+<td><code>серверная пара TLS</code>, <code>CA клиентов</code></td>
+</tr>
+<tr>
+<td><code>net.Listen</code> в <code>serve</code></td>
+<td>порт занят</td>
+<td><code>прослушивание gRPC на ...</code>, <code>прослушивание HTTP на ...</code></td>
+</tr>
+</tbody>
+</table>
+<p>Длину и формат ключа проверяет разбор конфигурации, а не <code>NewCipher</code>, так что
+испорченный <code>SPIRIT_CLIENT_UUID_KEY</code> падает первым шагом.</p>
+<p>DSN в текст ошибки не попадает: в нём пароль. При неразбираемом
+<code>SPIRIT_DATABASE_URL</code> наружу уходит только имя переменной.</p>
+<p>Слушатели открываются до запуска горутин, так что занятый порт становится
+ошибкой старта. Фоновые воркеры при этом уже запущены и работают: от сетевых
+поверхностей они не зависят.</p>
+<p>Перехват <code>SIGTERM</code> и <code>SIGINT</code> стоит до инициализации, и сигнал прерывает её тоже.
+Процесс, застрявший на недоступной базе, останавливается сразу, не дожидаясь
+конца grace period.</p>
+<p>Остановка идёт в три шага, <code>shutdown</code>, <code>cmd/spiritvpnd/main.go:278</code>:</p>
+<ol>
+<li><code>grpcServer.GracefulStop</code> перестаёт принимать соединения и ждёт завершения
+   текущих RPC, бюджет 20 секунд (<code>shutdownTimeout</code>);</li>
+<li>по исчерпании бюджета пишется WARN «graceful shutdown не уложился в бюджет,
+   рву соединения» и вызывается <code>Stop</code>;</li>
+<li><code>httpServer.Shutdown</code> на остатке того же бюджета.</li>
+</ol>
+<p>Бюджет у шагов общий, так что срабатывание второго шага съедает третий: следом за
+записью «graceful shutdown не уложился в бюджет» всегда идёт «HTTP не завершился
+корректно». Вторая запись при этом ничего нового не сообщает.</p>
+<p>Воркеры останавливаются последними, уже после закрытия обеих поверхностей.
+Ожидание короткое: шаг каждого мал, а весь прогресс зафиксирован в БД.</p>
+<p>Операция, чей RPC оборвала отмена, остаётся <code>IN_FLIGHT</code> с lease на 30 секунд.
+Её подберёт <code>ReapExpiredOperationLeases</code>: сбор идёт в начале каждого шага
+диспетчера, до 100 строк за раз (<code>internal/app/dispatch_operations.go:81</code>).
+Операция с актуальной <code>desired_version</code> вернётся в <code>RETRY_WAIT</code> с
+<code>next_attempt_at = now()</code>, устаревшая станет <code>SUPERSEDED</code>. Дополнительной паузы
+после рестарта нет, TTL lease ею уже был.</p>
+<p>Счётчик <code>attempt_count</code> она увеличить успела, так что её следующая неудача
+придёт в домен с увеличенным счётчиком и получит более долгую паузу. Всплеск
+<code>spiritvpn_worker_leases_expired{worker="dispatch"}</code> сразу после рестарта штатен.</p>
+<p>Успешный <code>ApplyCustomerAccess</code> на момент обрыва уже зафиксирован, так что
+теряется максимум ответ вызывающему: точный повтор команды вернёт эквивалентное
+состояние.</p>
+<p>Переменные окружения и порядок наката миграций описаны в
+<a href="../DEPLOYMENT/">DEPLOYMENT.md</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

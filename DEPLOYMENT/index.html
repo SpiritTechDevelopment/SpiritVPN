@@ -1,0 +1,1678 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Документация backend-сервиса управления VPN-инфраструктурой SpiritVPN">
+      
+      
+        <meta name="author" content="Roman Ryabinkin, Pavel Lensky">
+      
+      
+      
+        <link rel="prev" href="../CHANGELOG_GUIDE/">
+      
+      
+        <link rel="next" href="../OPERATIONS/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Развёртывание - SpiritVPN Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="SpiritVPN Documentation" class="md-header__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SpiritVPN Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Развёртывание
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить тёмную тему"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Включить тёмную тему" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить светлую тему"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Включить светлую тему" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Главная
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ARCHITECTURE/" class="md-tabs__link">
+          
+  
+  
+  Архитектура
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../TESTING/" class="md-tabs__link">
+          
+  
+  
+  Разработка
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Инфраструктура
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="SpiritVPN Documentation" class="md-nav__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SpiritVPN Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Главная
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Архитектура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Архитектура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Общая архитектура
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../API/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Внешний API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATABASE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    База данных
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFEST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VLESS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VLESS URI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Разработка
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Разработка
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TESTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Руководство по тестированию
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CHANGELOG_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Правила Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Инфраструктура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Инфраструктура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Развёртывание
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Развёртывание
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Артефакт
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Конфигурация
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Конфигурация">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ключ шифрования
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Роли
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сертификаты
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сервис на сервере
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Миграции
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Выкатка
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Выкатка">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Замена контейнера
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Откат
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Конвейер
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Конвейер">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Настройка интеграции
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPERATIONS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Эксплуатация
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Артефакт
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Конфигурация
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Конфигурация">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ключ шифрования
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Роли
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сертификаты
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Сервис на сервере
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Миграции
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Выкатка
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Выкатка">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Замена контейнера
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Откат
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Конвейер
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Конвейер">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Настройка интеграции
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="_1">Развёртывание</h1>
+<p>Документ отвечает на вопрос, как выкатить backend и чем его настроить.</p>
+<p>Чтение health и метрик, разбор отказа старта и залипших операций живут в
+<a href="../OPERATIONS/">OPERATIONS.md</a>. Схема как содержимое описана в
+<a href="../DATABASE/">DATABASE.md</a>, коды ошибок и роли на уровне контракта в
+<a href="../API/">API.md</a>. Запуск на своей машине разобран в <code>README.md</code>.</p>
+<h2 id="_2">Артефакт</h2>
+<p>Деплоятся два образа: <code>spiritvpn-spiritvpnd</code> с самим процессом и
+<code>spiritvpn-migrate</code> с командой наката схемы. Оба выходят из одного <code>Dockerfile</code>
+через <code>--target</code>:</p>
+<pre><code class="language-bash">docker build --target migrate    -t spiritvpn-migrate:&lt;тег&gt; .
+docker build --target spiritvpnd -t spiritvpn-spiritvpnd:&lt;тег&gt; .
+</code></pre>
+<p>Стадия сборки у них общая, runtime-база alpine, процесс идёт под uid 10001.
+<code>ENTRYPOINT</code> указывает на бинарь, подкоманда <code>migrate</code> передаётся аргументами
+<code>docker run</code>.</p>
+<p>Тег у обоих образов обязан быть один. Набор миграций встроен в бинарь, и
+<code>spiritvpnd</code> вычисляет из имён встроенных файлов ту версию схемы, которую требует
+его проверка готовности; <code>migrate</code> накатывает этот же набор. Выкатка образов с
+разными тегами не роняет ни миграцию, ни старт процесса. Она даёт живой
+контейнер, застрявший в <code>not ready: schema</code>, и искать причину придётся в версиях
+образов.</p>
+<p>Сред две, на разных серверах и с разными базами: <code>develop</code> и <code>prod</code>.
+Экземпляр процесса в каждой ровно один; механика lease в базе прикрывает
+перезапуск и перекрытие старого процесса с новым, но горизонтального
+масштабирования не даёт.</p>
+<h2 id="_3">Конфигурация</h2>
+<p>Пятнадцать переменных, все с префиксом <code>SPIRIT_</code>. Источник один, окружение
+процесса; аргументами командной строки конфигурация не передаётся.</p>
+<table>
+<thead>
+<tr>
+<th>переменная</th>
+<th>по умолчанию</th>
+<th>принимается</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPIRIT_DATABASE_URL</code></td>
+<td>обязательна</td>
+<td>DSN PostgreSQL вместе с паролем</td>
+</tr>
+<tr>
+<td><code>SPIRIT_DB_MAX_CONNS</code></td>
+<td><code>10</code></td>
+<td>целое больше нуля</td>
+</tr>
+<tr>
+<td><code>SPIRIT_LOG_LEVEL</code></td>
+<td><code>info</code></td>
+<td><code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>; регистр не важен</td>
+</tr>
+<tr>
+<td><code>SPIRIT_GRPC_LISTEN</code></td>
+<td><code>:8443</code></td>
+<td><code>host:port</code></td>
+</tr>
+<tr>
+<td><code>SPIRIT_HTTP_LISTEN</code></td>
+<td><code>:8080</code></td>
+<td><code>host:port</code></td>
+</tr>
+<tr>
+<td><code>SPIRIT_GRPC_TLS_CERT_FILE</code></td>
+<td>обязательна</td>
+<td>путь к серверному сертификату</td>
+</tr>
+<tr>
+<td><code>SPIRIT_GRPC_TLS_KEY_FILE</code></td>
+<td>обязательна</td>
+<td>путь к серверному приватному ключу</td>
+</tr>
+<tr>
+<td><code>SPIRIT_GRPC_TLS_CLIENT_CA_FILE</code></td>
+<td>обязательна</td>
+<td>путь к CA вызывающих</td>
+</tr>
+<tr>
+<td><code>SPIRIT_AGENT_TLS_CERT_FILE</code></td>
+<td>обязательна</td>
+<td>путь к клиентскому сертификату</td>
+</tr>
+<tr>
+<td><code>SPIRIT_AGENT_TLS_KEY_FILE</code></td>
+<td>обязательна</td>
+<td>путь к клиентскому приватному ключу</td>
+</tr>
+<tr>
+<td><code>SPIRIT_AGENT_TLS_CA_FILE</code></td>
+<td>обязательна</td>
+<td>путь к CA агентов</td>
+</tr>
+<tr>
+<td><code>SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER</code></td>
+<td>пусто</td>
+<td>идентичности для <code>ApplyCustomerAccess</code></td>
+</tr>
+<tr>
+<td><code>SPIRIT_ROLE_CUSTOMER_ACCESS_READER</code></td>
+<td>пусто</td>
+<td>идентичности для <code>GetCustomerAccessLinks</code></td>
+</tr>
+<tr>
+<td><code>SPIRIT_ROLE_CUSTOMER_ACCESS_ADMIN</code></td>
+<td>пусто</td>
+<td>идентичности для <code>SetCustomerAccessState</code> и <code>DeleteCustomerAccess</code></td>
+</tr>
+<tr>
+<td><code>SPIRIT_ROLE_MANIFEST_WRITER</code></td>
+<td>пусто</td>
+<td>идентичности для <code>ApplyFleetManifest</code></td>
+</tr>
+<tr>
+<td><code>SPIRIT_CLIENT_UUID_KEY</code></td>
+<td>обязательна</td>
+<td><code>&lt;key_id&gt;:&lt;base64 32 байта&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<p>Заполненный образец лежит в <code>deploy/env.example</code>.</p>
+<p>Неверная конфигурация даёт один полный список того, что нужно поправить:
+<code>config.Load</code> (<code>internal/config/config.go:155</code>) копит все ошибки и не
+останавливается на первой. Дословные тексты и полная таблица шагов инициализации
+собраны в разделе «Старт и остановка» документа <a href="../OPERATIONS/">OPERATIONS.md</a>.</p>
+<p>Одно правило не выводится из таблицы построчно. Четыре переменные ролей помечены как
+необязательные каждая, но пустыми одновременно быть не могут: процесс с четырьмя
+пустыми списками ответил бы <code>PERMISSION_DENIED</code> на любой вызов, и разбор такой
+конфигурации падает.</p>
+<h3 id="_4">Ключ шифрования</h3>
+<p><code>client_uuid</code> это учётные данные VLESS, и в базе они лежат зашифрованными.
+Значение <code>SPIRIT_CLIENT_UUID_KEY</code> несёт две части: сам 32-байтный секрет и его
+имя. Имя длиной до 64 символов из <code>A-Za-z0-9._-</code> уходит в колонку
+<code>vpn_accesses.encryption_key_id</code> рядом с каждой записью.</p>
+<p>В контейнере ключ задаётся файлом. <code>crypto.LoadKey</code> (<code>internal/crypto/key.go:90</code>)
+сначала читает <code>SPIRIT_CLIENT_UUID_KEY_FILE</code> как путь и обращается к самой
+переменной, только если путь пуст; значение, переданное переменной окружения,
+видно в <code>docker inspect</code> и в описании контейнера.</p>
+<p>Задаётся ключ один раз при заведении базы и дальше не меняется. Активный ключ в
+v1 ровно один, decrypt-only ключей нет, команды перешифрования тоже. После смены
+<code>Cipher.Open</code> (<code>internal/crypto/aead.go:125</code>) отвергнет каждую запись, сделанную
+прежним ключом: при другом имени не пройдёт сверка имён, при том же имени и
+другом секрете не сойдётся тег аутентификации.</p>
+<p>Заметить это по проверке готовности не удастся. <code>SelfTest</code> шифрует и
+расшифровывает собственное фиктивное значение, к содержимому базы не обращаясь, и
+процесс с чужим ключом спокойно объявит себя готовым. Проявится отказ на первом
+чтении, причём в трёх местах по-разному: ссылка получит статус <code>FAILED</code>, операция
+доставки уйдёт в бесконечный retry, сверка ноды будет пропускать её целиком.
+Общий признак у всех трёх один, счётчик
+<code>spiritvpn_credential_open_errors_total</code>.</p>
+<p>Ключи сред обязаны различаться. Имена вида <code>dev-1</code> и <code>prod-1</code> видны в логе старта
+и в колонке <code>encryption_key_id</code>, по ним подключение процесса к чужой базе
+обнаруживается сразу.</p>
+<h3 id="_5">Роли</h3>
+<p>Значение переменной роли это список идентичностей через запятую; пустые элементы
+отбрасываются, лишняя запятая безвредна. Каждая строка обязана дословно совпасть
+с SAN сертификата вызывающего.</p>
+<p>Иерархии между ролями нет. Сервису, который и записывает, и читает, идентичность
+вписывается в обе переменные одним и тем же значением. Подробности разбора на
+уровне контракта в разделе «mTLS и роли» документа <a href="../API/">API.md</a>.</p>
+<h2 id="_6">Сертификаты</h2>
+<p>Пар две, и они разные: серверной backend предъявляет себя вызывающему,
+клиентской приходит к агентам нод. Общий сертификат смешал бы две роли.</p>
+<table>
+<thead>
+<tr>
+<th>файл</th>
+<th>переменная</th>
+<th>роль</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>серверный сертификат</td>
+<td><code>SPIRIT_GRPC_TLS_CERT_FILE</code></td>
+<td>предъявляется вызывающему</td>
+</tr>
+<tr>
+<td>серверный ключ</td>
+<td><code>SPIRIT_GRPC_TLS_KEY_FILE</code></td>
+<td></td>
+</tr>
+<tr>
+<td>CA вызывающих</td>
+<td><code>SPIRIT_GRPC_TLS_CLIENT_CA_FILE</code></td>
+<td>проверяет входящих</td>
+</tr>
+<tr>
+<td>клиентский сертификат</td>
+<td><code>SPIRIT_AGENT_TLS_CERT_FILE</code></td>
+<td>предъявляется агенту</td>
+</tr>
+<tr>
+<td>клиентский ключ</td>
+<td><code>SPIRIT_AGENT_TLS_KEY_FILE</code></td>
+<td></td>
+</tr>
+<tr>
+<td>CA агентов</td>
+<td><code>SPIRIT_AGENT_TLS_CA_FILE</code></td>
+<td>проверяет ноды</td>
+</tr>
+</tbody>
+</table>
+<p>Два CA не взаимозаменяемы. Подставив один файл в обе переменные, вы разрешите
+агентам вызывать внешние методы, а вызывающим выдавать себя за ноды.</p>
+<p>Идентичность вызывающего backend читает из полей <code>DNSNames</code> и <code>URIs</code> листового
+сертификата, а поле CN не читает вовсе: сертификат с именем только в CN
+идентичности не имеет и получит <code>UNAUTHENTICATED</code> независимо от того, что
+записано в переменных ролей. Пустой или мусорный файл CA останавливает старт с
+явным текстом, вместо того чтобы дать процесс, отвергающий всех подряд с
+диагностикой про недостаток прав.</p>
+<p>Читаются все шесть файлов один раз при старте, в <code>transportCredentials</code>
+(<code>cmd/spiritvpnd/grpc.go:90</code>) и <code>loadTLSMaterial</code> (<code>internal/nodeagent/tls.go:81</code>).
+Отсюда две вещи: неверный путь обнаруживается сразу, а не при первой операции, и
+подменённый на диске файл до процесса не доедет без перезапуска.</p>
+<p>Имя, по которому проверяется сертификат агента, и ожидаемая идентичность ноды в
+окружении не задаются, они приходят из манифеста. Про поля <code>tls_server_name</code> и
+<code>certificate_identity</code> смотрите <a href="../MANIFEST/">MANIFEST.md</a>.</p>
+<h2 id="_7">Сервис на сервере</h2>
+<p>Описание сервиса лежит в <code>deploy/docker-compose.yml</code>, различия сред приходят из
+<code>.env</code> рядом с ним; заполненный <code>.env</code> и каталог <code>secrets/</code> живут только на
+серверах.</p>
+<table>
+<thead>
+<tr>
+<th>параметр</th>
+<th>значение</th>
+<th>причина такого значения</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>публикуемый порт</td>
+<td>только <code>8443</code></td>
+<td><code>8080</code> отдаёт <code>/metrics</code> без TLS и без проверки вызывающего</td>
+</tr>
+<tr>
+<td>монтирование</td>
+<td><code>./secrets:/secrets:ro</code></td>
+<td>файлы обязаны быть читаемы uid 10001</td>
+</tr>
+<tr>
+<td><code>stop_grace_period</code></td>
+<td><code>30s</code></td>
+<td>у процесса бюджет 20 секунд, у Docker по умолчанию 10</td>
+</tr>
+<tr>
+<td>healthcheck</td>
+<td><code>/health/ready</code></td>
+<td>видно в <code>docker ps</code>, на трафик не влияет</td>
+</tr>
+</tbody>
+</table>
+<p>Последняя строка требует пояснения, потому что от неё зависит порядок выкатки.
+gRPC-поверхность открывается независимо от готовности: слушатели создаются в
+<code>serve</code> (<code>cmd/spiritvpnd/main.go:234</code>), а среди interceptor'ов проверки
+готовности нет. Оркестратор, читающий probe, не пустил бы трафик на неготовый
+экземпляр; под <code>docker compose</code> такой защиты нет ни в каком виде, и правильный
+порядок шагов приходится держать скриптом.</p>
+<h2 id="_8">Миграции</h2>
+<p>Схему накатывает образ <code>spiritvpn-migrate</code> отдельным шагом деплоя; сам процесс её
+не мигрирует никогда.</p>
+<pre><code class="language-bash">docker run --rm --env-file .env spiritvpn-migrate:&lt;тег&gt; up
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>подкоманда</th>
+<th>действие</th>
+<th>код выхода</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>up</code></td>
+<td>накатить все ожидающие</td>
+<td>0, включая случай «изменений нет»</td>
+</tr>
+<tr>
+<td><code>down</code></td>
+<td>откатить ровно одну</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>down-all</code></td>
+<td>откатить все, только для dev</td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>показать версию и признак <code>dirty</code></td>
+<td>0</td>
+</tr>
+<tr>
+<td><code>force &lt;v&gt;</code></td>
+<td>выставить версию без выполнения, чинит <code>dirty</code></td>
+<td>0</td>
+</tr>
+<tr>
+<td>без подкоманды</td>
+<td>напечатать использование</td>
+<td>2</td>
+</tr>
+</tbody>
+</table>
+<p>Любая ошибка выполнения даёт код 1 и строку с префиксом <code>migrate:</code> в stderr.</p>
+<p>Переменные подключения у этого образа другие. Он читает <code>DATABASE_URL</code>, а при её
+отсутствии собирает строку из <code>DB_HOST</code>, <code>DB_PORT</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>,
+<code>DB_NAME</code> и <code>DB_SSLMODE</code> с умолчаниями <code>localhost</code>, <code>5432</code>, <code>spiritdb</code>,
+<code>spiritdb</code> и <code>disable</code>. Переменную <code>SPIRIT_DATABASE_URL</code> он не видит: задав
+только её, вы отправите миграции в локальную базу вместо целевой. В
+<code>deploy/env.example</code> присутствуют оба имени с одним значением.</p>
+<p>Сами миграции встроены в бинарь и с файловой системы не читаются. Каждая идёт
+одним multi-statement <code>Exec</code> под PostgreSQL advisory lock, и одновременный запуск
+двух накатов безопасен: второй дождётся первого.</p>
+<h2 id="_9">Выкатка</h2>
+<p>Три шага в фиксированном порядке, их держит <code>deploy/deploy.sh</code>.</p>
+<pre><code class="language-bash">./deploy.sh sha-&lt;коммит&gt;
+</code></pre>
+<ol>
+<li>скачать образы: <code>docker compose pull</code> плюс <code>docker pull</code> образа миграций;</li>
+<li>накатить схему образом <code>migrate</code>;</li>
+<li>заменить контейнер: <code>docker compose up -d</code>, затем ожидание готовности.</li>
+</ol>
+<p>Простой даёт только третий шаг. Первые два идут при работающем старом процессе, и
+он продолжает обслуживать даже после наката: <code>schemaCheck</code>
+(<code>cmd/spiritvpnd/health.go:107</code>) требует версию не ниже встроенной, а не равную
+ей, и схема новее бинаря готовность не отменяет.</p>
+<p>Обратный порядок ничем не отлавливается. Новый процесс на старой схеме останется
+<code>not ready</code> и при этом продолжит принимать вызовы, роняя их на запросах к
+отсутствующим колонкам.</p>
+<h3 id="_10">Замена контейнера</h3>
+<p>Старый процесс получает <code>SIGTERM</code>; перехват стоит до инициализации, и сигнал
+прерывает её тоже. <code>GracefulStop</code> ждёт завершения текущих RPC, затем гасится
+HTTP, последними останавливаются воркеры. Взятые ими lease при этом не снимаются:
+<code>release</code> (<code>internal/app/pull_usage.go:347</code>) выходит сразу, увидев отменённый
+контекст.</p>
+<p>Новый процесс идёт по порядку: конфигурация, самопроверка ключа, пул с ping'ом,
+чтение шести файлов TLS, сборка сервера, запуск воркеров, открытие слушателей.
+Ожиданий в этом пути нет, потолка два: ping базы ограничен 10 секундами, проверка
+готовности тремя.</p>
+<p>Скрипт после этого опрашивает <code>/health/ready</code> с бюджетом 30 секунд. Не дождавшись
+готовности, он печатает последние 50 строк лога и выходит с ненулевым кодом.</p>
+<p>Полное возобновление занимает больше, чем сам простой, и упирается в непогашенные
+lease:</p>
+<table>
+<thead>
+<tr>
+<th>подсистема</th>
+<th>потолок задержки</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>истечение срока</td>
+<td>шаг раз в 5 секунд</td>
+</tr>
+<tr>
+<td>доставка операций</td>
+<td>30 секунд</td>
+</tr>
+<tr>
+<td>материализация манифеста</td>
+<td>60 секунд</td>
+</tr>
+<tr>
+<td>опрос трафика</td>
+<td>5 минут</td>
+</tr>
+<tr>
+<td>сверка ноды</td>
+<td>5 минут</td>
+</tr>
+</tbody>
+</table>
+<p>Верхнюю границу в 5 минут задают <code>usageLeaseTTL</code> и <code>reconcileLeaseTTL</code>
+(<code>cmd/spiritvpnd/worker.go:82</code>, <code>:118</code>): нода, взятая на опрос за секунду до
+остановки, достанется воркеру только по истечении её lease. Трафик за это время
+не теряется, агент копит показания и отдаёт их следующим опросом. Всплеск
+<code>spiritvpn_worker_leases_expired</code> сразу после выкатки штатен.</p>
+<h3 id="_11">Откат</h3>
+<p>Запустить скрипт с прежним тегом. Схему назад катать не нужно и не следует:
+старый бинарь на новой схеме готов по тому же условию «не ниже».</p>
+<h2 id="_12">Конвейер</h2>
+<p>Этот репозиторий образы производит, но сам их не выкатывает. Пайплайн
+описан в <code>.github/workflows/ci.yml</code>; desired state сред и выкатка принадлежат
+репозиторию <code>SpiritTechDevelopment/Infrastructure</code>.</p>
+<table>
+<thead>
+<tr>
+<th>job</th>
+<th>когда</th>
+<th>что делает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test</code>, <code>lint</code></td>
+<td>push, PR в <code>main</code>, ручной запуск</td>
+<td>прогоняют тесты с PostgreSQL, порог покрытия и lint</td>
+</tr>
+<tr>
+<td><code>build</code></td>
+<td>после <code>test</code> и <code>lint</code></td>
+<td>собирает Go-пакеты, сверяет сгенерированные protobuf и sqlc</td>
+</tr>
+<tr>
+<td><code>images</code></td>
+<td>push в <code>main</code></td>
+<td>собирает оба Docker-таргета и пушит их в ghcr под тегом <code>sha-&lt;полный SHA&gt;</code></td>
+</tr>
+<tr>
+<td><code>images</code></td>
+<td>push тега <code>v*</code></td>
+<td>проверяет тег и перевешивает его на уже собранные <code>sha-&lt;SHA&gt;</code>-манифесты без пересборки</td>
+</tr>
+<tr>
+<td><code>notify-infrastructure</code></td>
+<td>после <code>images</code></td>
+<td>отправляет событие <code>control-release</code> со средой, SHA и digest обоих образов</td>
+</tr>
+</tbody>
+</table>
+<p><code>images</code> идёт после test, lint и build, и до registry доходят только коммиты с
+зелёными тестами и сверенной генерацией. С feature-веток образы не собираются;
+ручной <code>workflow_dispatch</code> тоже ограничен проверками и образов не публикует.</p>
+<p>Успешный push в <code>main</code> обозначает релиз для <code>develop</code>. Релизный тег формата <code>vX.Y.Z</code>
+обозначает релиз для <code>prod</code>: он обязан стоять на коммите из <code>main</code>, для которого
+оба <code>sha-&lt;SHA&gt;</code>-образа уже есть в ghcr. Перед уведомлением Infrastructure конвейер
+сверяет digest манифеста до и после перевешивания тега. Так в <code>prod</code> продвигаются
+те же байты, которые уже прошли путь <code>develop</code>.</p>
+<p>Событие <code>control-release</code> не является командой на выкатку. Оно передаёт факт
+публикации в виде <code>environment</code>, исходного Git SHA, имён registry и immutable digest
+обоих образов. Репозиторий Infrastructure сам записывает эти digest в
+desired state и решает, когда и как их применить. Успех
+<code>notify-infrastructure</code> означает только, что GitHub
+принял <code>repository_dispatch</code>; завершения инфраструктурного конвейера он не ждёт.</p>
+<h3 id="_13">Настройка интеграции</h3>
+<p>Для push в ghcr job <code>images</code> использует встроенный <code>GITHUB_TOKEN</code> с
+выданным ему <code>packages: write</code>. Для отправки <code>repository_dispatch</code> в
+секретах репозитория должен быть
+<code>INFRA_DISPATCH_TOKEN</code>, имеющий право создать dispatch в
+<code>SpiritTechDevelopment/Infrastructure</code>.</p>
+<p>Доступ к приватным ghcr-пакетам, секреты сред, self-hosted runner и сама
+механика выкатки настраиваются в Infrastructure, а не через GitHub Environments
+этого репозитория.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

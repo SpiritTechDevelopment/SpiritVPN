@@ -1,0 +1,1999 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Документация backend-сервиса управления VPN-инфраструктурой SpiritVPN">
+      
+      
+        <meta name="author" content="Roman Ryabinkin, Pavel Lensky">
+      
+      
+      
+        <link rel="prev" href="../ARCHITECTURE/">
+      
+      
+        <link rel="next" href="../DATABASE/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Внешний API - SpiritVPN Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="SpiritVPN Documentation" class="md-header__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SpiritVPN Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Внешний API
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить тёмную тему"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Включить тёмную тему" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить светлую тему"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Включить светлую тему" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Главная
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../ARCHITECTURE/" class="md-tabs__link">
+          
+  
+  
+  Архитектура
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../TESTING/" class="md-tabs__link">
+          
+  
+  
+  Разработка
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../DEPLOYMENT/" class="md-tabs__link">
+          
+  
+  
+  Инфраструктура
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="SpiritVPN Documentation" class="md-nav__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SpiritVPN Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Главная
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Архитектура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Архитектура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Общая архитектура
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Внешний API
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Внешний API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Поверхности
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mtls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mTLS и роли
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mTLS и роли">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interceptor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interceptor'ы
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#applycustomeraccess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ApplyCustomerAccess
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ApplyCustomerAccess">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Идемпотентность
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ответ
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getcustomeraccesslinks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GetCustomerAccessLinks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GetCustomerAccessLinks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Кеширование
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#listavailablenodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ListAvailableNodes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setcustomeraccessstate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SetCustomerAccessState
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deletecustomeraccess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeleteCustomerAccess
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#applyfleetmanifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ApplyFleetManifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Коды ошибок
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Коды ошибок">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Доменные
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Транспортные
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Манифестные
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Порядок разбора
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATABASE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    База данных
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFEST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VLESS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VLESS URI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Разработка
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Разработка
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TESTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Руководство по тестированию
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CHANGELOG_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Правила Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Инфраструктура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Инфраструктура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Развёртывание
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPERATIONS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Эксплуатация
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Поверхности
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mtls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mTLS и роли
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mTLS и роли">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interceptor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interceptor'ы
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#applycustomeraccess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ApplyCustomerAccess
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ApplyCustomerAccess">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Идемпотентность
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ответ
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getcustomeraccesslinks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GetCustomerAccessLinks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GetCustomerAccessLinks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Кеширование
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#listavailablenodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ListAvailableNodes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setcustomeraccessstate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SetCustomerAccessState
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deletecustomeraccess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DeleteCustomerAccess
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#applyfleetmanifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ApplyFleetManifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Коды ошибок
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Коды ошибок">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Доменные
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Транспортные
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Манифестные
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Порядок разбора
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="api">Внешний API</h1>
+<p>Внешних поверхностей две, обе gRPC и обе под mTLS. <code>CustomerAccessService</code>
+принимает команды product-сервиса, отдаёт ссылки и публичный каталог нод.
+<code>ManifestService</code> принимает манифест топологии от infrastructure CI/CD. Все
+шесть методов unary, стриминга нет.</p>
+<p>Контракт задают <code>.proto</code>; сгенерированный код лежит в <code>internal/gen</code> и
+в репозиторий закоммичен. Этот документ отвечает на вопрос, что видно снаружи;
+путь запроса через код разобран в <a href="../ARCHITECTURE/">ARCHITECTURE.md</a>.</p>
+<h2 id="_1">Поверхности</h2>
+<table>
+<thead>
+<tr>
+<th>сервис</th>
+<th>метод</th>
+<th>роль</th>
+<th>вызывающий</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CustomerAccessService</code></td>
+<td><code>ApplyCustomerAccess</code></td>
+<td><code>customer-access-writer</code></td>
+<td>product-сервис</td>
+</tr>
+<tr>
+<td><code>CustomerAccessService</code></td>
+<td><code>GetCustomerAccessLinks</code></td>
+<td><code>customer-access-reader</code></td>
+<td>product-сервис</td>
+</tr>
+<tr>
+<td><code>CustomerAccessService</code></td>
+<td><code>ListAvailableNodes</code></td>
+<td><code>customer-access-reader</code></td>
+<td>product-сервис</td>
+</tr>
+<tr>
+<td><code>CustomerAccessService</code></td>
+<td><code>SetCustomerAccessState</code></td>
+<td><code>customer-access-admin</code></td>
+<td>административный сервис</td>
+</tr>
+<tr>
+<td><code>CustomerAccessService</code></td>
+<td><code>DeleteCustomerAccess</code></td>
+<td><code>customer-access-admin</code></td>
+<td>административный сервис</td>
+</tr>
+<tr>
+<td><code>ManifestService</code></td>
+<td><code>ApplyFleetManifest</code></td>
+<td><code>manifest-writer</code></td>
+<td>infrastructure CI/CD</td>
+</tr>
+</tbody>
+</table>
+<p>Файлы контракта: <code>proto/spiritvpn/customer/v1/customer.proto</code> и
+<code>proto/spiritvpn/manifest/v1/manifest.proto</code>. Сервисы регистрируются в
+<code>cmd/spiritvpnd/grpc.go:78</code>, адрес прослушивания задаёт <code>SPIRIT_GRPC_LISTEN</code>
+(по умолчанию <code>:8443</code>).</p>
+<p>Служебный порт <code>SPIRIT_HTTP_LISTEN</code> (по умолчанию <code>:8080</code>) несёт <code>/health/live</code>,
+<code>/health/ready</code> и <code>/metrics</code>, <code>cmd/spiritvpnd/health.go:32</code>. Ни TLS, ни проверки
+вызывающего у него нет: кто дотянулся до порта, тот всё и прочитал. Ограничивать
+доступ приходится сетью, наружу порт не публикуется.</p>
+<p>Третий <code>.proto</code> в дереве, <code>proto/spiritvpn/nodeagent</code>, вендорен из репозитория
+агента. По нему backend ходит клиентом к нодам поверх management-overlay; снаружи
+эта поверхность не видна и здесь не рассматривается.</p>
+<h2 id="mtls">mTLS и роли</h2>
+<p>mTLS-идентичность это строка из SAN клиентского сертификата, по которой backend
+узнаёт вызывающего. <code>peerIdentities</code> (<code>internal/grpcsvc/auth.go:129</code>) берёт
+листовой сертификат проверенной цепочки и читает два поля SAN: <code>DNSNames</code> и
+<code>URIs</code>. Годятся значения вида <code>product-svc.internal</code> и
+<code>spiffe://spiritvpn/product</code>.</p>
+<p>У сертификата этих значений может быть несколько, тогда вызывающему достаточно,
+чтобы в списке роли нашлось любое из них. Поле CN не читается вовсе: сертификат,
+у которого имя есть только в CN, идентичности не имеет и получит
+<code>UNAUTHENTICATED</code>.</p>
+<p>Транспорт собирает <code>transportCredentials</code>, <code>cmd/spiritvpnd/grpc.go:90</code>:
+<code>MinVersion</code> равен TLS 1.3, <code>ClientAuth</code> равен <code>RequireAndVerifyClientCert</code>, пул
+<code>ClientCAs</code> читается из <code>SPIRIT_GRPC_TLS_CLIENT_CA_FILE</code>. Insecure-режима нет ни в
+одной сборке; для локальной разработки те же самые сертификаты выпускает
+<code>make dev-certs</code>.</p>
+<p>Списки разрешённых идентичностей приходят из окружения:</p>
+<table>
+<thead>
+<tr>
+<th>роль</th>
+<th>переменная</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>customer-access-writer</code></td>
+<td><code>SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER</code></td>
+</tr>
+<tr>
+<td><code>customer-access-reader</code></td>
+<td><code>SPIRIT_ROLE_CUSTOMER_ACCESS_READER</code></td>
+</tr>
+<tr>
+<td><code>customer-access-admin</code></td>
+<td><code>SPIRIT_ROLE_CUSTOMER_ACCESS_ADMIN</code></td>
+</tr>
+<tr>
+<td><code>manifest-writer</code></td>
+<td><code>SPIRIT_ROLE_MANIFEST_WRITER</code></td>
+</tr>
+</tbody>
+</table>
+<p>Значение это список через запятую; пустые элементы отбрасываются, лишняя запятая
+безвредна. Если пусты все четыре переменные, процесс падает на старте.</p>
+<p>Роли независимы, иерархии между ними нет. Идентичность, перечисленная только в
+<code>SPIRIT_ROLE_CUSTOMER_ACCESS_WRITER</code>, на <code>GetCustomerAccessLinks</code> получит
+<code>PERMISSION_DENIED</code>. Product-сервису, который вызывает команду и оба read-метода,
+свою идентичность нужно вписать в обе переменные, одной и той же строкой.</p>
+<p>Таблица <code>methodRoles</code> (<code>internal/grpcsvc/auth.go</code>) содержит ровно шесть строк, по
+одной на метод. Метод, которого в ней нет, запрещён всем: <code>authorize</code> отвечает
+<code>PERMISSION_DENIED</code>, не доходя до хендлера. В тексте отказа не сказано, какой
+роли не хватило, так что искать причину придётся по <code>peer_identity</code> в логе.</p>
+<h3 id="interceptor">Interceptor'ы</h3>
+<p>Цепочка собрана в <code>cmd/spiritvpnd/grpc.go:71</code> в порядке request_id → логирование →
+авторизация. Логирование стоит перед авторизацией, и отказ авторизации попадает в
+лог вместе с идентичностью, которой отказали.</p>
+<p><code>x-request-id</code> берётся из метадаты запроса, <code>internal/grpcsvc/requestid.go:38</code>.
+Пригодно значение длиной от 1 до 64 байт из печатных ASCII без пробелов.
+Непригодное молча заменяется сгенерированным UUID, и запрос от этого не
+отклоняется.</p>
+<p>На каждый вызов пишется одна запись, <code>internal/grpcsvc/logging.go:22</code>, с полями
+<code>method</code>, <code>grpc_code</code>, <code>error_code</code>, <code>duration_ms</code>, <code>request_id</code>, <code>peer_identity</code>.
+Тело запроса и ответ не логируются никогда: в запросе <code>customer_id</code>, в ответе URI
+с credentials. Уровень записи выбирает <code>levelFor</code>: <code>OK</code> даёт info, <code>INTERNAL</code>,
+<code>UNKNOWN</code>, <code>DATA_LOSS</code> и <code>UNAVAILABLE</code> дают error, остальные исходы warn.</p>
+<h2 id="applycustomeraccess">ApplyCustomerAccess</h2>
+<p>Одна команда product-сервиса. Отдельного поля «что сделать» в ней нет: род
+команды backend выводит сам, сравнивая присланный <code>expires_at</code> с сохранённым.</p>
+<table>
+<thead>
+<tr>
+<th>поле</th>
+<th>тип</th>
+<th>ограничение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>customer_id</code></td>
+<td><code>string</code></td>
+<td>непустой, не длиннее 256 байт; для backend непрозрачен</td>
+</tr>
+<tr>
+<td><code>vpn_fleet_id</code></td>
+<td><code>int64</code></td>
+<td>&gt; 0, присутствует в текущем манифесте</td>
+</tr>
+<tr>
+<td><code>usage_quota_bytes</code></td>
+<td><code>uint64</code></td>
+<td>&gt; 0</td>
+</tr>
+<tr>
+<td><code>expires_at_epoch_sec</code></td>
+<td><code>int64</code></td>
+<td>UTC Unix timestamp в секундах</td>
+</tr>
+<tr>
+<td><code>command_number</code></td>
+<td><code>uint64</code></td>
+<td>&gt; 0, монотонно возрастает по customer</td>
+</tr>
+</tbody>
+</table>
+<p>Квота задаётся на каждую ноду отдельно, не на флот целиком: customer с
+<code>usage_quota_bytes</code> в 100 ГБ на флоте из трёх нод израсходует до 100 ГБ на каждой
+из них. Перевод из GB или GiB в байты делает product-сервис до вызова.</p>
+<p><code>expires_at_epoch_sec</code> это абсолютный момент окончания доступа, не длительность.
+Точность секундная, доли секунды передать нечем.</p>
+<p>Род команды определяет <code>domain.ClassifyApply</code>
+(<code>internal/domain/command.go:91</code>):</p>
+<table>
+<thead>
+<tr>
+<th>условие</th>
+<th>род команды</th>
+<th>что при этом происходит</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>у customer ещё нет сохранённого срока</td>
+<td>создание</td>
+<td>момент обязан быть в будущем, открывается первый период квоты</td>
+</tr>
+<tr>
+<td>присланный срок больше сохранённого</td>
+<td>продление</td>
+<td>момент обязан быть в будущем, открывается новый период квоты, счётчики трафика обнуляются</td>
+</tr>
+<tr>
+<td>присланный срок равен сохранённому</td>
+<td>смена квоты</td>
+<td>момент в будущем не требуется, счётчики трафика сохраняются</td>
+</tr>
+<tr>
+<td>присланный срок меньше сохранённого</td>
+<td>отказ</td>
+<td><code>EXPIRY_REGRESSION</code></td>
+</tr>
+</tbody>
+</table>
+<p>Отсюда следует правило для повторной отправки: тот же <code>expires_at_epoch_sec</code> до
+секунды означает смену квоты, значение хоть на секунду больше означает продление
+со сбросом трафика.</p>
+<p>Смена <code>vpn_fleet_id</code> у существующего customer не поддерживается и отвечает
+<code>FLEET_MISMATCH</code>.</p>
+<p><code>domain.ValidateApplyCommand</code> проверяет форму запроса до открытия транзакции:
+<code>customer_id</code> непуст, <code>vpn_fleet_id</code>, <code>usage_quota_bytes</code> и <code>command_number</code>
+больше нуля. Всё остальное, включая присутствие флота в манифесте и правила
+вокруг <code>expires_at</code>, проверяется внутри транзакции.</p>
+<h3 id="_2">Идемпотентность</h3>
+<p>Apply, административное состояние и удаление образуют общий поток команд по
+customer. Меньший <code>command_number</code> поглощается как reorder. Равный номер с тем же
+SHA-256 fingerprint является идемпотентным повтором; равный номер с другим RPC
+или payload возвращает <code>COMMAND_NUMBER_CONFLICT</code>. Проверка выполняется под
+<code>SELECT ... FOR UPDATE</code>, и повтор коммитит пустую транзакцию.</p>
+<p>Проверка идёт раньше, чем backend смотрит, есть ли флот в манифесте. Повтор
+старой команды для флота, успевшего из манифеста исчезнуть, получает <code>OK</code>,
+а не <code>FLEET_NOT_FOUND</code>.</p>
+<p>У нового customer сохранённого номера нет, его первая команда принимается с любым
+<code>command_number &gt; 0</code>.</p>
+<h3 id="_3">Ответ</h3>
+<p><code>ApplyCustomerAccessResponse</code> пуст. Успех означает, что desired state и строки
+<code>agent_operations</code> зафиксированы в PostgreSQL. Юзера на ноде в этот момент ещё
+нет: доставку ведёт диспетчер асинхронно, и наблюдать за ней вызывающий может
+через <code>GetCustomerAccessLinks</code>.</p>
+<p>Тот же пустой ответ приходит на поглощённый повтор. Снаружи принятие команды и
+идемпотентный no-op неразличимы.</p>
+<p>Для <code>BLOCKED</code> customer Apply меняет срок и квоту, но не снимает
+административный блок. Для <code>DELETING</code> новый Apply возвращает
+<code>FAILED_PRECONDITION</code>. Для <code>DELETED</code> Apply с большим номером создаёт новый
+период, access и credentials; старые URI не восстанавливаются.</p>
+<h2 id="getcustomeraccesslinks">GetCustomerAccessLinks</h2>
+<p>Запрос несёт один <code>customer_id</code>. В ответ уходят все текущие ссылки этого
+customer, без пагинации, в порядке <code>(kind, logical_target_key, access_id)</code>.
+Ретайрнутые access, то есть отозванные при исчезновении цели из манифеста, в
+ответ не попадают, как и цели, которых в текущем манифесте нет. Неизвестный
+<code>customer_id</code> даёт <code>NOT_FOUND</code> (<code>internal/postgres/links.go:44</code>).</p>
+<p>Состояние каждой ссылки выводит <code>domain.LinkStatusOf</code>
+(<code>internal/domain/link.go:79</code>) на каждый ответ; нигде оно не хранится.</p>
+<table>
+<thead>
+<tr>
+<th>поле</th>
+<th>присутствие</th>
+<th>значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kind</code></td>
+<td>всегда</td>
+<td><code>FREEDOM</code> либо <code>BRIDGE</code></td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td>всегда</td>
+<td>текущее состояние ссылки</td>
+</tr>
+<tr>
+<td><code>block_reason</code></td>
+<td>только <code>BLOCKED</code></td>
+<td>причина блокировки</td>
+</tr>
+<tr>
+<td><code>uri</code></td>
+<td>только <code>READY</code></td>
+<td>готовая VLESS URI</td>
+</tr>
+<tr>
+<td><code>usage_quota_bytes</code></td>
+<td>всегда</td>
+<td>лимит текущего периода на входной ноде</td>
+</tr>
+<tr>
+<td><code>consumed_bytes</code></td>
+<td>всегда</td>
+<td>учтённый расход текущего периода на входной ноде</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th><code>state</code></th>
+<th>условие</th>
+<th><code>block_reason</code></th>
+<th><code>uri</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BLOCKED</code></td>
+<td>текущее время базы достигло <code>expires_at</code></td>
+<td><code>TIME_EXPIRED</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>BLOCKED</code></td>
+<td>исчерпана квота на входной ноде</td>
+<td><code>TRAFFIC_QUOTA_EXHAUSTED</code></td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>FAILED</code></td>
+<td>агент ответил так, что повтор не поможет, либо параметры входной ноды непригодны</td>
+<td>нет</td>
+<td>нет</td>
+</tr>
+<tr>
+<td><code>READY</code></td>
+<td>desired state <code>PRESENT</code>, агент подтвердил</td>
+<td>нет</td>
+<td>есть</td>
+</tr>
+<tr>
+<td><code>PENDING</code></td>
+<td>всё остальное</td>
+<td>нет</td>
+<td>нет</td>
+</tr>
+</tbody>
+</table>
+<p>Порядок строк повторяет порядок ветвей функции и задаёт приоритет причин: когда
+применимы и срок, и квота, наружу уходит <code>TIME_EXPIRED</code>.</p>
+<p>Поля <code>block_reason</code> и <code>uri</code> объявлены <code>optional</code>, и читать их следует по
+состоянию: у <code>READY</code> всегда есть <code>uri</code>, у <code>BLOCKED</code> всегда есть <code>block_reason</code>, в
+остальных случаях полей нет физически. Проверка на пустую строку вместо проверки
+состояния работать не будет. Заполняет их <code>linkTo</code>
+(<code>internal/grpcsvc/customer_access.go:152</code>).</p>
+<p><code>usage_quota_bytes</code> и <code>consumed_bytes</code> также объявлены <code>optional</code>, но присутствуют
+при любом состоянии возвращённой ссылки. Они относятся к входной ноде access:
+для FREEDOM это сама нода, для BRIDGE — <code>entry_node_id</code> связи. Несколько ссылок с
+общей входной нодой поэтому возвращают одинаковый суммарный расход.
+<code>consumed_bytes</code> содержит уже учтённые backend данные и может отставать от
+фактического трафика на интервал опроса node-agent.</p>
+<table>
+<thead>
+<tr>
+<th><code>kind</code></th>
+<th>нода для quota-полей</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FREEDOM</code></td>
+<td>целевая нода ссылки; она же <code>vpn_accesses.entry_node_id</code></td>
+</tr>
+<tr>
+<td><code>BRIDGE</code></td>
+<td>входная нода связи (<code>entry_node_id</code>), не exit-нода</td>
+</tr>
+</tbody>
+</table>
+<p>Остаток для отображения или расчёта продления конкретной ссылки следует считать
+как <code>max(usage_quota_bytes - consumed_bytes, 0)</code>. Обычное беззнаковое вычитание
+небезопасно: node-agent отдаёт накопленный трафик порциями, поэтому после
+очередного сбора <code>consumed_bytes</code> может оказаться больше лимита.</p>
+<p>Ответ, в котором часть ссылок <code>READY</code>, а часть <code>PENDING</code> или <code>FAILED</code>, штатен и
+ошибкой не является. Отказ расшифровать credential и непригодные публичные
+параметры ноды гасят до <code>FAILED</code> одну ссылку, остальные ссылки того же customer
+остаются как были. Разбор самой URI в <a href="../VLESS/">VLESS.md</a>.</p>
+<h3 id="_4">Кеширование</h3>
+<p>Ответ несёт метадату <code>cache-control: no-store</code>. Это метадата gRPC, а не
+HTTP-заголовок: никакой промежуточный слой её не исполнит, и не класть такой
+ответ в кеш обязан сам вызывающий. Ставится метадата до вызова use case
+(<code>internal/grpcsvc/customer_access.go:100</code>) и приходит на любом ответе метода,
+включая ошибку.</p>
+<p>Внутри <code>uri</code> лежит расшифрованный <code>client_uuid</code>, то есть credentials доступа.
+Backend такой ответ не логирует; на стороне вызывающего он не должен попадать в
+логи, трассировки и кеши.</p>
+<h2 id="listavailablenodes">ListAvailableNodes</h2>
+<p>Запрос пуст и не зависит от <code>customer_id</code>: метод предназначен для каталога до
+покупки. Ответ группирует актуальные ноды infrastructure manifest по fleet:</p>
+<table>
+<thead>
+<tr>
+<th>поле</th>
+<th>значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fleets[].vpn_fleet_id</code></td>
+<td>идентификатор fleet</td>
+</tr>
+<tr>
+<td><code>fleets[].nodes[].node_id</code></td>
+<td>стабильная идентичность ноды из manifest</td>
+</tr>
+<tr>
+<td><code>fleets[].nodes[].display_name</code></td>
+<td><code>ManifestNode.display_name</code></td>
+</tr>
+</tbody>
+</table>
+<p>В выборку входят только строки, для которых одновременно актуальны fleet,
+membership и сама нода (<code>current = true</code>). Пустые fleets не возвращаются. Одна
+нода, состоящая в нескольких fleets, присутствует в каждом из них. Порядок
+детерминирован: fleet по <code>vpn_fleet_id</code>, ноды внутри него по <code>node_id</code>.</p>
+<p>«Доступная» здесь означает «присутствует в актуальном manifest». Метод не читает
+customer access и квоты, не учитывает BRIDGE-связи и не обращается к node-agent,
+поэтому временная недоступность агента список не меняет. В ответе нет
+credentials; правило <code>cache-control: no-store</code> метода ссылок на него не
+распространяется.</p>
+<h2 id="setcustomeraccessstate">SetCustomerAccessState</h2>
+<p>Административная команда принимает <code>customer_id</code>, общий <code>command_number</code> и
+состояние <code>ACTIVE</code> либо <code>BLOCKED</code>. Переход в <code>BLOCKED</code> сохраняет подписку, квоту
+и credentials и переводит в <code>ABSENT</code> все поколения access. <code>ENSURE_ABSENT</code>
+выпускается для каждой входной ноды, которая есть в актуальном manifest;
+исторические access исчезнувших нод считаются применёнными логически. Переход в
+<code>ACTIVE</code> возвращает <code>PRESENT</code> только текущим access, где ещё действуют срок и
+node quota.</p>
+<p>Ответ подтверждает commit desired state, а не завершение RPC к нодам. В
+<code>GetCustomerAccessLinks</code> административно заблокированные ссылки имеют
+<code>BLOCKED/ADMINISTRATIVE_BLOCK</code>; во время удаления —
+<code>BLOCKED/DELETION_IN_PROGRESS</code>. <code>DELETED</code> customer читается как <code>NOT_FOUND</code>.
+Из <code>DELETING</code> и <code>DELETED</code> обычная разблокировка запрещена: полностью удалённого
+customer возвращает только <code>ApplyCustomerAccess</code>.</p>
+<h2 id="deletecustomeraccess">DeleteCustomerAccess</h2>
+<p>Первый вызов переводит существующего customer в <code>DELETING</code>, повышает версии всех
+access и ставит durable <code>ENSURE_ABSENT</code> на входные ноды актуального manifest.
+Для исчезнувших нод физический RPC невозможен, поэтому их historical access
+закрываются логически и тоже участвуют в cleanup. Ответ <code>PENDING</code> означает, что
+cleanup ещё не завершён. Повтор с тем же номером безопасен и возвращает текущее
+состояние. Для неизвестного customer сразу создаётся <code>DELETED</code> tombstone и
+возвращается <code>COMPLETED</code>, чтобы запоздавший старый Apply не создал его.</p>
+<p>Worker <code>finalize-deletion</code> ждёт подтверждённого <code>ABSENT</code>, отсутствия актуальных
+операций и окончания окна позднего usage, затем атомарно удаляет access,
+операции, quota periods и traffic usage. В <code>customer_entitlements</code> остаётся
+tombstone с <code>customer_id</code>, последним command token и <code>deleted_at</code>.
+Append-only <code>audit_events</code> также сохраняются согласно политике аудита; под
+«полным удалением» API понимает operational access/quota/usage данные, а не
+стирание ordering token и журнала действий.</p>
+<p><code>FAILED_PERMANENT</code> или недоступная актуальная нода оставляют customer в
+<code>DELETING</code>: backend не сообщает <code>COMPLETED</code>, пока отсутствие не подтверждено.
+Новый Delete с большим номером выпускает новую проверочную <code>ENSURE_ABSENT</code>.</p>
+<h2 id="applyfleetmanifest">ApplyFleetManifest</h2>
+<p>Запрос это манифест целиком: <code>schema_version</code>, <code>revision</code>, <code>allow_destructive</code>,
+полный инвентарь нод и полный инвентарь флотов. Частичных обновлений нет, манифест
+применяется целиком либо отвергается целиком.</p>
+<table>
+<thead>
+<tr>
+<th>поле ответа</th>
+<th>значение</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>applied_revision</code></td>
+<td>номер ревизии, ставшей текущей; при успехе совпадает с присланным</td>
+</tr>
+<tr>
+<td><code>result</code></td>
+<td><code>APPLIED</code> либо <code>IDEMPOTENT</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>IDEMPOTENT</code> означает повтор той же revision с тем же каноническим digest. Здесь,
+в отличие от <code>ApplyCustomerAccess</code>, идемпотентный повтор различим по ответу.</p>
+<p>Ответ возвращается после того, как манифест записан в таблицы. Доступы customer
+под новую топологию к этому моменту ещё не пересчитаны: пересчёт идёт следом
+отдельной джобой, <a href="../ARCHITECTURE/">ARCHITECTURE.md</a>, раздел «Материализация».</p>
+<p>Формат манифеста, ограничения полей, destructive-guard и все коды <code>MANIFEST_*</code>
+разобраны в <a href="../MANIFEST/">MANIFEST.md</a>.</p>
+<h2 id="_5">Коды ошибок</h2>
+<p>Стабильный код ошибки это строка в поле <code>error_code</code> записи лога. Вызывающему она
+не видна, наружу уходит только gRPC-статус с кодом и текстом. По стабильным кодам
+строятся алерты, и переименование любого из них меняет контракт наблюдаемости.</p>
+<p>Наружу уходит только текст из таблиц <code>internal/grpcsvc/errors.go</code>. Собственный
+текст ошибки не уходит никогда, и разбирать причину по строке сообщения
+вызывающему нечем: опираться следует на gRPC-код.</p>
+<h3 id="_6">Доменные</h3>
+<table>
+<thead>
+<tr>
+<th>стабильный код</th>
+<th>gRPC-код</th>
+<th>метод</th>
+<th>текст наружу</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>INVALID_CUSTOMER_ID</code></td>
+<td><code>INVALID_ARGUMENT</code></td>
+<td>customer-команды и <code>GetCustomerAccessLinks</code></td>
+<td><code>customer_id должен быть непустым и не длиннее 256 байт</code></td>
+</tr>
+<tr>
+<td><code>INVALID_FLEET_ID</code></td>
+<td><code>INVALID_ARGUMENT</code></td>
+<td><code>ApplyCustomerAccess</code></td>
+<td><code>vpn_fleet_id должен быть &gt; 0</code></td>
+</tr>
+<tr>
+<td><code>INVALID_QUOTA</code></td>
+<td><code>INVALID_ARGUMENT</code></td>
+<td><code>ApplyCustomerAccess</code></td>
+<td><code>usage_quota_bytes должен быть &gt; 0</code></td>
+</tr>
+<tr>
+<td><code>INVALID_COMMAND_NUMBER</code></td>
+<td><code>INVALID_ARGUMENT</code></td>
+<td>customer-команды</td>
+<td><code>command_number должен быть &gt; 0</code></td>
+</tr>
+<tr>
+<td><code>EXPIRY_NOT_IN_FUTURE</code></td>
+<td><code>INVALID_ARGUMENT</code></td>
+<td><code>ApplyCustomerAccess</code></td>
+<td><code>expires_at должен быть в будущем</code></td>
+</tr>
+<tr>
+<td><code>CUSTOMER_NOT_FOUND</code></td>
+<td><code>NOT_FOUND</code></td>
+<td><code>GetCustomerAccessLinks</code>, <code>SetCustomerAccessState</code></td>
+<td><code>customer не найден</code></td>
+</tr>
+<tr>
+<td><code>FLEET_NOT_FOUND</code></td>
+<td><code>NOT_FOUND</code></td>
+<td><code>ApplyCustomerAccess</code></td>
+<td><code>fleet не найден</code></td>
+</tr>
+<tr>
+<td><code>FLEET_MISMATCH</code></td>
+<td><code>FAILED_PRECONDITION</code></td>
+<td><code>ApplyCustomerAccess</code></td>
+<td><code>customer уже привязан к другому fleet</code></td>
+</tr>
+<tr>
+<td><code>EXPIRY_REGRESSION</code></td>
+<td><code>FAILED_PRECONDITION</code></td>
+<td><code>ApplyCustomerAccess</code></td>
+<td><code>сокращение expires_at не поддерживается</code></td>
+</tr>
+<tr>
+<td><code>OPEN_PERIOD_MISSING</code></td>
+<td><code>INTERNAL</code></td>
+<td><code>ApplyCustomerAccess</code></td>
+<td><code>внутренняя ошибка</code></td>
+</tr>
+<tr>
+<td><code>INVALID_ADMINISTRATIVE_STATE</code></td>
+<td><code>INVALID_ARGUMENT</code></td>
+<td><code>SetCustomerAccessState</code></td>
+<td><code>некорректное административное состояние</code></td>
+</tr>
+<tr>
+<td><code>COMMAND_NUMBER_CONFLICT</code></td>
+<td><code>ALREADY_EXISTS</code></td>
+<td>customer-команды</td>
+<td><code>command_number уже использован другой командой</code></td>
+</tr>
+<tr>
+<td><code>CUSTOMER_DELETING</code></td>
+<td><code>FAILED_PRECONDITION</code></td>
+<td><code>ApplyCustomerAccess</code>, <code>SetCustomerAccessState</code></td>
+<td><code>удаление customer ещё не завершено</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>DeleteCustomerAccess</code> неизвестного customer идемпотентно создаёт tombstone;
+<code>SetCustomerAccessState</code> неизвестного customer возвращает <code>CUSTOMER_NOT_FOUND</code>.</p>
+<p><code>OPEN_PERIOD_MISSING</code> это нарушение инварианта «ровно один период квоты с
+<code>closed_at IS NULL</code>» на стороне backend, а не ошибка вызывающего. Наружу оно
+уходит обезличенным <code>INTERNAL</code>, в логе отличимо по стабильному коду.</p>
+<h3 id="_7">Транспортные</h3>
+<table>
+<thead>
+<tr>
+<th>стабильный код</th>
+<th>gRPC-код</th>
+<th>когда</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OK</code></td>
+<td><code>OK</code></td>
+<td>успех, включая поглощённый повтор команды</td>
+</tr>
+<tr>
+<td><code>UNAUTHENTICATED</code></td>
+<td><code>UNAUTHENTICATED</code></td>
+<td>нет клиентского сертификата либо в нём нет пригодной идентичности</td>
+</tr>
+<tr>
+<td><code>PERMISSION_DENIED</code></td>
+<td><code>PERMISSION_DENIED</code></td>
+<td>идентичность не в списке роли либо метода нет в <code>methodRoles</code></td>
+</tr>
+<tr>
+<td><code>CANCELED</code></td>
+<td><code>CANCELED</code></td>
+<td>вызывающий закрыл контекст</td>
+</tr>
+<tr>
+<td><code>DEADLINE_EXCEEDED</code></td>
+<td><code>DEADLINE_EXCEEDED</code></td>
+<td>истёк дедлайн запроса</td>
+</tr>
+<tr>
+<td><code>INTERNAL</code></td>
+<td><code>INTERNAL</code></td>
+<td>всё неопознанное</td>
+</tr>
+</tbody>
+</table>
+<p>Вызов без TLS и сертификат без пригодного SAN дают один и тот же
+<code>UNAUTHENTICATED</code>. Различить их по ответу нельзя.</p>
+<h3 id="_8">Манифестные</h3>
+<p>Двенадцать кодов <code>MANIFEST_*</code> перечислены в <a href="../MANIFEST/">MANIFEST.md</a>. Их
+gRPC-код говорит, чинить манифест или разбираться с историей ревизий.
+<code>INVALID_ARGUMENT</code> означает, что не в порядке сам присланный манифест: не та
+<code>schema_version</code>, дубль <code>node_id</code>, связь на несуществующую ноду.
+<code>FAILED_PRECONDITION</code> означает, что манифест внутренне цел, но конфликтует с уже
+принятым: ревизия младше текущей, тот же номер ревизии с другим содержимым,
+пропавший флот, удаление без <code>allow_destructive</code>.</p>
+<p>Только у этих кодов в тексте есть деталь: какая нода, какая связь, какое
+значение. Деталь берётся из самого присланного манифеста.</p>
+<h3 id="_9">Порядок разбора</h3>
+<p><code>statusFromError</code> (<code>internal/grpcsvc/errors.go:195</code>) проверяет ошибку в четыре
+шага:</p>
+<ol>
+<li>правила манифеста, <code>errors.As</code> до <code>*domain.ManifestValidationError</code>;</li>
+<li>доменные сентинелы, <code>errors.Is</code> по таблице <code>errorMapping</code>;</li>
+<li><code>ctx.Err()</code> входящего контекста;</li>
+<li><code>INTERNAL</code> для всего остального.</li>
+</ol>
+<p><code>CANCELED</code> и <code>DEADLINE_EXCEEDED</code> вызывающий получает только тогда, когда закрылся
+контекст его собственного вызова. Если контекст вызова жив, а <code>context.Canceled</code>
+всё равно случилась где-то внутри backend, наружу уходит <code>INTERNAL</code>.</p>
+<p>Доменные исходы идут раньше контекста. Отмена вызова, случившаяся сразу после
+доменной ошибки, не подменяет <code>FAILED_PRECONDITION</code> на <code>CANCELED</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

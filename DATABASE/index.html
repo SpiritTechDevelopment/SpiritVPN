@@ -1,0 +1,2625 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Документация backend-сервиса управления VPN-инфраструктурой SpiritVPN">
+      
+      
+        <meta name="author" content="Roman Ryabinkin, Pavel Lensky">
+      
+      
+      
+        <link rel="prev" href="../API/">
+      
+      
+        <link rel="next" href="../MANIFEST/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>База данных - SpiritVPN Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="SpiritVPN Documentation" class="md-header__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            SpiritVPN Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              База данных
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить тёмную тему"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Включить тёмную тему" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Включить светлую тему"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Включить светлую тему" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Главная
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../ARCHITECTURE/" class="md-tabs__link">
+          
+  
+  
+  Архитектура
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../TESTING/" class="md-tabs__link">
+          
+  
+  
+  Разработка
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../DEPLOYMENT/" class="md-tabs__link">
+          
+  
+  
+  Инфраструктура
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="SpiritVPN Documentation" class="md-nav__button md-logo" aria-label="SpiritVPN Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    SpiritVPN Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Главная
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Архитектура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Архитектура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Общая архитектура
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../API/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Внешний API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    База данных
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    База данных
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Как устроена работа со схемой
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Соглашения
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Соглашения">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Признаки неактуальности
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Аренда задач воркерами
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Топология
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Топология">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manifest_revisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        manifest_revisions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_fleets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_fleets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_fleet_nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_fleet_nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_bridge_routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_bridge_routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Доступ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Доступ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#customer_entitlements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        customer_entitlements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quota_periods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quota_periods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#node_quota_usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        node_quota_usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_accesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_accesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Доставка
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Доставка">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent_operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent_operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manifest_materialization_jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        manifest_materialization_jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Учёт трафика
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Учёт трафика">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#node_usage_cursors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        node_usage_cursors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#traffic_usage_items_processed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        traffic_usage_items_processed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="traffic_usage_items_processed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Зачем нужен реестр
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему записи удаляются и почему через 6 часов
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#traffic_batch_quarantine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        traffic_batch_quarantine
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Аудит
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Аудит">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#audit_events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        audit_events
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Инварианты, которые держит сама база
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Локальная база
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFEST/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure manifest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VLESS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VLESS URI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Разработка
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Разработка
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TESTING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Руководство по тестированию
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CHANGELOG_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Правила Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Инфраструктура
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Инфраструктура
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Развёртывание
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../OPERATIONS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Эксплуатация
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Как устроена работа со схемой
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Соглашения
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Соглашения">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Признаки неактуальности
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Аренда задач воркерами
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Топология
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Топология">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manifest_revisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        manifest_revisions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_fleets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_fleets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_fleet_nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_fleet_nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_bridge_routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_bridge_routes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Доступ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Доступ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#customer_entitlements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        customer_entitlements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quota_periods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quota_periods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#node_quota_usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        node_quota_usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vpn_accesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vpn_accesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Доставка
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Доставка">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#agent_operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        agent_operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#manifest_materialization_jobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        manifest_materialization_jobs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Учёт трафика
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Учёт трафика">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#node_usage_cursors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        node_usage_cursors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#traffic_usage_items_processed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        traffic_usage_items_processed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="traffic_usage_items_processed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Зачем нужен реестр
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Почему записи удаляются и почему через 6 часов
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#traffic_batch_quarantine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        traffic_batch_quarantine
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Аудит
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Аудит">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#audit_events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        audit_events
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_12" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Инварианты, которые держит сама база
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Локальная база
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="_1">База данных</h1>
+<p>PostgreSQL 14. Всё состояние backend живёт здесь; в памяти процесса не хранится
+ничего, что нельзя потерять при перезапуске.</p>
+<h2 id="_2">Как устроена работа со схемой</h2>
+<p>ORM нет. Схема задаётся versioned SQL-миграциями, запросы пишутся вручную, код
+доступа к ним генерируется.</p>
+<ul>
+<li><strong>Миграции</strong> — <code>internal/migrations</code>, поверх golang-migrate. Файлы встроены в
+  бинарник через <code>embed</code>. Накатывает их команда <code>migrate</code>, это шаг деплоя перед
+  rollout; приложение схему не меняет и при старте не трогает.</li>
+<li><strong>Запросы</strong> — <code>internal/postgres/queries/*.sql</code>. По ним sqlc генерирует
+  <code>internal/postgres/db</code>. Каталог правится только перегенерацией:
+  <code>go tool sqlc generate</code>.</li>
+<li><strong>Драйвер</strong> — pgx. Транзакциями владеют адаптеры в <code>internal/postgres</code>, порядок
+  шагов внутри транзакции задают use case'ы в <code>internal/app</code>.</li>
+</ul>
+<h2 id="_3">Соглашения</h2>
+<ul>
+<li>Временные метки: <code>timestamptz</code> в UTC.</li>
+<li><code>uint64</code> с провода (счётчики байтов, <code>command_number</code>, порядковые номера
+  порций трафика, байты квоты) хранится как <code>numeric(20,0)</code>. Внутренние счётчики
+  backend — <code>bigint</code>.</li>
+<li>Перечислимые значения: <code>text</code> с <code>CHECK</code>. Нативный <code>ENUM</code> не используется, чтобы
+  набор значений менялся обычными миграциями.</li>
+<li><code>ON DELETE CASCADE</code> не используется нигде. Историю backend не удаляет.</li>
+</ul>
+<p>Таблиц пятнадцать, пятью группами.</p>
+<h3 id="_4">Признаки неактуальности</h3>
+<p>У каждой группы таблиц свой признак.</p>
+<table>
+<thead>
+<tr>
+<th>признак</th>
+<th>где</th>
+<th>означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>current = false</code></td>
+<td>таблицы топологии</td>
+<td>объект отсутствует в последнем снимке манифеста</td>
+</tr>
+<tr>
+<td><code>retired_at IS NOT NULL</code></td>
+<td><code>vpn_accesses</code></td>
+<td>доступ отозван, не выдаётся и не восстанавливается</td>
+</tr>
+<tr>
+<td><code>closed_at IS NOT NULL</code></td>
+<td><code>quota_periods</code></td>
+<td>период учёта закрыт, начисления идут в следующий</td>
+</tr>
+<tr>
+<td><code>exhausted_at IS NOT NULL</code></td>
+<td><code>node_quota_usage</code></td>
+<td>квота на ноде исчерпана, доступ там заблокирован</td>
+</tr>
+</tbody>
+</table>
+<p>Строки при этом остаются. Единственное настоящее удаление в схеме — уборка в
+реестре дедупликации трафика.</p>
+<h3 id="_5">Аренда задач воркерами</h3>
+<p>Пара колонок <code>lease_owner</code> / <code>lease_expires_at</code> есть в <code>agent_operations</code>,
+<code>manifest_materialization_jobs</code>, <code>node_usage_cursors</code> и <code>vpn_nodes</code> (там она
+названа <code>reconcile_lease_*</code>). Воркер захватывает строку, проставляя себя
+владельцем и момент истечения, по завершении шага освобождает. Упавший процесс
+оставляет захват, который истечёт сам. Отдельной таблицы блокировок нет.</p>
+<h2 id="_6">Топология</h2>
+<p>Эти пять таблиц — <strong>проекция</strong> infrastructure manifest: не источник истины, а
+копия того, что приехало в последнем снимке. Backend переносит сюда содержимое принятого снимка.</p>
+<h3 id="manifest_revisions">manifest_revisions</h3>
+<p>Журнал принятых снимков.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>revision</code></td>
+<td><code>bigint</code> PK</td>
+<td>глобальная, строго возрастающая; монотонность проверяет приложение</td>
+</tr>
+<tr>
+<td><code>digest</code></td>
+<td><code>text</code></td>
+<td>канонический отпечаток содержимого; отличает идемпотентный повтор от конфликтующего снимка с той же <code>revision</code></td>
+</tr>
+<tr>
+<td><code>canonical_payload</code></td>
+<td><code>jsonb</code></td>
+<td>сам снимок в каноническом виде</td>
+</tr>
+<tr>
+<td><code>applied_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда снимок принят</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>ApplyFleetManifest</code>.
+Читают: <code>ApplyFleetManifest</code>, <code>stats</code>.</p>
+<p>На <code>revision</code> ссылаются все таблицы топологии: по ней видно, в каком снимке
+объект встречался последний раз.</p>
+<h3 id="vpn_fleets">vpn_fleets</h3>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vpn_fleet_id</code></td>
+<td><code>bigint</code> PK</td>
+<td>принятый идентификатор не удаляется и не переиспользуется</td>
+</tr>
+<tr>
+<td><code>manifest_revision</code></td>
+<td><code>bigint</code></td>
+<td>ревизия, в которой флот виден последний раз</td>
+</tr>
+<tr>
+<td><code>current</code></td>
+<td><code>boolean</code></td>
+<td>присутствует ли в последнем снимке</td>
+</tr>
+<tr>
+<td><code>created_at</code>, <code>updated_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда флот принят и когда строка менялась</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>ApplyFleetManifest</code>.
+Читают: <code>ApplyCustomerAccess</code>, <code>ApplyFleetManifest</code>.</p>
+<p>Флот может быть пустым, без нод и связей, но обязан присутствовать в каждом
+последующем снимке.</p>
+<h3 id="vpn_nodes">vpn_nodes</h3>
+<p>Проекция манифеста плюс состояние сверки. Второе живёт здесь же, а не отдельной
+таблицей: это счётчики одной ноды, и запись манифеста их не затрагивает — она
+перечисляет свои колонки явно.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>node_id</code></td>
+<td><code>text</code> PK</td>
+<td>стабильная идентичность; строка заводится навсегда</td>
+</tr>
+<tr>
+<td><code>agent_config</code></td>
+<td><code>jsonb</code></td>
+<td>endpoint агента, TLS SNI, ожидаемая identity сертификата; клиенту не показывается</td>
+</tr>
+<tr>
+<td><code>public_config</code></td>
+<td><code>jsonb</code></td>
+<td>публичные REALITY/VLESS-параметры, из которых собирается ссылка</td>
+</tr>
+<tr>
+<td><code>desired_revision</code></td>
+<td><code>bigint</code></td>
+<td>счётчик желаемого набора пользователей ноды; растёт на единицу за изменяющую транзакцию</td>
+</tr>
+<tr>
+<td><code>reconciled_revision</code></td>
+<td><code>bigint</code></td>
+<td>последняя <code>desired_revision</code>, подтверждённая агентом полным набором; <code>0</code> — не сверялся ни разу</td>
+</tr>
+<tr>
+<td><code>needs_bootstrap</code></td>
+<td><code>boolean</code></td>
+<td>у агента пустое или повреждённое локальное состояние; пока он не получил полный набор, удалять пользователей ему запрещено</td>
+</tr>
+<tr>
+<td><code>reconciled_at</code></td>
+<td><code>timestamptz</code></td>
+<td>время последней принятой сверки</td>
+</tr>
+<tr>
+<td><code>reconcile_attempted_at</code></td>
+<td><code>timestamptz</code></td>
+<td>время последней попытки</td>
+</tr>
+<tr>
+<td><code>reconcile_lease_owner</code>, <code>reconcile_lease_expires_at</code></td>
+<td><code>text</code>, <code>timestamptz</code></td>
+<td>аренда сверки</td>
+</tr>
+<tr>
+<td><code>manifest_revision</code>, <code>current</code></td>
+<td><code>bigint</code>, <code>boolean</code></td>
+<td>проекция манифеста</td>
+</tr>
+<tr>
+<td><code>created_at</code>, <code>updated_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда нода принята и когда строка менялась</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>ApplyFleetManifest</code> (проекцию), <code>reconcile</code> (состояние сверки),
+<code>ApplyCustomerAccess</code>, <code>materialize</code>, <code>expiry</code>, <code>usage</code> (<code>desired_revision</code>).
+Читают: <code>dispatch</code>, <code>usage</code>, <code>GetCustomerAccessLinks</code>, <code>ListAvailableNodes</code>,
+<code>ApplyFleetManifest</code>, <code>materialize</code>, <code>stats</code>.</p>
+<p>Отставание <code>reconciled_revision</code> от <code>desired_revision</code> показывает, насколько
+состав пользователей на ноде разошёлся с тем, каким его хочет видеть backend.
+Равенство означает, что агент подтвердил полный набор именно этой версии.</p>
+<p>Темп сверки задаётся <code>reconcile_attempted_at</code>, а не временем успеха: у ноды, где
+сверка стабильно не удаётся, пауз бы не было.</p>
+<h3 id="vpn_fleet_nodes">vpn_fleet_nodes</h3>
+<p>Состав флотов: какая нода в каком флоте.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vpn_fleet_id</code>, <code>node_id</code></td>
+<td><code>bigint</code>, <code>text</code></td>
+<td>составной первичный ключ</td>
+</tr>
+<tr>
+<td><code>manifest_revision</code>, <code>current</code></td>
+<td><code>bigint</code>, <code>boolean</code></td>
+<td><code>current = false</code> означает, что нода покинула флот</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>ApplyFleetManifest</code>.
+Читают: <code>ApplyCustomerAccess</code>, <code>ApplyFleetManifest</code>, <code>GetCustomerAccessLinks</code>,
+<code>ListAvailableNodes</code>.</p>
+<p><code>ListAvailableNodes</code> соединяет только актуальные membership с актуальными
+<code>vpn_fleets</code> и <code>vpn_nodes</code>, сортирует по <code>(vpn_fleet_id, node_id)</code> и группирует
+результат уже в PostgreSQL-адаптере. Поэтому пустые fleets в каталог не попадают,
+а одна нода может присутствовать в нескольких группах.</p>
+<h3 id="vpn_bridge_routes">vpn_bridge_routes</h3>
+<p>Направленные связи entry → exit.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vpn_fleet_id</code>, <code>routing_key</code></td>
+<td><code>bigint</code>, <code>text</code></td>
+<td>составной первичный ключ; <code>routing_key</code> — стабильная идентичность связи внутри флота</td>
+</tr>
+<tr>
+<td><code>entry_node_id</code></td>
+<td><code>text</code></td>
+<td>нода, на которую ставится пользователь; <code>CHECK</code> запрещает совпадение с exit</td>
+</tr>
+<tr>
+<td><code>exit_node_id</code></td>
+<td><code>text</code></td>
+<td>нода выхода</td>
+</tr>
+<tr>
+<td><code>egress_tag</code></td>
+<td><code>text</code></td>
+<td>тег Xray outbound на входной ноде, непустой; уходит агенту дословно как <code>egress_key</code></td>
+</tr>
+<tr>
+<td><code>display_name</code></td>
+<td><code>text</code></td>
+<td>человекочитаемое имя во фрагменте VLESS-ссылки</td>
+</tr>
+<tr>
+<td><code>manifest_revision</code>, <code>current</code></td>
+<td><code>bigint</code>, <code>boolean</code></td>
+<td>в каком снимке связь видна последний раз и действует ли сейчас</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>ApplyFleetManifest</code>.
+Читают: <code>ApplyCustomerAccess</code>, <code>GetCustomerAccessLinks</code>, <code>ApplyFleetManifest</code>.</p>
+<p>Пара <code>(entry, exit)</code> уникальна среди действующих связей флота и неизменяема для
+существующего <code>routing_key</code>.</p>
+<h2 id="_7">Доступ</h2>
+<p>Здесь наоборот: источник истины — сам backend. Эти строки он придумывает,
+выпуская credentials и решая, кому и до какого момента положен доступ. Наружу они
+уходят только в виде готовых VLESS-ссылок и команд агентам.</p>
+<h3 id="customer_entitlements">customer_entitlements</h3>
+<p>Корневая строка customer. Все изменения его состояния идут под
+<code>SELECT ... FOR UPDATE</code> этой строки.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>customer_id</code></td>
+<td><code>text</code> PK</td>
+<td>непрозрачная строка Customer Service, 1–256 байт</td>
+</tr>
+<tr>
+<td><code>vpn_fleet_id</code></td>
+<td><code>bigint</code>, nullable</td>
+<td>флот customer; <code>NULL</code> только у <code>DELETED</code> tombstone</td>
+</tr>
+<tr>
+<td><code>expires_at</code></td>
+<td><code>timestamptz</code>, nullable</td>
+<td>момент окончания; <code>NULL</code> только у <code>DELETED</code> tombstone</td>
+</tr>
+<tr>
+<td><code>desired_version</code></td>
+<td><code>bigint</code></td>
+<td>внутренний счётчик изменений состояния; наружу не выдаётся</td>
+</tr>
+<tr>
+<td><code>last_command_number</code></td>
+<td><code>numeric(20,0)</code></td>
+<td>общий номер Apply/Block/Delete</td>
+</tr>
+<tr>
+<td><code>last_command_fingerprint</code></td>
+<td><code>bytea</code>, nullable</td>
+<td>SHA-256 метода и payload; отличает replay от конфликта равных номеров</td>
+</tr>
+<tr>
+<td><code>lifecycle_state</code></td>
+<td><code>text</code></td>
+<td><code>ACTIVE</code>, <code>BLOCKED</code>, <code>DELETING</code>, <code>DELETED</code></td>
+</tr>
+<tr>
+<td><code>delete_not_before</code>, <code>deleted_at</code></td>
+<td><code>timestamptz</code>, nullable</td>
+<td>нижняя граница cleanup и момент завершённого удаления</td>
+</tr>
+<tr>
+<td><code>created_at</code>, <code>updated_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда customer заведён и когда состояние менялось</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: customer-команды, <code>materialize</code>, <code>expiry</code> и <code>finalize-deletion</code>.
+Читают: <code>GetCustomerAccessLinks</code>, <code>expiry</code>, <code>materialize</code>, <code>reconcile</code>, <code>stats</code>.</p>
+<p>Shape constraint требует непустые fleet/expiry для всех состояний кроме
+<code>DELETED</code>; у tombstone они <code>NULL</code>, а <code>deleted_at</code> обязателен. Сам tombstone не
+удаляется: это точка сериализации повторного Apply и защита от устаревшей команды.
+Partial-индексы <code>customer_entitlements_expiry</code> и
+<code>customer_entitlements_deletion</code> ограничивают фоновые выборки соответственно
+состояниями <code>ACTIVE</code> и <code>DELETING</code>.</p>
+<h3 id="quota_periods">quota_periods</h3>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>quota_period_id</code></td>
+<td><code>uuid</code> PK</td>
+<td>идентификатор периода; на него ссылаются строки расхода и записи реестра дедупликации</td>
+</tr>
+<tr>
+<td><code>customer_id</code></td>
+<td><code>text</code></td>
+<td>владелец периода</td>
+</tr>
+<tr>
+<td><code>started_at</code>, <code>closed_at</code></td>
+<td><code>timestamptz</code></td>
+<td>границы; <code>closed_at IS NULL</code> ровно у одного, текущего</td>
+</tr>
+<tr>
+<td><code>usage_quota_bytes</code></td>
+<td><code>numeric(20,0)</code></td>
+<td>квота на каждую ноду отдельно, <code>&gt; 0</code></td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>ApplyCustomerAccess</code>.
+Читают: <code>usage</code>, <code>GetCustomerAccessLinks</code>, <code>reconcile</code>, <code>stats</code>.</p>
+<p>Квота лежит здесь, а не в entitlement: она осмысленна только вместе с
+потраченным в периоде трафиком. Renewal закрывает текущий период и открывает
+следующий.</p>
+<p>Периоды — непересекающиеся полуоткрытые интервалы <code>[started_at, closed_at)</code>. При
+renewal <code>closed_at</code> старого совпадает со <code>started_at</code> нового с точностью до
+значения: разошедшиеся границы означали бы, что дельта трафика не попала ни в
+один период.</p>
+<h3 id="node_quota_usage">node_quota_usage</h3>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>quota_period_id</code>, <code>node_id</code></td>
+<td><code>uuid</code>, <code>text</code></td>
+<td>составной первичный ключ</td>
+</tr>
+<tr>
+<td><code>uplink_bytes</code>, <code>downlink_bytes</code></td>
+<td><code>numeric(20,0)</code></td>
+<td>накопленный трафик</td>
+</tr>
+<tr>
+<td><code>total_bytes</code></td>
+<td><code>numeric(20,0)</code></td>
+<td>генерируемая колонка <code>uplink + downlink</code>, хранится (STORED)</td>
+</tr>
+<tr>
+<td><code>exhausted_at</code></td>
+<td><code>timestamptz</code></td>
+<td>момент исчерпания квоты на ноде; он же признак блокировки</td>
+</tr>
+<tr>
+<td><code>updated_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда расход обновлялся последний раз</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>ApplyCustomerAccess</code> и <code>materialize</code> (заводят строку), <code>usage</code>
+(начисление и <code>exhausted_at</code>).
+Читают: <code>GetCustomerAccessLinks</code>, <code>reconcile</code>, <code>stats</code>.</p>
+<p>Трафик всех FREEDOM и BRIDGE access customer на одной ноде идёт в одну строку.
+Исчерпание на одной ноде не влияет на доступ на других.</p>
+<p><code>GetCustomerAccessLinks</code> проецирует эту строку в quota-поля каждой ссылки. Ключом
+служит <code>(открытый quota_period_id, vpn_accesses.entry_node_id)</code>, а не логическая
+цель access: для FREEDOM entry совпадает с самой нодой, для BRIDGE берётся
+entry-нода маршрута и никогда не exit-нода. Поэтому несколько ссылок на одной
+entry-ноде намеренно показывают один и тот же <code>total_bytes</code> как
+<code>consumed_bytes</code>. Лимит берётся из связанного открытого <code>quota_periods</code>.</p>
+<h3 id="vpn_accesses">vpn_accesses</h3>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>access_id</code></td>
+<td><code>uuid</code> PK</td>
+<td>идентификатор доступа; на него ссылаются операции для агента и записи реестра дедупликации</td>
+</tr>
+<tr>
+<td><code>customer_id</code></td>
+<td><code>text</code></td>
+<td>владелец доступа</td>
+</tr>
+<tr>
+<td><code>kind</code></td>
+<td><code>text</code></td>
+<td><code>FREEDOM</code> или <code>BRIDGE</code></td>
+</tr>
+<tr>
+<td><code>logical_target_key</code></td>
+<td><code>text</code></td>
+<td>логическая цель: <code>node_id</code> для FREEDOM, <code>routing_key</code> для BRIDGE</td>
+</tr>
+<tr>
+<td><code>generation</code></td>
+<td><code>integer</code></td>
+<td>какой это по счёту доступ к этой цели, с единицы</td>
+</tr>
+<tr>
+<td><code>entry_node_id</code></td>
+<td><code>text</code></td>
+<td>нода, на которой заводится пользователь</td>
+</tr>
+<tr>
+<td><code>egress_key</code></td>
+<td><code>text</code></td>
+<td>пустая строка для FREEDOM, тег exit-outbound для BRIDGE; передаётся агенту дословно</td>
+</tr>
+<tr>
+<td><code>accounting_id</code></td>
+<td><code>text</code> UNIQUE</td>
+<td>псевдоним, уходит в Xray как <code>email</code></td>
+</tr>
+<tr>
+<td><code>encrypted_client_uuid</code></td>
+<td><code>bytea</code></td>
+<td>учётные данные VLESS, AES-256-GCM</td>
+</tr>
+<tr>
+<td><code>encryption_key_id</code></td>
+<td><code>text</code></td>
+<td>каким ключом зашифровано</td>
+</tr>
+<tr>
+<td><code>desired_state</code></td>
+<td><code>text</code></td>
+<td><code>PRESENT</code> или <code>ABSENT</code></td>
+</tr>
+<tr>
+<td><code>apply_state</code></td>
+<td><code>text</code></td>
+<td><code>PENDING</code>, <code>APPLIED</code>, <code>RETRYING</code>, <code>FAILED</code></td>
+</tr>
+<tr>
+<td><code>desired_version</code></td>
+<td><code>bigint</code></td>
+<td>версия желаемого состояния</td>
+</tr>
+<tr>
+<td><code>retired_at</code></td>
+<td><code>timestamptz</code></td>
+<td>момент исчезновения цели из манифеста; у действующих пусто</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда доступ выпущен</td>
+</tr>
+</tbody>
+</table>
+<p>Читают: <code>GetCustomerAccessLinks</code>, <code>dispatch</code>, <code>usage</code>, <code>expiry</code>, <code>reconcile</code>,
+<code>stats</code>. Пишущих шестеро, каждый в свои колонки:</p>
+<table>
+<thead>
+<tr>
+<th>кто</th>
+<th>что меняет</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ApplyCustomerAccess</code></td>
+<td>заводит доступы новому/повторно созданному customer, поднимает <code>desired_state</code> при renewal</td>
+</tr>
+<tr>
+<td><code>SetCustomerAccessState</code>, <code>DeleteCustomerAccess</code></td>
+<td>переводят access в новую административную desired-version</td>
+</tr>
+<tr>
+<td><code>materialize</code></td>
+<td>заводит доступы на появившиеся цели, проставляет <code>retired_at</code> исчезнувшим</td>
+</tr>
+<tr>
+<td><code>expiry</code></td>
+<td>опускает <code>desired_state</code> в <code>ABSENT</code> по истечении срока</td>
+</tr>
+<tr>
+<td><code>usage</code></td>
+<td>опускает <code>desired_state</code> в <code>ABSENT</code> при исчерпании квоты на ноде</td>
+</tr>
+<tr>
+<td><code>dispatch</code></td>
+<td>пишет <code>apply_state</code> по исходу вызова агента</td>
+</tr>
+<tr>
+<td><code>reconcile</code></td>
+<td>помечает доступы применёнными по факту принятого полного набора</td>
+</tr>
+</tbody>
+</table>
+<p>Уникальность — <code>(customer_id, kind, logical_target_key, generation)</code>. Строка не
+удаляется никогда: retired-строки хранят, до какого номера доросло поколение
+цели.</p>
+<h2 id="_8">Доставка</h2>
+<h3 id="agent_operations">agent_operations</h3>
+<p>Очередь команд агентам, устроенная как transactional outbox: строка операции
+пишется той же транзакцией, что и само изменение <code>desired_state</code>. Отсюда
+гарантия — не бывает изменения без операции и операции без изменения. Отправкой
+занимается отдельный воркер, уже после коммита.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>operation_id</code></td>
+<td><code>uuid</code> PK</td>
+<td>сохраняется между попытками; по нему агент отсеивает дубли</td>
+</tr>
+<tr>
+<td><code>node_id</code>, <code>access_id</code></td>
+<td><code>text</code>, <code>uuid</code></td>
+<td>куда и про какой доступ</td>
+</tr>
+<tr>
+<td><code>operation_type</code></td>
+<td><code>text</code></td>
+<td><code>ENSURE_PRESENT</code> или <code>ENSURE_ABSENT</code></td>
+</tr>
+<tr>
+<td><code>desired_version</code></td>
+<td><code>bigint</code></td>
+<td>какую версию желания везёт операция</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>text</code></td>
+<td><code>PENDING</code>, <code>IN_FLIGHT</code>, <code>SUCCEEDED</code>, <code>RETRY_WAIT</code>, <code>FAILED_PERMANENT</code>, <code>SUPERSEDED</code></td>
+</tr>
+<tr>
+<td><code>attempt_count</code>, <code>next_attempt_at</code></td>
+<td><code>integer</code>, <code>timestamptz</code></td>
+<td>сколько было попыток и когда можно следующую</td>
+</tr>
+<tr>
+<td><code>lease_owner</code>, <code>lease_expires_at</code></td>
+<td><code>text</code>, <code>timestamptz</code></td>
+<td>аренда доставки</td>
+</tr>
+<tr>
+<td><code>last_error_code</code>, <code>last_error_message</code></td>
+<td><code>text</code></td>
+<td>чем закончилась последняя попытка</td>
+</tr>
+<tr>
+<td><code>created_at</code>, <code>completed_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда операция поставлена и когда пришла в терминальный статус</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: customer-команды, <code>materialize</code>, <code>expiry</code>, <code>usage</code> (ставят),
+<code>dispatch</code> (ведёт), <code>reconcile</code> (закрывает ставшие ненужными).
+Читают: <code>stats</code>.</p>
+<p>При завершении удаления worker явно удаляет связанные строки в порядке
+quarantine/processed usage → agent operations → node usage → quota periods →
+accesses, затем обновляет entitlement до <code>DELETED</code>. <code>ON DELETE CASCADE</code> не
+используется: новая зависимость должна быть осознанно добавлена в cleanup и его
+интеграционный тест.</p>
+<p>Уникальность — <code>(access_id, desired_version)</code>: повторное планирование того же
+изменения второй операции не создаёт.</p>
+<p>Полезной нагрузки здесь нет. <code>client_uuid</code> и <code>egress_key</code> собираются из строки
+access перед самым вызовом агента: застрявшая операция иначе везла бы данные,
+устаревшие к моменту доставки.</p>
+<h3 id="manifest_materialization_jobs">manifest_materialization_jobs</h3>
+<p>Раскладка принятого манифеста по всем customer.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>revision</code></td>
+<td><code>bigint</code> PK</td>
+<td>какую ревизию раскладываем</td>
+</tr>
+<tr>
+<td><code>cursor</code></td>
+<td><code>jsonb</code></td>
+<td>до какого места дошли; джоба переживает перезапуск, не начиная заново</td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>text</code></td>
+<td><code>PENDING</code>, <code>IN_PROGRESS</code>, <code>DONE</code>, <code>FAILED</code></td>
+</tr>
+<tr>
+<td><code>lease_owner</code>, <code>lease_expires_at</code></td>
+<td><code>text</code>, <code>timestamptz</code></td>
+<td>аренда джобы</td>
+</tr>
+<tr>
+<td><code>updated_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда джоба продвигалась последний раз</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>ApplyFleetManifest</code> (ставит джобу), <code>materialize</code> (ведёт).
+Читают: <code>stats</code>.</p>
+<p>Джоба ставится в транзакции приёма снимка, а исполняется после коммита. Причина в
+разнице объёмов: сам снимок это десятки строк топологии, а изменение доступов
+затрагивает каждого customer флота, то есть тысячи строк. Держать всё это в
+транзакции RPC значило бы отвечать infrastructure pipeline минутами и держать
+долгую блокировку.</p>
+<h2 id="_9">Учёт трафика</h2>
+<p>Xray считает трафик на ноде, но никуда его не отправляет. Забирает его агент и
+складывает в <strong>спул</strong> — локальное хранилище на самой ноде (SQLite-база), где
+замеры ждут, пока backend их не заберёт и не подтвердит. Пока подтверждения нет,
+агент замеры не удаляет: связь с backend может пропасть, а трафик потерять
+нельзя.</p>
+<p>Внутри спула две единицы, и их не следует путать:</p>
+<ul>
+<li><strong>item</strong> — одна строка вида «столько-то байт вверх и вниз такому-то
+  <code>accounting_id</code>»;</li>
+<li><strong>батч</strong> — порция items, снятая за один заход. Именно у батча есть порядковый
+  номер, и подтверждается тоже батч целиком.</li>
+</ul>
+<p>Дедупликация при этом идёт по items, а не по батчам: батч мог быть начислен
+наполовину, если транзакция упала посередине.</p>
+<p>У спула есть идентификатор <code>spool_id</code> — случайный UUID, живущий столько же,
+сколько сама база агента. Внутри одного <code>spool_id</code> батчи пронумерованы подряд.
+Если агент пересоздал базу (переустановка, потеря диска), появляется новый
+<code>spool_id</code>, а нумерация начинается с нуля: сравнивать номера из разных спулов
+между собой бессмысленно, и backend этого не делает.</p>
+<p>Позиция в спуле — пара <code>(spool_id, sequence)</code>, она же курсор.</p>
+<h3 id="node_usage_cursors">node_usage_cursors</h3>
+<p>Подтверждённая позиция в спуле ноды, она же аренда воркера <code>usage</code>.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>node_id</code></td>
+<td><code>text</code> PK</td>
+<td>нода, чей спул читаем; строка одна на ноду</td>
+</tr>
+<tr>
+<td><code>spool_id</code></td>
+<td><code>text</code></td>
+<td>идентификатор спула агента; новый <code>spool_id</code> сбрасывает нумерацию в ноль</td>
+</tr>
+<tr>
+<td><code>acked_sequence</code></td>
+<td><code>numeric(20,0)</code></td>
+<td>до какого номера трафик подтверждён; агент удаляет у себя только подтверждённое</td>
+</tr>
+<tr>
+<td><code>lease_owner</code>, <code>lease_expires_at</code></td>
+<td><code>text</code>, <code>timestamptz</code></td>
+<td>аренда опроса</td>
+</tr>
+<tr>
+<td><code>updated_at</code></td>
+<td><code>timestamptz</code></td>
+<td>время последней <strong>попытки</strong> опроса, не последнего сдвига курсора</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>usage</code>.
+Читают: <code>prune-usage-dedup</code>, <code>stats</code>.</p>
+<p>Строка заводится лениво, при первом захвате ноды, до всякого успешного опроса.</p>
+<h3 id="traffic_usage_items_processed">traffic_usage_items_processed</h3>
+<p>Реестр начисленного: пока строка жива, тот же item второй раз не начислится. Вставка идёт через <code>ON CONFLICT DO NOTHING RETURNING</code>, отсутствие
+результата означает «уже начислено».</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>node_id</code>, <code>spool_id</code>, <code>sequence</code>, <code>accounting_id</code></td>
+<td><code>text</code>, <code>text</code>, <code>numeric(20,0)</code>, <code>text</code></td>
+<td>составной первичный ключ, он же ключ дедупликации</td>
+</tr>
+<tr>
+<td><code>access_id</code>, <code>quota_period_id</code></td>
+<td><code>uuid</code></td>
+<td>какому доступу и в какой период начислено; пусты для карантинных items</td>
+</tr>
+<tr>
+<td><code>result</code></td>
+<td><code>text</code></td>
+<td><code>APPLIED</code>, <code>IGNORED_CLOSED_PERIOD</code>, <code>QUARANTINED</code></td>
+</tr>
+<tr>
+<td><code>processed_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда item обработан; по нему работает ретенция</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>usage</code>, <code>prune-usage-dedup</code> (удаляет).
+Читают: <code>stats</code>.</p>
+<h4 id="_10">Зачем нужен реестр</h4>
+<p>Трафик копится у агента в локальном спуле, батчами. Один цикл опроса выглядит
+так:</p>
+<ol>
+<li>Backend вызывает <code>GetNodeState</code> и передаёт в запросе свой курсор — позицию, до
+   которой трафик уже начислен и закоммичен.</li>
+<li>Агент удаляет у себя батчи до этой позиции и отдаёт следующие.</li>
+<li>Backend начисляет полученные батчи и двигает курсор в <code>node_usage_cursors</code>.</li>
+<li>Новое значение курсора уедет агенту <strong>только следующим вызовом</strong>.</li>
+</ol>
+<p>Между шагами 3 и 4 есть окно: трафик уже начислен, но агент об этом ещё не знает
+и хранит те же батчи у себя. Если backend в этом окне перезапустился, при
+следующей встрече агент отдаст их снова. От повторного начисления защищает
+реестр: у items этого батча уже есть строки, и вставка через
+<code>ON CONFLICT DO NOTHING</code> не делает ничего.</p>
+<h4 id="6">Почему записи удаляются и почему через 6 часов</h4>
+<p>Таблица растёт пропорционально трафику: строка на каждого активного пользователя
+в каждом батче, а батчи агент отдаёт примерно раз в 15 секунд. Порядка 5760 строк
+в сутки на активного пользователя. Без уборки рост неограничен, поэтому она
+единственная, из которой строки удаляются.</p>
+<p>Ретенция удаляет запись при двух условиях сразу: ей больше 6 часов <strong>и</strong> её батч
+уже отмечен подтверждённым в <code>node_usage_cursors</code> (либо пришёл из спула, который
+агент с тех пор пересоздал — у такого другой <code>spool_id</code>, и нумерация в нём
+начинается заново). Неподтверждённое не удаляется, сколько бы ни лежало.</p>
+<p>Шесть часов — это допустимая длительность простоя backend. Если процесс лежал
+дольше, записи о начисленных батчах уже убраны, а агент эти батчи всё ещё хранит,
+потому что подтверждения не получил, и отдаст их заново. Трафик начислится второй
+раз. Это принятая положительная погрешность учёта: посчитанный расход может
+оказаться больше фактического, но не меньше.</p>
+<h3 id="traffic_batch_quarantine">traffic_batch_quarantine</h3>
+<p>Items, которые не удалось разобрать: неизвестный <code>accounting_id</code>, некорректное
+содержимое. Один плохой item не должен блокировать батч.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>quarantine_id</code></td>
+<td><code>uuid</code> PK</td>
+<td>идентификатор записи; генерируется базой</td>
+</tr>
+<tr>
+<td><code>node_id</code>, <code>spool_id</code>, <code>sequence</code></td>
+<td><code>text</code>, <code>text</code>, <code>numeric(20,0)</code></td>
+<td>откуда приехал item</td>
+</tr>
+<tr>
+<td><code>accounting_id</code></td>
+<td><code>text</code></td>
+<td>может быть пустым</td>
+</tr>
+<tr>
+<td><code>reason</code></td>
+<td><code>text</code></td>
+<td>почему отвергнут</td>
+</tr>
+<tr>
+<td><code>sanitized_payload</code></td>
+<td><code>jsonb</code></td>
+<td>очищенное содержимое; сырых секретов здесь нет</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда item отправлен в карантин</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>usage</code>.
+Читают: <code>stats</code>.</p>
+<p>Рост карантина означает расхождение между тем, кого backend считает заведённым на
+ноде, и тем, за кого приходит трафик. Метрика по числу записей годится под alert.</p>
+<h2 id="_11">Аудит</h2>
+<h3 id="audit_events">audit_events</h3>
+<p>Append-only журнал значимых действий.</p>
+<table>
+<thead>
+<tr>
+<th>колонка</th>
+<th>тип</th>
+<th>что означает</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>audit_id</code></td>
+<td><code>uuid</code> PK</td>
+<td>идентификатор записи; генерируется базой</td>
+</tr>
+<tr>
+<td><code>occurred_at</code></td>
+<td><code>timestamptz</code></td>
+<td>когда действие произошло</td>
+</tr>
+<tr>
+<td><code>actor_type</code>, <code>actor_id</code></td>
+<td><code>text</code></td>
+<td><code>SYSTEM</code>, <code>MANIFEST_WRITER</code>, <code>CUSTOMER_ACCESS_WRITER</code> или <code>CUSTOMER_ACCESS_ADMIN</code></td>
+</tr>
+<tr>
+<td><code>action</code></td>
+<td><code>text</code></td>
+<td><code>MANIFEST_APPLIED</code>, <code>CUSTOMER_CREATED</code>, <code>CUSTOMER_RENEWED</code>, <code>CUSTOMER_QUOTA_CHANGED</code>, <code>CUSTOMER_EXPIRED</code>, <code>CUSTOMER_ACCESS_STATE_SET</code>, <code>CUSTOMER_DELETION_REQUESTED</code></td>
+</tr>
+<tr>
+<td><code>target_type</code>, <code>target_id</code></td>
+<td><code>text</code></td>
+<td><code>MANIFEST_REVISION</code> или <code>CUSTOMER</code></td>
+</tr>
+<tr>
+<td><code>request_id</code></td>
+<td><code>text</code></td>
+<td>сквозной идентификатор запроса; связывает запись с логами вызова</td>
+</tr>
+<tr>
+<td><code>outcome</code></td>
+<td><code>text</code></td>
+<td>исход действия</td>
+</tr>
+<tr>
+<td><code>sanitized_metadata</code></td>
+<td><code>jsonb</code></td>
+<td>без секретов</td>
+</tr>
+</tbody>
+</table>
+<p>Пишут: <code>ApplyCustomerAccess</code>, административные customer RPC,
+<code>ApplyFleetManifest</code>, <code>expiry</code>.
+Читают: никто.</p>
+<p>Запись идёт в той же транзакции, что и само действие. Backend эту таблицу не
+читает: она существует для внешнего разбора инцидентов, запросов к ней в коде
+нет. Значения полей — <code>SCREAMING_SNAKE_CASE</code>, перечислены в
+<code>internal/app/audit.go</code>.</p>
+<h2 id="_12">Инварианты, которые держит сама база</h2>
+<p>Проверка в коде читает закоммиченный снимок и гонку не ловит, поэтому часть
+правил вынесена в схему.</p>
+<table>
+<thead>
+<tr>
+<th>индекс</th>
+<th>инвариант</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agent_operations_single_in_flight_per_node</code></td>
+<td>одна операция в полёте на ноду; частичный по <code>status = 'IN_FLIGHT'</code></td>
+</tr>
+<tr>
+<td><code>quota_periods_one_open_per_customer</code></td>
+<td>один открытый период квоты на customer; частичный по <code>closed_at IS NULL</code></td>
+</tr>
+<tr>
+<td><code>vpn_accesses_current_target</code></td>
+<td>один действующий доступ на логическую цель; частичный по <code>retired_at IS NULL</code></td>
+</tr>
+<tr>
+<td><code>vpn_bridge_routes_current_pair</code></td>
+<td>одна действующая пара entry → exit во флоте</td>
+</tr>
+<tr>
+<td><code>vpn_accesses.accounting_id</code></td>
+<td>глобальная уникальность псевдонима</td>
+</tr>
+</tbody>
+</table>
+<p>Проигранная гонка опознаётся по имени constraint'а.</p>
+<p>Отдельно стоит уникальность <code>accounting_id</code>: при её нарушении транзакция обязана
+упасть, а не сгенерировать значение заново. Значение состоит из 20 символов
+base32, то есть 100 бит от системного CSPRNG, и случайное совпадение двух таких
+значений практически невозможно. Если совпадение всё же произошло, объяснение
+одно: генератор случайных чисел выдаёт повторяющиеся байты. Из того же генератора
+(<code>crypto.Generator</code>, один <code>io.Reader</code> на все значения) берётся <code>client_uuid</code> —
+учётные данные VLESS. Молчаливый повтор генерации по конфликту скрыл бы поломку и
+продолжил выпускать предсказуемые credentials.</p>
+<h2 id="_13">Локальная база</h2>
+<pre><code class="language-bash">make dev           # PostgreSQL на порту 5433 (tmpfs) и накатить схему
+make dev-db-down   # остановить и удалить данные
+</code></pre>
+<p>Порт 5433 и tmpfs выбраны намеренно: интеграционные тесты делают <code>TRUNCATE</code> всех
+таблиц перед каждым тестом, и эта база должна быть заведомо одноразовой.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
